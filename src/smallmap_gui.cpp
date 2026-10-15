@@ -42,6 +42,7 @@
 
 #include <bitset>
 #include <cmath>
+#include <utility>
 
 #include "safeguards.h"
 
@@ -448,9 +449,9 @@ static inline uint32_t GetSmallMapIndustriesPixels(TileIndex tile, TileType t)
 	return ApplyMask(_smallmap_show_heightmap ? cs->height_colours[TileHeight(tile)] : cs->default_colour, _smallmap_vehicles_andor[GetSmallMapTileType(tile, t)]);
 }
 
-/** Colour ramp for the industry density heatmap, from low to high density. */
-static const PixelColour _industry_heat_colours[] = {
-	PC_VERY_DARK_BLUE, PC_DARK_BLUE, PC_LIGHT_BLUE, PC_GREEN, PC_YELLOW, PC_ORANGE, PC_RED,
+/** Colour bands of the industry density heatmap: lowest share of the peak density for each colour, low to high. */
+static const std::pair<float, PixelColour> _industry_heat_colours[] = {
+	{0.08f, PC_DARK_BLUE}, {0.3f, PC_LIGHT_BLUE}, {0.5f, PC_GREEN}, {0.7f, PC_YELLOW}, {0.85f, PC_ORANGE}, {0.97f, PC_RED},
 };
 
 /**
@@ -462,12 +463,15 @@ static const PixelColour _industry_heat_colours[] = {
  */
 static inline uint32_t GetSmallMapIndustryHeatPixels(TileIndex tile, TileType t, float heat)
 {
-	uint level = std::min<uint>(static_cast<uint>(heat * std::size(_industry_heat_colours)), std::size(_industry_heat_colours) - 1);
-	return ApplyMask(_industry_heat_colours[level].p * 0x01010101, _smallmap_vehicles_andor[GetSmallMapTileType(tile, t)]);
+	PixelColour colour = _industry_heat_colours[0].second;
+	for (const auto &[from, band] : _industry_heat_colours) {
+		if (heat >= from) colour = band;
+	}
+	return ApplyMask(colour.p * 0x01010101, _smallmap_vehicles_andor[GetSmallMapTileType(tile, t)]);
 }
 
 /**
- * Check whether any company picked up cargo from an industry this or last month.
+ * Check whether any company serves an industry: cargo was transported from it or delivered to it, this or last month.
  * @param ind Industry to check.
  * @return True if the industry is served.
  */
@@ -476,6 +480,19 @@ static bool IsIndustryServed(const Industry *ind)
 	for (const auto &p : ind->Produced()) {
 		if (!IsValidCargoType(p.cargo)) continue;
 		if (p.history[THIS_MONTH].transported > 0 || p.history[LAST_MONTH].transported > 0) return true;
+	}
+
+	EconTime::YearMonthDay ymd = EconTime::CurYMD();
+	EconTime::Date last_month_start = ymd.month == 0
+			? EconTime::ConvertYMDToDate(ymd.year - 1, 11, 1)
+			: EconTime::ConvertYMDToDate(ymd.year, ymd.month - 1, 1);
+	for (const auto &a : ind->Accepted()) {
+		if (!IsValidCargoType(a.cargo)) continue;
+		if (a.history != nullptr) {
+			if ((*a.history)[THIS_MONTH].accepted > 0 || (*a.history)[LAST_MONTH].accepted > 0) return true;
+		} else if (a.last_accepted >= last_month_start) {
+			return true;
+		}
 	}
 	return false;
 }
@@ -500,18 +517,25 @@ void SmallMapWindow::RecomputeIndustryHeat() const
 	this->heat.assign(static_cast<size_t>(this->heat_w) * this->heat_h, 0.0f);
 	this->heat_max = 0.0f;
 
-	const int r = std::max(1, SmallMapWindow::industry_heat_radius >> HEAT_CELL_SHIFT);
+	/* Each industry adds a quartic bump, 1 at its footprint's centre and 0 at the radius, measured to each cell's centre. */
+	const float radius = SmallMapWindow::industry_heat_radius;
+	const float cell_size = 1 << HEAT_CELL_SHIFT;
 	for (const Industry *ind : Industry::Iterate()) {
 		if (!IsIndustryShown(ind)) continue;
-		TileIndex centre = ind->location.GetCenterTile();
-		int cx = TileX(centre) >> HEAT_CELL_SHIFT;
-		int cy = TileY(centre) >> HEAT_CELL_SHIFT;
-		for (int y = std::max(0, cy - r); y <= std::min<int>(this->heat_h - 1, cy + r); y++) {
-			for (int x = std::max(0, cx - r); x <= std::min<int>(this->heat_w - 1, cx + r); x++) {
-				float d = std::sqrt(static_cast<float>((x - cx) * (x - cx) + (y - cy) * (y - cy)));
-				if (d >= r) continue;
+		const float cx = TileX(ind->location.tile) + ind->location.w / 2.0f;
+		const float cy = TileY(ind->location.tile) + ind->location.h / 2.0f;
+		const int first_x = std::max(0, static_cast<int>(std::floor((cx - radius) / cell_size)));
+		const int last_x = std::min<int>(this->heat_w - 1, static_cast<int>(std::floor((cx + radius) / cell_size)));
+		const int first_y = std::max(0, static_cast<int>(std::floor((cy - radius) / cell_size)));
+		const int last_y = std::min<int>(this->heat_h - 1, static_cast<int>(std::floor((cy + radius) / cell_size)));
+		for (int y = first_y; y <= last_y; y++) {
+			const float dy = ((y + 0.5f) * cell_size - cy) / radius;
+			for (int x = first_x; x <= last_x; x++) {
+				const float dx = ((x + 0.5f) * cell_size - cx) / radius;
+				const float u = dx * dx + dy * dy;
+				if (u >= 1) continue;
 				float &cell = this->heat[static_cast<size_t>(y) * this->heat_w + x];
-				cell += 1.0f - d / r;
+				cell += (1 - u) * (1 - u);
 				this->heat_max = std::max(this->heat_max, cell);
 			}
 		}
@@ -886,7 +910,7 @@ inline uint32_t SmallMapWindow::GetTileColours(const TileArea &ta) const
 		case SmallMapType::Industries:
 			if (SmallMapWindow::show_industry_heat && tile != INVALID_TILE && et != TileType::Water && this->heat_max > 0) {
 				float h = this->heat[static_cast<size_t>(std::min<uint>(TileY(tile) >> HEAT_CELL_SHIFT, this->heat_h - 1)) * this->heat_w + std::min<uint>(TileX(tile) >> HEAT_CELL_SHIFT, this->heat_w - 1)];
-				if (h > 0) return GetSmallMapIndustryHeatPixels(tile, et, h / this->heat_max);
+				if (h >= _industry_heat_colours[0].first * this->heat_max) return GetSmallMapIndustryHeatPixels(tile, et, h / this->heat_max);
 			}
 			return GetSmallMapIndustriesPixels(tile, et);
 
