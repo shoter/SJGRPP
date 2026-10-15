@@ -29,6 +29,7 @@
 #include "newgrf_object.h"
 #include "strings_func.h"
 #include "blitter/factory.hpp"
+#include "dropdown_func.h"
 
 #include "smallmap_colours.h"
 #include "smallmap_gui.h"
@@ -40,6 +41,7 @@
 #include "table/strings.h"
 
 #include <bitset>
+#include <cmath>
 
 #include "safeguards.h"
 
@@ -446,6 +448,76 @@ static inline uint32_t GetSmallMapIndustriesPixels(TileIndex tile, TileType t)
 	return ApplyMask(_smallmap_show_heightmap ? cs->height_colours[TileHeight(tile)] : cs->default_colour, _smallmap_vehicles_andor[GetSmallMapTileType(tile, t)]);
 }
 
+/** Colour ramp for the industry density heatmap, from low to high density. */
+static const PixelColour _industry_heat_colours[] = {
+	PC_VERY_DARK_BLUE, PC_DARK_BLUE, PC_LIGHT_BLUE, PC_GREEN, PC_YELLOW, PC_ORANGE, PC_RED,
+};
+
+/**
+ * Return the colour of a tile in the industry density heatmap.
+ * @param tile The tile of which we would like to get the colour.
+ * @param t    Effective tile type of the tile (see #SmallMapWindow::GetTileColours).
+ * @param heat Normalised heat of the tile, in range 0..1.
+ * @return The colour of tile in the small map in mode "Industries" with heatmap.
+ */
+static inline uint32_t GetSmallMapIndustryHeatPixels(TileIndex tile, TileType t, float heat)
+{
+	uint level = std::min<uint>(static_cast<uint>(heat * std::size(_industry_heat_colours)), std::size(_industry_heat_colours) - 1);
+	return ApplyMask(_industry_heat_colours[level].p * 0x01010101, _smallmap_vehicles_andor[GetSmallMapTileType(tile, t)]);
+}
+
+/**
+ * Check whether any company picked up cargo from an industry this or last month.
+ * @param ind Industry to check.
+ * @return True if the industry is served.
+ */
+static bool IsIndustryServed(const Industry *ind)
+{
+	for (const auto &p : ind->Produced()) {
+		if (!IsValidCargoType(p.cargo)) continue;
+		if (p.history[THIS_MONTH].transported > 0 || p.history[LAST_MONTH].transported > 0) return true;
+	}
+	return false;
+}
+
+/**
+ * Check whether an industry passes the industry filters of the smallmap.
+ * @param ind Industry to check.
+ * @return True if the industry should be displayed.
+ */
+bool SmallMapWindow::IsIndustryShown(const Industry *ind)
+{
+	if (!_legend_from_industries[_industry_to_list_pos[ind->type]].show_on_map) return false;
+	return !(SmallMapWindow::hide_served_industries && IsIndustryServed(ind));
+}
+
+/** Recompute the industry density heatmap from the currently displayed industries. */
+void SmallMapWindow::RecomputeIndustryHeat() const
+{
+	this->heat_dirty = false;
+	this->heat_w = std::max<uint>(1, Map::SizeX() >> HEAT_CELL_SHIFT);
+	this->heat_h = std::max<uint>(1, Map::SizeY() >> HEAT_CELL_SHIFT);
+	this->heat.assign(static_cast<size_t>(this->heat_w) * this->heat_h, 0.0f);
+	this->heat_max = 0.0f;
+
+	const int r = std::max(1, SmallMapWindow::industry_heat_radius >> HEAT_CELL_SHIFT);
+	for (const Industry *ind : Industry::Iterate()) {
+		if (!IsIndustryShown(ind)) continue;
+		TileIndex centre = ind->location.GetCenterTile();
+		int cx = TileX(centre) >> HEAT_CELL_SHIFT;
+		int cy = TileY(centre) >> HEAT_CELL_SHIFT;
+		for (int y = std::max(0, cy - r); y <= std::min<int>(this->heat_h - 1, cy + r); y++) {
+			for (int x = std::max(0, cx - r); x <= std::min<int>(this->heat_w - 1, cx + r); x++) {
+				float d = std::sqrt(static_cast<float>((x - cx) * (x - cx) + (y - cy) * (y - cy)));
+				if (d >= r) continue;
+				float &cell = this->heat[static_cast<size_t>(y) * this->heat_w + x];
+				cell += 1.0f - d / r;
+				this->heat_max = std::max(this->heat_max, cell);
+			}
+		}
+	}
+}
+
 /**
  * Return the colour a tile would be displayed with in the small map in mode "Routes".
  *
@@ -781,7 +853,7 @@ inline uint32_t SmallMapWindow::GetTileColours(const TileArea &ta) const
 					/* If industry is allowed to be seen, use its colour on the map.
 					 * This has the highest priority above any value in _tiletype_importance. */
 					IndustryType type = Industry::GetByTile(ti)->type;
-					if (_legend_from_industries[_industry_to_list_pos[type]].show_on_map) {
+					if (IsIndustryShown(Industry::GetByTile(ti))) {
 						if (type == _smallmap_industry_highlight) {
 							if (_smallmap_industry_highlight_state) return MKCOLOUR_XXXX(PC_WHITE);
 						} else {
@@ -812,6 +884,10 @@ inline uint32_t SmallMapWindow::GetTileColours(const TileArea &ta) const
 			return GetSmallMapVehiclesPixels(tile, et);
 
 		case SmallMapType::Industries:
+			if (SmallMapWindow::show_industry_heat && tile != INVALID_TILE && et != TileType::Water && this->heat_max > 0) {
+				float h = this->heat[static_cast<size_t>(std::min<uint>(TileY(tile) >> HEAT_CELL_SHIFT, this->heat_h - 1)) * this->heat_w + std::min<uint>(TileX(tile) >> HEAT_CELL_SHIFT, this->heat_w - 1)];
+				if (h > 0) return GetSmallMapIndustryHeatPixels(tile, et, h / this->heat_max);
+			}
 			return GetSmallMapIndustriesPixels(tile, et);
 
 		case SmallMapType::LinkStats:
@@ -973,7 +1049,7 @@ void SmallMapWindow::DrawIndustryNames(const DrawPixelInfo *dpi, const int verti
 
 	for (const Industry *i : Industry::Iterate()) {
 		const LegendAndColour &tbl = _legend_from_industries[_industry_to_list_pos[i->type]];
-		if (!tbl.show_on_map) continue;
+		if (!IsIndustryShown(i)) continue;
 
 		/* Industry names blink together with their blobs in the smallmap. */
 		const bool is_blinking = i->type == _smallmap_industry_highlight && !_smallmap_industry_highlight_state;
@@ -1038,6 +1114,10 @@ void SmallMapWindow::DrawSmallMap(DrawPixelInfo *dpi, bool draw_indicators) cons
 {
 	Blitter *blitter = BlitterFactory::GetCurrentBlitter();
 	AutoRestoreBackup dpi_backup(_cur_dpi, dpi);
+
+	if (this->map_type == SmallMapType::Industries && SmallMapWindow::show_industry_heat && (this->heat_dirty || this->heat.empty())) {
+		this->RecomputeIndustryHeat();
+	}
 
 	/* Clear it */
 	const PixelColour map_clear_color = (_settings_game.construction.map_edge_mode == MapEdgeMode::InfiniteWater) ? PC_WATER : PC_BLACK;
@@ -1168,6 +1248,8 @@ SmallMapWindow::SmallMapWindow(WindowDesc &desc, int window_number) : Window(des
 
 	this->SetWidgetLoweredState(WID_SM_TOGGLETOWNNAME, this->show_towns);
 	this->SetWidgetLoweredState(WID_SM_SHOW_IND_NAMES, this->show_ind_names);
+	this->SetWidgetLoweredState(WID_SM_HIDE_SERVED, SmallMapWindow::hide_served_industries);
+	this->SetWidgetLoweredState(WID_SM_SHOW_HEAT, SmallMapWindow::show_industry_heat);
 
 	this->SetupWidgetData();
 	this->FinishInitNested(window_number);
@@ -1214,6 +1296,9 @@ void SmallMapWindow::RebuildColourIndexIfNecessary()
 	switch (widget) {
 		case WID_SM_CAPTION:
 			return GetString(STR_SMALLMAP_CAPTION, STR_SMALLMAP_TYPE_CONTOURS + to_underlying(this->map_type));
+
+		case WID_SM_HEAT_RADIUS:
+			return GetString(STR_SMALLMAP_HEAT_RADIUS, SmallMapWindow::industry_heat_radius);
 
 		default:
 			return this->Window::GetWidgetString(widget, stringid);
@@ -1568,6 +1653,29 @@ int SmallMapWindow::GetPositionOnLegend(Point pt)
 			SndClickBeep();
 			break;
 
+		case WID_SM_HIDE_SERVED: // Toggle hiding of served industries
+			SmallMapWindow::hide_served_industries = !SmallMapWindow::hide_served_industries;
+			this->SetWidgetLoweredState(WID_SM_HIDE_SERVED, SmallMapWindow::hide_served_industries);
+			this->heat_dirty = true;
+			this->SetDirty();
+			break;
+
+		case WID_SM_SHOW_HEAT: // Toggle industry density heatmap
+			SmallMapWindow::show_industry_heat = !SmallMapWindow::show_industry_heat;
+			this->SetWidgetLoweredState(WID_SM_SHOW_HEAT, SmallMapWindow::show_industry_heat);
+			this->heat_dirty = true;
+			this->SetDirty();
+			break;
+
+		case WID_SM_HEAT_RADIUS: {
+			DropDownList list;
+			for (uint16_t radius : HEAT_RADII) {
+				list.push_back(MakeDropDownListStringItem(GetString(STR_SMALLMAP_HEAT_RADIUS_ITEM, radius), radius));
+			}
+			ShowDropDownList(this, std::move(list), SmallMapWindow::industry_heat_radius, WID_SM_HEAT_RADIUS);
+			break;
+		}
+
 		case WID_SM_SHOW_IND_NAMES: // Toggle industry names
 			this->show_ind_names = !this->show_ind_names;
 			this->SetWidgetLoweredState(WID_SM_SHOW_IND_NAMES, this->show_ind_names);
@@ -1694,6 +1802,14 @@ int SmallMapWindow::GetPositionOnLegend(Point pt)
 	}
 }
 
+/* virtual */ void SmallMapWindow::OnDropdownSelect(WidgetID widget, int index, int)
+{
+	if (widget != WID_SM_HEAT_RADIUS) return;
+	SmallMapWindow::industry_heat_radius = static_cast<uint16_t>(index);
+	this->heat_dirty = true;
+	this->SetDirty();
+}
+
 /* virtual */ void SmallMapWindow::OnRealtimeTick(uint delta_ms)
 {
 	if (_pause_mode.Any()) delta_ms = this->PausedAdjustRefreshTimeDelta(delta_ms);
@@ -1710,6 +1826,7 @@ int SmallMapWindow::GetPositionOnLegend(Point pt)
 		}
 	}
 	_smallmap_industry_highlight_state = !_smallmap_industry_highlight_state;
+	this->heat_dirty = true;
 
 	this->refresh.SetInterval(this->GetRefreshPeriod());
 	this->SetDirty();
@@ -1846,6 +1963,9 @@ void SmallMapWindow::ScreenshotCallbackHandler(void *buf, uint y, uint pitch, ui
 SmallMapType SmallMapWindow::map_type = SmallMapType::Contour;
 bool SmallMapWindow::show_towns = true;
 bool SmallMapWindow::show_ind_names = false;
+bool SmallMapWindow::hide_served_industries = false;
+bool SmallMapWindow::show_industry_heat = false;
+uint16_t SmallMapWindow::industry_heat_radius = 128;
 int SmallMapWindow::map_height_limit = -1;
 
 /**
@@ -1985,7 +2105,12 @@ static constexpr std::initializer_list<NWidgetPart> _nested_smallmap_widgets = {
 
 				/* 'show industry names' button and container. Only shown for the industry map type. */
 				NWidget(NWID_SELECTION, Colours::Invalid, WID_SM_SHOW_IND_NAMES_SEL),
-					NWidget(WWT_TEXTBTN, Colours::Brown, WID_SM_SHOW_IND_NAMES), SetStringTip(STR_SMALLMAP_SHOW_INDUSTRY_NAMES, STR_SMALLMAP_TOOLTIP_SHOW_INDUSTRY_NAMES),
+					NWidget(NWID_HORIZONTAL),
+						NWidget(WWT_TEXTBTN, Colours::Brown, WID_SM_SHOW_IND_NAMES), SetStringTip(STR_SMALLMAP_SHOW_INDUSTRY_NAMES, STR_SMALLMAP_TOOLTIP_SHOW_INDUSTRY_NAMES),
+						NWidget(WWT_TEXTBTN, Colours::Brown, WID_SM_HIDE_SERVED), SetStringTip(STR_SMALLMAP_HIDE_SERVED, STR_SMALLMAP_TOOLTIP_HIDE_SERVED),
+						NWidget(WWT_TEXTBTN, Colours::Brown, WID_SM_SHOW_HEAT), SetStringTip(STR_SMALLMAP_SHOW_HEAT, STR_SMALLMAP_TOOLTIP_SHOW_HEAT),
+						NWidget(WWT_DROPDOWN, Colours::Brown, WID_SM_HEAT_RADIUS), SetToolTip(STR_SMALLMAP_TOOLTIP_HEAT_RADIUS),
+					EndContainer(),
 				EndContainer(),
 
 				NWidget(WWT_PANEL, Colours::Brown), SetFill(1, 0), SetResize(1, 0),
