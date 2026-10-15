@@ -170,6 +170,8 @@ else()
     set(REV_ISSTABLETAG 0)
 endif()
 
+string(REGEX REPLACE "^jgrpp-" "sjgrpp-" REV_VERSION "${REV_VERSION}")
+
 string(REGEX MATCH "^jgrpp-[0-9]+(\.[0-9]+)?(\.[0-9]+)?" REV_RELEASE "${REV_RELEASE}")
 string(REPLACE "jgrpp-" "" REV_RELEASE "${REV_RELEASE}")
 
