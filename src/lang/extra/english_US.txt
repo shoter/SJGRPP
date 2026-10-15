@@ -151,3 +151,5 @@ STR_INTRO_CAPTION_TRADITIONAL                                   :{WHITE}OpenTTD 
 
 STR_CONFIG_SETTING_LINEAR_MAINTENANCE                           :Linear maintenance growth: {STRING}
 STR_CONFIG_SETTING_LINEAR_MAINTENANCE_HELPTEXT                  :When enabled, infrastructure maintenance costs grow linearly rather than polynomially
+STR_CONFIG_SETTING_STATION_CAPACITY_PER_TILE                    :Station cargo storage per station tile: {STRING2}
+STR_CONFIG_SETTING_STATION_CAPACITY_PER_TILE_HELPTEXT           :Each station tile adds this many units to the station's total cargo storage, shared by all cargo types. While the station holds less than its storage, new cargo is accepted even if it overflows the limit. Once full, new cargo is rejected and the station rating of that cargo drops in proportion to the cargo lost.

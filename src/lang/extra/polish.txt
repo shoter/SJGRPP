@@ -122,3 +122,5 @@ STR_INTRO_CAPTION_TRADITIONAL                                   :{WHITE}OpenTTD 
 
 STR_CONFIG_SETTING_LINEAR_MAINTENANCE                           :Liniowy wzrost kosztu utrzymania: {STRING}
 STR_CONFIG_SETTING_LINEAR_MAINTENANCE_HELPTEXT                  :Po włączeniu, koszty utrzymania infrastruktury rosną liniowo zamiast wielomianowo
+STR_CONFIG_SETTING_STATION_CAPACITY_PER_TILE                    :Pojemność magazynu stacji na pole stacji: {STRING2}
+STR_CONFIG_SETTING_STATION_CAPACITY_PER_TILE_HELPTEXT           :Każde pole stacji zwiększa łączną pojemność magazynu stacji o tyle jednostek, wspólną dla wszystkich rodzajów ładunku. Dopóki stacja przechowuje mniej niż wynosi jej pojemność, nowy ładunek jest przyjmowany, nawet jeśli przekroczy limit. Gdy stacja jest pełna, nowy ładunek jest odrzucany, a ocena stacji dla tego ładunku spada proporcjonalnie do utraconego ładunku.
