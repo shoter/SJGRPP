@@ -41,6 +41,8 @@
 
 #include "table/strings.h"
 
+#include "../../debug_bridge.h"
+
 #include "../../safeguards.h"
 
 #if defined(__MINGW32__) && !defined(__MINGW64__) && !(_WIN32_IE >= 0x0500)
@@ -65,6 +67,11 @@ bool MyShowCursor(bool show, bool toggle)
 
 void ShowOSErrorBox(std::string_view buf, bool system)
 {
+	if (DebugBridge::IsAutomation()) {
+		fmt::print(stderr, "Error: {}\n", buf);
+		fflush(stderr);
+		return;
+	}
 	MyShowCursor(true);
 	MessageBox(GetActiveWindow(), OTTD2FS(buf).c_str(), L"Error!", MB_ICONSTOP | MB_TASKMODAL);
 }

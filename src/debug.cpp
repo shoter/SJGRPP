@@ -29,6 +29,7 @@
 #include "walltime_func.h"
 
 #include "network/network_admin.h"
+#include "debug_bridge.h"
 
 #if defined(RANDOM_DEBUG) && defined(UNIX) && defined(__GLIBC__)
 #include <unistd.h>
@@ -161,6 +162,11 @@ void debug_print_intl(DebugLevelID dbg, int8_t level, const char *buf, size_t pr
 #else
 	fputs(buf, stderr);
 #endif
+
+	if (DebugBridge::_active) {
+		std::string_view msg = { buf + prefix_size, strlen(buf + prefix_size) - 1 };
+		DebugBridge::OnDebugPrint(GetDebugLevelName(dbg), level, msg);
+	}
 
 	if (_debug_remote_console.load()) {
 		/* Only add to the queue when there is at least one consumer of the data, exclude added newline. */

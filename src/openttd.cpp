@@ -115,6 +115,7 @@
 #include <system_error>
 
 #include "table/strings.h"
+#include "debug_bridge.h"
 
 #ifdef __EMSCRIPTEN__
 #	include <emscripten.h>
@@ -976,6 +977,7 @@ int openttd_main(std::span<char * const> arguments)
 
 	SocialIntegration::Initialize();
 	NetworkStartUp(); // initialize network-core
+	DebugBridge::StartFromEnvironment();
 
 	if (!HandleBootstrap()) {
 		ShutdownGame();

@@ -28,6 +28,11 @@ if(NOT OPTION_DEDICATED)
     )
 
     add_files(
+        headless_v.cpp
+        headless_v.h
+    )
+
+    add_files(
         win32_v.cpp
         win32_v.h
         CONDITION WIN32

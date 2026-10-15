@@ -17,6 +17,7 @@
 #include "debug.h"
 #include "console_func.h"
 #include "settings_type.h"
+#include "debug_bridge.h"
 
 #include "safeguards.h"
 
@@ -90,6 +91,8 @@ void IConsoleFree()
 void IConsolePrint(ExtendedTextColour colour_code, std::string string)
 {
 	assert(IsValidConsoleColour(colour_code));
+
+	DebugBridge::OnConsolePrint(string);
 
 	if (_redirect_console_to_client != ClientID::Invalid) {
 		/* Redirect the string to the client */

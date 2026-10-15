@@ -516,6 +516,9 @@ static const NamedSaveLoad _company_desc[] = {
 	NSLT("allow_any", SLE_VAR(CompanyProperties, allow_any, SLE_BOOL)),
 };
 
+/** Description of Company (as CompanyProperties), for the debug bridge object inspector. */
+NamedSaveLoadTable GetCompanyDescriptionForDebug() { return _company_desc; }
+
 struct PLYRNonTableHelper {
 	std::vector<SaveLoad> liveries_desc;
 	std::vector<SaveLoad> economy_desc;

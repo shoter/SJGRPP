@@ -43,6 +43,8 @@
 #endif
 #include <atomic>
 
+#include "../../debug_bridge.h"
+
 #include "../../safeguards.h"
 
 /* fmt format specification for 32/64-bit addresses. */
@@ -777,7 +779,7 @@ static LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS *ep)
 		wchar_t _emergency_crash[512];
 		_snwprintf(_emergency_crash, lengthof(_emergency_crash),
 				L"A serious fault condition occurred in the game. The game will shut down. (%s)\n", OTTD2FS(abort_reason).c_str());
-		MessageBox(nullptr, _emergency_crash, L"Fatal Application Failure", MB_ICONERROR);
+		if (!DebugBridge::IsAutomation()) MessageBox(nullptr, _emergency_crash, L"Fatal Application Failure", MB_ICONERROR);
 		ImmediateExitProcess(3);
 	}
 
@@ -801,7 +803,7 @@ static LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS *ep)
 #endif
 	}
 
-	if ((VideoDriverBase::GetInstance() == nullptr || VideoDriverBase::GetInstance()->HasGUI()) && crash_win_esp != nullptr) {
+	if ((VideoDriverBase::GetInstance() == nullptr || VideoDriverBase::GetInstance()->HasGUI()) && crash_win_esp != nullptr && !DebugBridge::IsAutomation()) {
 #ifdef _M_AMD64
 		ep->ContextRecord->Rip = (DWORD64)ShowCrashlogWindow;
 		ep->ContextRecord->Rsp = (DWORD64)crash_win_esp;

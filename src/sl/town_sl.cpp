@@ -462,6 +462,9 @@ static const NamedSaveLoad _town_desc[] = {
 	NSLT_STRUCT<TownSettingsOverrideStructHandler>("setting_overrides"),
 };
 
+/** Description of Town, for the debug bridge object inspector. */
+NamedSaveLoadTable GetTownDescriptionForDebug() { return _town_desc; }
+
 static void Save_HIDS()
 {
 	Save_NewGRFMapping(_house_mngr);

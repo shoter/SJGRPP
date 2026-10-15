@@ -31,6 +31,7 @@ bool MakeHeightmapScreenshot(const char *filename);
 bool MakeSmallMapScreenshot(unsigned int width, unsigned int height, class SmallMapWindow *window);
 void MakeScreenshotWithConfirm(ScreenshotType t);
 bool MakeScreenshot(ScreenshotType t, std::string_view name, uint32_t width = 0, uint32_t height = 0);
+bool MakeScreenshotNowSilent(ScreenshotType t, std::string_view name);
 bool MakeMinimapWorldScreenshot(std::string_view name);
 bool MakeTopographyScreenshot(std::string_view name);
 bool MakeIndustryScreenshot(std::string_view name);

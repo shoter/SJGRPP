@@ -133,6 +133,9 @@ static const NamedSaveLoad _date_desc[] = {
 	NSLT("engine_seed",                 SLEG_VAR(_engine_seed,                                  SLE_UINT32)),
 };
 
+/** Description of the global date/tick variables, for the debug bridge object inspector. */
+NamedSaveLoadTable GetDateDescriptionForDebug() { return _date_desc; }
+
 static const NamedSaveLoad _date_check_desc[] = {
 	NSL("date", SLEG_CONDVAR(_load_check_data.current_date,  SLE_FILE_U16 | SLE_VAR_I32,  SL_MIN_VERSION,  SLV_31)),
 	NSL("date", SLEG_CONDVAR(_load_check_data.current_date,  SLE_INT32,                  SLV_31, SL_MAX_VERSION)),

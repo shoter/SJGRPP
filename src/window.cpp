@@ -48,6 +48,7 @@
 #include "widgets/osk_widget.h"
 
 #include "table/strings.h"
+#include "debug_bridge.h"
 
 #include <bitset>
 
@@ -3356,6 +3357,8 @@ void InputLoop()
 	assert(HasModalProgress() || IsLocalCompany());
 
 	CheckSoftLimit();
+
+	DebugBridge::Poll();
 
 	Window::DeleteClosedWindows();
 

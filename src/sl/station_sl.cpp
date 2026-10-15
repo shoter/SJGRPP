@@ -817,6 +817,11 @@ static const NamedSaveLoad _waypoint_desc[] = {
 	NSL("road_waypoint_area.h",             SLE_CONDVAR_X(Waypoint, road_waypoint_area.h,         SLE_FILE_U8 | SLE_VAR_U16,   SL_MIN_VERSION,        SL_MAX_VERSION,      SlXvFeatureTest(XSLFTO_AND, XSLFI_ROAD_WAYPOINTS))),
 };
 
+/** Descriptions of BaseStation, Station and Waypoint, for the debug bridge object inspector. */
+NamedSaveLoadTable GetBaseStationDescriptionForDebug() { return _base_station_desc; }
+NamedSaveLoadTable GetStationDescriptionForDebug() { return _station_desc; }
+NamedSaveLoadTable GetWaypointDescriptionForDebug() { return _waypoint_desc; }
+
 static const NamedSaveLoad _custom_roadstop_tile_data_desc[] = {
 	NSL("tile",            SLE_VAR(RoadStopTileData, tile,            SLE_UINT32)),
 	NSL("random_bits",     SLE_VAR(RoadStopTileData, random_bits,     SLE_UINT8)),

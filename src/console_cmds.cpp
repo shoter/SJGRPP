@@ -87,6 +87,7 @@
 #endif /* WITH_ZLIB */
 
 #include "table/strings.h"
+#include "debug_bridge.h"
 
 #include "safeguards.h"
 
@@ -3946,6 +3947,38 @@ static bool ConCSleep(std::span<std::string_view> argv)
 	return true;
 }
 
+static bool ConDebugBridge(std::span<std::string_view> argv)
+{
+	if (argv.size() != 2) {
+		IConsolePrint(CC_HELP, "Debug: Start/stop the localhost debug bridge (automation/inspection channel).  Usage: 'debug_bridge <port|stop|status>'");
+		return true;
+	}
+
+	if (argv[1] == "stop") {
+		DebugBridge::Stop();
+		IConsolePrint(CC_INFO, "Debug bridge stopped.");
+	} else if (argv[1] == "status") {
+		if (DebugBridge::_active) {
+			IConsolePrint(CC_INFO, "Debug bridge listening on 127.0.0.1:{}", DebugBridge::GetPort());
+		} else {
+			IConsolePrint(CC_INFO, "Debug bridge not running.");
+		}
+	} else {
+		auto port = ParseInteger(argv[1]);
+		if (!port.has_value() || *port == 0 || *port > 65535) {
+			IConsolePrint(CC_ERROR, "Invalid port.");
+			return true;
+		}
+		if (DebugBridge::Start(static_cast<uint16_t>(*port))) {
+			IConsolePrint(CC_INFO, "Debug bridge listening on 127.0.0.1:{}", *port);
+		} else {
+			IConsolePrint(CC_ERROR, "Could not start debug bridge on port {}.", *port);
+		}
+	}
+
+	return true;
+}
+
 static bool ConRecalculateRoadCachedOneWayStates(std::span<std::string_view> argv)
 {
 	if (argv.empty()) {
@@ -4650,6 +4683,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("viewport_mark_dirty_st_overlay", ConViewportMarkStationOverlayDirty, nullptr, true);
 	IConsole::CmdRegister("gfx_debug",               ConGfxDebug,         nullptr, true);
 	IConsole::CmdRegister("csleep",                  ConCSleep,           nullptr, true);
+	IConsole::CmdRegister("debug_bridge",            ConDebugBridge,      nullptr, true);
 	IConsole::CmdRegister("recalculate_road_cached_one_way_states", ConRecalculateRoadCachedOneWayStates, ConHookNoNetwork, true);
 	IConsole::CmdRegister("misc_debug",              ConMiscDebug,        nullptr, true);
 	IConsole::CmdRegister("set_newgrf_optimiser_flags", ConSetNewGRFOptimiserFlags, nullptr, true);

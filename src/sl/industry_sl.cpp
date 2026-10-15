@@ -332,6 +332,13 @@ static std::vector<NamedSaveLoad> MakeIndustryDesc()
 	return output;
 }
 
+/** Description of Industry, for the debug bridge object inspector. */
+NamedSaveLoadTable GetIndustryDescriptionForDebug()
+{
+	static const std::vector<NamedSaveLoad> desc = MakeIndustryDesc();
+	return desc;
+}
+
 static void Save_INDY()
 {
 	std::vector<NamedSaveLoad> industry_desc = MakeIndustryDesc();

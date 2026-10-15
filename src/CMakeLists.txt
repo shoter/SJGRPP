@@ -147,6 +147,9 @@ add_files(
     date_type.h
     debug.cpp
     debug.h
+    debug_bridge.cpp
+    debug_bridge.h
+    debug_bridge_reflect.cpp
     debug_dbg_assert.h
     debug_desync.h
     debug_settings.h

@@ -419,8 +419,12 @@ void MakeScreenshotWithConfirm(ScreenshotType t)
  * Show a a success or failure message indicating the result of a screenshot action
  * @param ret  whether the screenshot action was successful
  */
+static bool _screenshot_silent = false; ///< Suppress the result message (for automated screenshots).
+
 static void ShowScreenshotResultMessage(ScreenshotType t, bool ret)
 {
+	if (_screenshot_silent) return;
+
 	if (ret) {
 		if (t == SC_HEIGHTMAP) {
 			ShowErrorMessage(GetEncodedString(STR_MESSAGE_HEIGHTMAP_SUCCESSFULLY, _screenshot_name, _heightmap_highest_peak), {}, WarningLevel::Warning);
@@ -503,6 +507,22 @@ static bool RealMakeScreenshot(ScreenshotType t, std::string_view name, uint32_t
 
 	ShowScreenshotResultMessage(t, ret);
 
+	return ret;
+}
+
+/**
+ * Make a screenshot immediately, without showing a result message.
+ * Must be called from the game thread with the game state lock held, e.g. from the debug bridge.
+ * @param t    the type of screenshot to make.
+ * @param name the name to give to the screenshot.
+ * @return true iff the screenshot was successfully made; the file is at #_full_screenshot_path.
+ */
+bool MakeScreenshotNowSilent(ScreenshotType t, std::string_view name)
+{
+	VideoDriver::VideoBufferLocker lock;
+	_screenshot_silent = true;
+	bool ret = RealMakeScreenshot(t, name, 0, 0);
+	_screenshot_silent = false;
 	return ret;
 }
 
