@@ -162,6 +162,8 @@ STR_CONFIG_SETTING_STATION_RATING_CARGO_CLASS_WAIT_TIME_HELPTEXT:When enabled, t
 
 STR_CONFIG_SETTING_STATION_RATING_SIZE_CARGO_AMOUNT             :Station cargo capacity and rating tolerance depend on station size: {STRING2}
 STR_CONFIG_SETTING_STATION_RATING_SIZE_CARGO_AMOUNT_HELPTEXT    :When enabled, the cargo capacity of stations before waiting cargo is truncated and the effect of the waiting cargo amount on the station rating for that cargo depend on the size of the station. Larger stations can store more cargo and are more tolerant of large amounts of waiting cargo.
+STR_CONFIG_SETTING_STATION_CAPACITY_PER_TILE                    :Station cargo storage per station tile: {STRING2}
+STR_CONFIG_SETTING_STATION_CAPACITY_PER_TILE_HELPTEXT           :Each station tile adds this many units to the station's total cargo storage, shared by all cargo types. While the station holds less than its storage, new cargo is accepted even if it overflows the limit. Once full, new cargo is rejected and the station rating of that cargo drops in proportion to the cargo lost.
 
 STR_CONFIG_SETTING_CARGO_DELIVERY_MODE                          :Cargo delivery distribution mode: {STRING2}
 STR_CONFIG_SETTING_CARGO_DELIVERY_MODE_HELPTEXT                 :The method used to distribute cargo delivered to a station to industries in the station's catchment area.{}The "original" mode distributes all cargo to the closest industry (measured from the station sign tile).{}The "balanced" mode distributes cargo equally to all accepting industries in the station's catchment area.

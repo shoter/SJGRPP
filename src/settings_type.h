@@ -984,6 +984,7 @@ struct StationSettings {
 	uint8_t  catchment_increase;               ///< amount by which station catchment is increased
 	bool     cargo_class_rating_wait_time;     ///< station rating tolerance to time since last cargo pickup depends on cargo class
 	bool     station_size_rating_cargo_amount; ///< station rating tolerance to waiting cargo amount depends on station size
+	uint16_t capacity_per_tile;                ///< total cargo storage added to a station by each of its tiles
 	StationDelivery station_delivery_mode;     ///< method to use for distributing cargo from stations to accepting industries
 };
 
