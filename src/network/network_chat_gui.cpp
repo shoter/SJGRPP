@@ -17,6 +17,10 @@
 #include "../window_func.h"
 #include "../toolbar_gui.h"
 #include "../zoom_func.h"
+#include "../company_base.h"
+#include "../face_images.h"
+#include "../palette_func.h"
+#include "../table/sprites.h"
 #include "network.h"
 #include "network_client.h"
 #include "network_base.h"
@@ -40,7 +44,36 @@ struct ChatMessage {
 	std::string message; ///< The action message.
 	ExtendedTextColour colour;  ///< The colour of the message.
 	std::chrono::steady_clock::time_point remove_time; ///< The time to remove the message.
+	std::string avatar; ///< Face image id of the sender's company president, empty for none.
 };
+
+/**
+ * Height of the president avatar shown next to a chat message.
+ * @return Avatar height in pixels.
+ */
+static int GetChatAvatarHeight()
+{
+	return GetCharacterHeight(FontSize::Normal) * 2;
+}
+
+/**
+ * Width of the president avatar shown next to a chat message, keeping the face box ratio.
+ * @return Avatar width in pixels.
+ */
+static int GetChatAvatarWidth()
+{
+	Dimension d = GetSpriteSize(SPR_GRADIENT);
+	return GetChatAvatarHeight() * static_cast<int>(d.width) / std::max<int>(1, d.height);
+}
+
+/**
+ * Height of the tallest single chat line: an avatar or a line of text.
+ * @return Line height in pixels, without spacing.
+ */
+static int GetChatMaxLineHeight()
+{
+	return std::max(GetChatAvatarHeight(), GetCharacterHeight(FontSize::Normal));
+}
 
 /* used for chat window */
 static jgr::ring_buffer<ChatMessage> _chatmsg_list; ///< The actual chat message list.
@@ -84,8 +117,9 @@ static inline bool HaveChatMessages(bool show_all)
  * @param colour The colour this message is to be shown in
  * @param duration The duration of the chat message in seconds
  * @param message message itself in printf() style
+ * @param sender Company of the client who wrote the message; its president is shown next to it.
  */
-void NetworkAddChatMessage(ExtendedTextColour colour, uint duration, const std::string_view message)
+void NetworkAddChatMessage(ExtendedTextColour colour, uint duration, const std::string_view message, CompanyID sender)
 {
 	if (MAX_CHAT_MESSAGES == 0) return;
 
@@ -93,7 +127,12 @@ void NetworkAddChatMessage(ExtendedTextColour colour, uint duration, const std::
 		_chatmsg_list.pop_back();
 	}
 
-	_chatmsg_list.emplace_front(std::string{message}, colour, std::chrono::steady_clock::now() + std::chrono::seconds(duration));
+	std::string avatar;
+	if (const Company *c = Company::GetIfValid(sender); c != nullptr) {
+		if (const FaceImageInfo *info = GetCompanyFaceImage(c->face); info != nullptr) avatar = info->id;
+	}
+
+	_chatmsg_list.emplace_front(std::string{message}, colour, std::chrono::steady_clock::now() + std::chrono::seconds(duration), std::move(avatar));
 	_chatmessage_dirty_time = std::chrono::steady_clock::now();
 	_chatmessage_dirty = true;
 }
@@ -102,7 +141,7 @@ void NetworkAddChatMessage(ExtendedTextColour colour, uint duration, const std::
 void NetworkReInitChatBoxSize()
 {
 	_chatmsg_box.y       = 3 * GetCharacterHeight(FontSize::Normal);
-	_chatmsg_box.height  = MAX_CHAT_MESSAGES * (GetCharacterHeight(FontSize::Normal) + ScaleGUITrad(NETWORK_CHAT_LINE_SPACING)) + ScaleGUITrad(4);
+	_chatmsg_box.height  = MAX_CHAT_MESSAGES * (GetChatMaxLineHeight() + ScaleGUITrad(NETWORK_CHAT_LINE_SPACING)) + ScaleGUITrad(4);
 }
 
 /** Initialize all buffers of the chat visualisation. */
@@ -226,13 +265,25 @@ void NetworkDrawChatMessage()
 	AutoRestoreBackup dpi_backup(_cur_dpi, &tmp_dpi);
 
 	auto now = std::chrono::steady_clock::now();
+	const int text_left = ScaleGUITrad(3);
+	const int avatar_width = GetChatAvatarWidth();
+	const int avatar_height = GetChatAvatarHeight();
+	const int avatar_text_left = text_left + avatar_width + ScaleGUITrad(4);
+
+	/* Height of a message: its text, but at least the avatar when it has one. */
+	auto get_message_height = [&](const ChatMessage &cmsg) {
+		int left = cmsg.avatar.empty() ? text_left : avatar_text_left;
+		int text_height = GetStringLineCount(GetString(STR_JUST_RAW_STRING, cmsg.message), _chatmsg_box.width - 1 - left) * GetCharacterHeight(FontSize::Normal);
+		return cmsg.avatar.empty() ? text_height : std::max(text_height, avatar_height);
+	};
+
 	int string_height = 0;
 	for (auto &cmsg : _chatmsg_list) {
 		if (!show_all && cmsg.remove_time < now) continue;
-		string_height += GetStringLineCount(GetString(STR_JUST_RAW_STRING, cmsg.message), width - 1) * GetCharacterHeight(FontSize::Normal) + NETWORK_CHAT_LINE_SPACING;
+		string_height += get_message_height(cmsg) + NETWORK_CHAT_LINE_SPACING;
 	}
 
-	string_height = std::min<uint>(string_height, MAX_CHAT_MESSAGES * (GetCharacterHeight(FontSize::Normal) + NETWORK_CHAT_LINE_SPACING));
+	string_height = std::min<uint>(string_height, MAX_CHAT_MESSAGES * (GetChatMaxLineHeight() + NETWORK_CHAT_LINE_SPACING));
 
 	int top = _screen.height - _chatmsg_box.y - string_height - 2 - y;
 	int bottom = _screen.height - _chatmsg_box.y - 2 - y;
@@ -246,7 +297,17 @@ void NetworkDrawChatMessage()
 
 	for (auto &cmsg : _chatmsg_list) {
 		if (!show_all && cmsg.remove_time < now) continue;
-		ypos = DrawStringMultiLine(ScaleGUITrad(3), _chatmsg_box.width - 1, top, ypos, cmsg.message, cmsg.colour, {AlignmentH::ForceLeft, AlignmentV::Bottom}) - NETWORK_CHAT_LINE_SPACING;
+		if (cmsg.avatar.empty()) {
+			ypos = DrawStringMultiLine(text_left, _chatmsg_box.width - 1, top, ypos, cmsg.message, cmsg.colour, {AlignmentH::ForceLeft, AlignmentV::Bottom}) - NETWORK_CHAT_LINE_SPACING;
+		} else {
+			/* Avatar on the left, text vertically centred next to it. */
+			int msg_top = ypos - get_message_height(cmsg) + 1;
+			Rect avatar{text_left, CentreBounds(msg_top, ypos + 1, avatar_height), text_left + avatar_width - 1, 0};
+			avatar.bottom = avatar.top + avatar_height - 1;
+			if (!DrawFaceImage(cmsg.avatar, avatar)) GfxFillRect(avatar, PC_BLACK);
+			DrawStringMultiLine(avatar_text_left, _chatmsg_box.width - 1, msg_top, ypos, cmsg.message, cmsg.colour, {AlignmentH::ForceLeft, AlignmentV::Middle});
+			ypos = msg_top - 1 - NETWORK_CHAT_LINE_SPACING;
+		}
 		if (ypos < top) break;
 	}
 

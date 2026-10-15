@@ -1288,7 +1288,7 @@ NetworkRecvStatus ClientNetworkGameSocketHandler::ReceiveServerChat(Packet &p)
 	}
 
 	if (ci != nullptr) {
-		NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas), self_send, name, msg, data);
+		NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas), self_send, name, msg, data, {}, ci->client_playas);
 	}
 	return NetworkRecvStatus::Okay;
 }

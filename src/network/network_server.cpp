@@ -1580,7 +1580,7 @@ void NetworkServerSendChat(NetworkAction action, NetworkChatDestinationType dest
 				ci = NetworkClientInfo::GetByClientID(from_id);
 				/* Display the text locally, and that is it */
 				if (ci != nullptr) {
-					NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas), false, ci->client_name, msg, data);
+					NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas), false, ci->client_name, msg, data, {}, ci->client_playas);
 
 					if (_settings_client.network.server_admin_chat) {
 						NetworkAdminChat(action, desttype, from_id, msg, data, from_admin);
@@ -1602,7 +1602,7 @@ void NetworkServerSendChat(NetworkAction action, NetworkChatDestinationType dest
 					ci = NetworkClientInfo::GetByClientID(from_id);
 					ci_to = NetworkClientInfo::GetByClientID((ClientID)dest);
 					if (ci != nullptr && ci_to != nullptr) {
-						NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas), true, ci_to->client_name, msg, data);
+						NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas), true, ci_to->client_name, msg, data, {}, ci->client_playas);
 					}
 				} else {
 					for (NetworkClientSocket *cs : NetworkClientSocket::Iterate()) {
@@ -1636,7 +1636,7 @@ void NetworkServerSendChat(NetworkAction action, NetworkChatDestinationType dest
 			ci = NetworkClientInfo::GetByClientID(from_id);
 			ci_own = NetworkClientInfo::GetByClientID(ClientID::Server);
 			if (ci != nullptr && ci_own != nullptr && ci_own->client_playas == dest) {
-				NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas), false, ci->client_name, msg, data);
+				NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas), false, ci->client_name, msg, data, {}, ci->client_playas);
 				if (from_id == ClientID::Server) show_local = false;
 				ci_to = ci_own;
 			}
@@ -1649,7 +1649,7 @@ void NetworkServerSendChat(NetworkAction action, NetworkChatDestinationType dest
 				if (from_id == ClientID::Server) {
 					StringID str = Company::IsValidID(ci_to->client_playas) ? STR_COMPANY_NAME : STR_NETWORK_SPECTATORS;
 					std::string name = GetString(str, ci_to->client_playas);
-					NetworkTextMessage(action, GetDrawStringCompanyColour(ci_own->client_playas), true, name, msg, data);
+					NetworkTextMessage(action, GetDrawStringCompanyColour(ci_own->client_playas), true, name, msg, data, {}, ci_own->client_playas);
 				} else {
 					for (NetworkClientSocket *cs : NetworkClientSocket::Iterate()) {
 						if (cs->client_id == from_id && cs->status >= ServerNetworkGameSocketHandler::ClientStatus::Authorized) {
@@ -1675,7 +1675,7 @@ void NetworkServerSendChat(NetworkAction action, NetworkChatDestinationType dest
 			ci = NetworkClientInfo::GetByClientID(from_id);
 			if (ci != nullptr) {
 				NetworkTextMessage(action, GetDrawStringCompanyColour(ci->client_playas),
-						(desttype == NetworkChatDestinationType::BroadcastSelfSend && from_id == ClientID::Server), ci->client_name, msg, data);
+						(desttype == NetworkChatDestinationType::BroadcastSelfSend && from_id == ClientID::Server), ci->client_name, msg, data, {}, ci->client_playas);
 			}
 			break;
 	}

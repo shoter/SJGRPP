@@ -569,6 +569,7 @@ enum class Commands : uint8_t {
 	IndustrySetProduction,                  ///< change industry production
 
 	SetCompanyManagerFace,                  ///< set the manager's face of the company
+	SetCompanyManagerFaceImage,             ///< set the manager's face image of the company
 	SetCompanyColour,                       ///< set the colour of the company
 
 	IncreaseLoan,                           ///< increase the loan from the bank

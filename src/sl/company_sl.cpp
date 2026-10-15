@@ -455,6 +455,7 @@ static const NamedSaveLoad _company_desc[] = {
 
 	NSL("face",                             SLE_VAR(CompanyProperties, face.bits,             SLE_UINT32)),
 	NSLT("face_style",                     SLE_SSTR(CompanyProperties, face.style_label,      SLE_STR)),
+	NSLT("face_image",                     SLE_SSTR(CompanyProperties, face.image,            SLE_STR)),
 
 	/* money was changed to a 64 bit field in savegame version 1. */
 	NSL("money",                        SLE_CONDVAR(CompanyProperties, money,                 SLE_VAR_I64 | SLE_FILE_I32,  SL_MIN_VERSION, SLV_1)),
