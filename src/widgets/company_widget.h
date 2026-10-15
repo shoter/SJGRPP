@@ -104,26 +104,26 @@ enum SelectCompanyLiveryWidgets : WidgetID {
 
 
 /**
- * Widgets of the #SelectCompanyManagerFaceWindow class.
+ * Widgets of the #SelectCompanyManagerFaceWindow class (face gallery).
  */
 enum SelectCompanyManagerFaceWidgets : WidgetID {
-	WID_SCMF_CAPTION,                    ///< Caption of window.
-	WID_SCMF_TOGGLE_LARGE_SMALL,         ///< Toggle for large or small.
-	WID_SCMF_SELECT_FACE,                ///< Select face.
-	WID_SCMF_CANCEL,                     ///< Cancel.
-	WID_SCMF_ACCEPT,                     ///< Accept.
-	WID_SCMF_SEL_LOADSAVE,               ///< Selection to display the load/save/number buttons in the advanced view.
-	WID_SCMF_SEL_PARTS, ///< Selection to display the buttons for setting each part of the face in the advanced view.
-	WID_SCMF_SEL_RESIZE, ///< Selection to display the resize button.
-	WID_SCMF_RANDOM_NEW_FACE,            ///< Create random new face.
-	WID_SCMF_TOGGLE_LARGE_SMALL_BUTTON,  ///< Toggle for large or small.
-	WID_SCMF_FACE,                       ///< Current face.
-	WID_SCMF_LOAD,                       ///< Load face.
-	WID_SCMF_FACECODE,                   ///< Get the face code.
-	WID_SCMF_SAVE,                       ///< Save face.
-	WID_SCMF_STYLE, ///< Style selector widget.
-	WID_SCMF_PARTS, ///< Face configuration parts widget.
-	WID_SCMF_PARTS_SCROLLBAR, ///< Scrollbar for configuration parts widget.
+	WID_SCMF_CAPTION,           ///< Caption of window.
+	WID_SCMF_TYPE_ALL,          ///< Show faces of all types.
+	WID_SCMF_TYPE_REAL,         ///< Show only real faces.
+	WID_SCMF_TYPE_ANIME,        ///< Show only anime faces.
+	WID_SCMF_TYPE_CARTOON,      ///< Show only cartoon faces.
+	WID_SCMF_CATEGORY,          ///< Category dropdown.
+	WID_SCMF_FILTER,            ///< Name filter editbox.
+	WID_SCMF_FACE,              ///< Preview of the selected face.
+	WID_SCMF_FACE_NAME,         ///< Name of the selected face.
+	WID_SCMF_RANDOM_NEW_FACE,   ///< Pick a random face.
+	WID_SCMF_FAVOURITE,         ///< Save the selected face as favourite.
+	WID_SCMF_RESCAN,            ///< Rescan the faces folder.
+	WID_SCMF_COUNT,             ///< Number of faces shown.
+	WID_SCMF_GALLERY,           ///< Grid of faces.
+	WID_SCMF_GALLERY_SCROLLBAR, ///< Scrollbar of the grid.
+	WID_SCMF_CANCEL,            ///< Cancel.
+	WID_SCMF_ACCEPT,            ///< Accept.
 };
 
 /** Widgets of the #CompanyInfrastructureWindow class. */

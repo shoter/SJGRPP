@@ -24,6 +24,7 @@
 #include "ai/ai_instance.hpp"
 #include "ai/ai_config.hpp"
 #include "company_manager_face.h"
+#include "face_images.h"
 #include "window_func.h"
 #include "strings_func.h"
 #include "date_func.h"
@@ -682,15 +683,11 @@ Company *DoStartupNewCompany(DoStartupNewCompanyFlag flags, CompanyID company)
 
 	/* If starting a player company in singleplayer and a favourite company manager face is selected, choose it. Otherwise, use a random face.
 	 * In a network game, we'll choose the favourite face later in CmdCompanyCtrl to sync it to all clients. */
-	bool randomise_face = true;
-	if (!_company_manager_face.empty() && !is_ai && !_networking) {
-		auto cmf = ParseCompanyManagerFaceCode(_company_manager_face);
-		if (cmf.has_value()) {
-			randomise_face = false;
-			c->face = std::move(*cmf);
-		}
+	/* The random face bits choose the face image when no image is chosen. */
+	RandomiseCompanyManagerFace(c->face, _random);
+	if (IsValidFaceImageSetting(_company_manager_face) && !is_ai && !_networking) {
+		c->face.image = _company_manager_face;
 	}
-	if (randomise_face) RandomiseCompanyManagerFace(c->face, _random);
 
 	SetDefaultCompanySettings(c->index);
 	ClearEnginesHiddenFlagOfCompany(c->index);
@@ -1029,11 +1026,8 @@ CommandCost CmdCompanyCtrl(DoCommandFlags flags, CompanyCtrlAction cca, CompanyI
 				 * its configuration and we are currently in the execution of a command, we have
 				 * to circumvent the normal ::Post logic for commands and just send the command.
 				 */
-				if (!_company_manager_face.empty()) {
-					auto cmf = ParseCompanyManagerFaceCode(_company_manager_face);
-					if (cmf.has_value()) {
-						NetworkSendCommand<Commands::SetCompanyManagerFace>({}, CmdPayload<Commands::SetCompanyManagerFace>::Make(cmf->style, cmf->bits), STR_NULL, CommandCallback::None, 0, c->index);
-					}
+				if (IsValidFaceImageSetting(_company_manager_face)) {
+					NetworkSendCommand<Commands::SetCompanyManagerFaceImage>({}, CmdPayload<Commands::SetCompanyManagerFaceImage>::Make(_company_manager_face), STR_NULL, CommandCallback::None, 0, c->index);
 				}
 
 				/* Now that we have a new company, broadcast our company settings to
@@ -1234,7 +1228,26 @@ CommandCost CmdSetCompanyManagerFace(DoCommandFlags flags, uint style, uint32_t 
 		CompanyManagerFace &cmf = Company::Get(_current_company)->face;
 		SetCompanyManagerFaceStyle(cmf, style);
 		cmf.bits = tmp_face.bits;
+		/* New random bits pick a new face image. */
+		cmf.image.clear();
 
+		MarkWholeScreenDirty();
+	}
+	return CommandCost();
+}
+
+/**
+ * Change the company manager's face image.
+ * @param flags operation to perform
+ * @param image Id of the face image, or empty to pick one from the face bits.
+ * @return the cost of this operation or an error
+ */
+CommandCost CmdSetCompanyManagerFaceImage(DoCommandFlags flags, const std::string &image)
+{
+	if (image.size() > MAX_FACE_IMAGE_ID_LENGTH) return CMD_ERROR;
+
+	if (flags.Test(DoCommandFlag::Execute)) {
+		Company::Get(_current_company)->face.image = image;
 		MarkWholeScreenDirty();
 	}
 	return CommandCost();

@@ -104,6 +104,7 @@
 #include "misc_cmd.h"
 #include "core/string_consumer.hpp"
 #include "session_stats.h"
+#include "face_images.h"
 
 #include "linkgraph/linkgraphschedule.h"
 
@@ -976,6 +977,7 @@ int openttd_main(std::span<char * const> arguments)
 	AdjustGUIZoom(AGZM_STARTUP);
 
 	SocialIntegration::Initialize();
+	ScanFaceImages();
 	NetworkStartUp(); // initialize network-core
 	DebugBridge::StartFromEnvironment();
 

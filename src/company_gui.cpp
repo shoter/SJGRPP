@@ -22,6 +22,12 @@
 #include "network/network_func.h"
 #include "newgrf.h"
 #include "company_manager_face.h"
+#include "face_images.h"
+#include "querystring_gui.h"
+#include "stringfilter_type.h"
+#include "dropdown_func.h"
+#include "fileio_func.h"
+#include "core/random_func.hpp"
 #include "strings_func.h"
 #include "date_func.h"
 #include "dropdown_type.h"
@@ -1169,6 +1175,18 @@ void ShowCompanyLiveryWindow(CompanyID company, GroupID group)
 }
 
 /**
+ * Draw a placeholder for a face image that is not available.
+ * @param colour The (background) colour of the gradient.
+ * @param r Rectangle to fill.
+ */
+static void DrawMissingFace(Colours colour, const Rect &r)
+{
+	Dimension d = GetSpriteSize(SPR_GRADIENT);
+	DrawSprite(SPR_GRADIENT, GetColourPalette(colour), CentreBounds(r.left, r.right, d.width), CentreBounds(r.top, r.bottom, d.height));
+	DrawStringMultiLine(r, "?", TextColour::White, {AlignmentH::Centre, AlignmentV::Middle}, false, FontSize::Large);
+}
+
+/**
  * Draws the face of a company manager's face.
  * @param cmf   the company manager's face
  * @param colour the (background) colour of the gradient
@@ -1176,188 +1194,212 @@ void ShowCompanyLiveryWindow(CompanyID company, GroupID group)
  */
 void DrawCompanyManagerFace(const CompanyManagerFace &cmf, Colours colour, const Rect &r)
 {
-	/* Determine offset from centre of drawing rect. */
-	Dimension d = GetSpriteSize(SPR_GRADIENT);
+	/* The face box has the size of the gradient sprite, centred in the drawing rect. */
+	Dimension d = GetScaledSpriteSize(SPR_GRADIENT);
 	int x = CentreBounds(r.left, r.right, d.width);
 	int y = CentreBounds(r.top, r.bottom, d.height);
+	Rect box{x, y, x + static_cast<int>(d.width) - 1, y + static_cast<int>(d.height) - 1};
 
-	FaceVars vars = GetCompanyManagerFaceVars(cmf.style);
+	const FaceImageInfo *info = GetCompanyFaceImage(cmf);
+	if (info != nullptr && DrawFaceImage(info->id, box)) return;
 
-	/* First determine which parts are enabled. */
-	uint64_t active_vars = GetActiveFaceVars(cmf, vars);
-
-	robin_hood::unordered_flat_map<uint8_t, PaletteID> palettes;
-
-	/* Second, get palettes. */
-	for (auto var : SetBitIterator(active_vars)) {
-		if (vars[var].type != FaceVarType::Palette) continue;
-
-		PaletteID pal = PAL_NONE;
-		switch (vars[var].GetBits(cmf)) {
-			default: NOT_REACHED();
-			case 0: pal = PALETTE_TO_BROWN; break;
-			case 1: pal = PALETTE_TO_BLUE;  break;
-			case 2: pal = PALETTE_TO_GREEN; break;
-		}
-		for (uint8_t affected_var : SetBitIterator(std::get<uint64_t>(vars[var].data))) {
-			palettes[affected_var] = pal;
-		}
-	}
-
-	/* Draw the gradient (background) */
-	DrawSprite(SPR_GRADIENT, GetColourPalette(colour), x, y);
-
-	/* Thirdly, draw sprites. */
-	for (auto var : SetBitIterator(active_vars)) {
-		if (vars[var].type != FaceVarType::Sprite) continue;
-
-		auto it = palettes.find(var);
-		PaletteID pal = (it == std::end(palettes)) ? PAL_NONE : it->second;
-		DrawSprite(vars[var].GetSprite(cmf), pal, x, y);
-	}
+	DrawMissingFace(colour, box);
 }
 
-/** Nested widget description for the company manager face selection dialog */
+/** Nested widget description for the company manager face gallery */
 static constexpr std::initializer_list<NWidgetPart> _nested_select_company_manager_face_widgets = {
 	NWidget(NWID_HORIZONTAL),
 		NWidget(WWT_CLOSEBOX, Colours::Grey),
 		NWidget(WWT_CAPTION, Colours::Grey, WID_SCMF_CAPTION), SetStringTip(STR_FACE_CAPTION, STR_TOOLTIP_WINDOW_TITLE_DRAG_THIS),
-		NWidget(WWT_IMGBTN, Colours::Grey, WID_SCMF_TOGGLE_LARGE_SMALL), SetSpriteTip(SPR_LARGE_SMALL_WINDOW, STR_FACE_ADVANCED_TOOLTIP), SetAspect(WidgetDimensions::ASPECT_TOGGLE_SIZE),
+		NWidget(WWT_DEFSIZEBOX, Colours::Grey),
+	EndContainer(),
+	NWidget(WWT_PANEL, Colours::Grey),
+		NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_wide, 0), SetPadding(2),
+			NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
+				NWidget(WWT_TEXTBTN, Colours::Grey, WID_SCMF_TYPE_ALL), SetFill(1, 1), SetStringTip(STR_FACE_GALLERY_TYPE_ALL, STR_FACE_GALLERY_TYPE_TOOLTIP),
+				NWidget(WWT_TEXTBTN, Colours::Grey, WID_SCMF_TYPE_REAL), SetFill(1, 1), SetStringTip(STR_FACE_GALLERY_TYPE_REAL, STR_FACE_GALLERY_TYPE_TOOLTIP),
+				NWidget(WWT_TEXTBTN, Colours::Grey, WID_SCMF_TYPE_ANIME), SetFill(1, 1), SetStringTip(STR_FACE_GALLERY_TYPE_ANIME, STR_FACE_GALLERY_TYPE_TOOLTIP),
+				NWidget(WWT_TEXTBTN, Colours::Grey, WID_SCMF_TYPE_CARTOON), SetFill(1, 1), SetStringTip(STR_FACE_GALLERY_TYPE_CARTOON, STR_FACE_GALLERY_TYPE_TOOLTIP),
+			EndContainer(),
+			NWidget(WWT_DROPDOWN, Colours::Grey, WID_SCMF_CATEGORY), SetMinimalSize(120, 0), SetFill(1, 1), SetResize(1, 0), SetToolTip(STR_FACE_GALLERY_CATEGORY_TOOLTIP),
+			NWidget(WWT_EDITBOX, Colours::Grey, WID_SCMF_FILTER), SetMinimalSize(120, 0), SetFill(1, 1), SetResize(1, 0), SetStringTip(STR_LIST_FILTER_OSKTITLE, STR_LIST_FILTER_TOOLTIP),
+		EndContainer(),
 	EndContainer(),
 	NWidget(NWID_HORIZONTAL),
-		NWidget(WWT_PANEL, Colours::Grey, WID_SCMF_SELECT_FACE),
-			/* Left side */
+		NWidget(WWT_PANEL, Colours::Grey),
 			NWidget(NWID_VERTICAL), SetPIP(0, WidgetDimensions::unscaled.vsep_normal, 0), SetPadding(4),
 				NWidget(WWT_EMPTY, Colours::Invalid, WID_SCMF_FACE), SetMinimalSize(92, 119), SetFill(1, 0),
-				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_RANDOM_NEW_FACE), SetFill(1, 0), SetStringTip(STR_FACE_NEW_FACE_BUTTON, STR_FACE_NEW_FACE_TOOLTIP),
-				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_TOGGLE_LARGE_SMALL_BUTTON), SetFill(1, 0), SetStringTip(STR_FACE_ADVANCED, STR_FACE_ADVANCED_TOOLTIP),
-				NWidget(NWID_SELECTION, Colours::Invalid, WID_SCMF_SEL_LOADSAVE), // Load/number/save buttons under the portrait in the advanced view.
-					NWidget(NWID_VERTICAL),
-						NWidget(NWID_SPACER), SetFill(1, 1), SetResize(0, 1),
-						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_LOAD), SetFill(1, 0), SetStringTip(STR_FACE_LOAD, STR_FACE_LOAD_TOOLTIP),
-						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_FACECODE), SetFill(1, 0), SetStringTip(STR_FACE_FACECODE, STR_FACE_FACECODE_TOOLTIP),
-						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_SAVE), SetFill(1, 0), SetStringTip(STR_FACE_SAVE, STR_FACE_SAVE_TOOLTIP),
-					EndContainer(),
-				EndContainer(),
+				NWidget(WWT_EMPTY, Colours::Invalid, WID_SCMF_FACE_NAME), SetMinimalSize(120, 0), SetMinimalTextLines(3, 0), SetFill(1, 0),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_RANDOM_NEW_FACE), SetFill(1, 0), SetStringTip(STR_FACE_GALLERY_RANDOM, STR_FACE_GALLERY_RANDOM_TOOLTIP),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_FAVOURITE), SetFill(1, 0), SetStringTip(STR_FACE_GALLERY_FAVOURITE, STR_FACE_GALLERY_FAVOURITE_TOOLTIP),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_RESCAN), SetFill(1, 0), SetStringTip(STR_FACE_GALLERY_RESCAN, STR_FACE_GALLERY_RESCAN_TOOLTIP),
+				NWidget(NWID_SPACER), SetFill(1, 1),
+				NWidget(WWT_TEXT, Colours::Invalid, WID_SCMF_COUNT), SetFill(1, 0), SetAlignment({AlignmentH::Centre, AlignmentV::Middle}),
 			EndContainer(),
 		EndContainer(),
-		/* Right side */
-		NWidget(NWID_SELECTION, Colours::Invalid, WID_SCMF_SEL_PARTS), // Advanced face parts setting.
-			NWidget(NWID_VERTICAL),
-				NWidget(WWT_MATRIX, Colours::Grey, WID_SCMF_STYLE), SetResize(1, 0), SetFill(1, 0), SetMatrixDataTip(1, 1),
-				NWidget(NWID_HORIZONTAL),
-					NWidget(WWT_MATRIX, Colours::Grey, WID_SCMF_PARTS), SetResize(1, 1), SetFill(1, 1), SetMatrixDataTip(1, 0), SetScrollbar(WID_SCMF_PARTS_SCROLLBAR),
-					NWidget(NWID_VSCROLLBAR, Colours::Grey, WID_SCMF_PARTS_SCROLLBAR),
-				EndContainer(),
-			EndContainer(),
-		EndContainer(),
+		NWidget(WWT_PANEL, Colours::Grey, WID_SCMF_GALLERY), SetResize(1, 1), SetFill(1, 1), SetScrollbar(WID_SCMF_GALLERY_SCROLLBAR), EndContainer(),
+		NWidget(NWID_VSCROLLBAR, Colours::Grey, WID_SCMF_GALLERY_SCROLLBAR),
 	EndContainer(),
-	NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
-		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_CANCEL), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_BUTTON_CANCEL, STR_FACE_CANCEL_TOOLTIP),
-		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_ACCEPT), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_BUTTON_OK, STR_FACE_OK_TOOLTIP),
-		NWidget(NWID_SELECTION, Colours::Invalid, WID_SCMF_SEL_RESIZE),
-			NWidget(WWT_RESIZEBOX, Colours::Grey),
+	NWidget(NWID_HORIZONTAL),
+		NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
+			NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_CANCEL), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_BUTTON_CANCEL, STR_FACE_CANCEL_TOOLTIP),
+			NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SCMF_ACCEPT), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_BUTTON_OK, STR_FACE_OK_TOOLTIP),
 		EndContainer(),
+		NWidget(WWT_RESIZEBOX, Colours::Grey),
 	EndContainer(),
 };
 
-/** Management class for customizing the face of the company manager. */
+/** Gallery for choosing the face image of the company manager. */
 class SelectCompanyManagerFaceWindow : public Window
 {
-	CompanyManagerFace face{}; ///< company manager face bits
-	bool advanced = false; ///< advanced company manager face selection window
-	uint selected_var = UINT_MAX; ///< Currently selected face variable. `UINT_MAX` for none, `UINT_MAX - 1` means style is clicked instead.
-	uint click_state = 0; ///< Click state on selected face variable.
-	int line_height = 0; ///< Height of each face variable row.
+	static inline std::string last_type{}; ///< Type filter, kept between openings of the window.
+	static inline std::string last_category{}; ///< Category filter, kept between openings of the window.
 
-	std::vector<const FaceVar *> face_vars; ///< Visible face variables.
+	std::string type{}; ///< Shown type, empty for all.
+	std::string category{}; ///< Shown category, empty for all.
+	std::vector<std::string> categories{}; ///< Categories of the shown type, sorted.
+	std::vector<const FaceImageInfo *> faces{}; ///< Faces shown in the gallery.
+
+	std::string selected{}; ///< Id of the selected face image.
+	bool automatic = false; ///< The selected face is the automatic choice of the company (no image chosen).
+
+	StringFilter string_filter{}; ///< Filter for face names.
+	QueryString filter_editbox; ///< Filter editbox.
+
+	Dimension cell{}; ///< Size of a gallery cell.
+	uint columns = 1; ///< Number of columns in the gallery.
+
+	static constexpr uint THUMB_PADDING = 2; ///< Unscaled padding around a thumbnail.
+	static constexpr int MAX_FILTER_LENGTH = 32; ///< The max length of the filter, in chars.
+
+	/** Size of a thumbnail: three quarters of the face box. */
+	static Dimension GetThumbnailSize()
+	{
+		Dimension d = GetScaledSpriteSize(SPR_GRADIENT);
+		return {d.width * 3 / 4, d.height * 3 / 4};
+	}
+
+	/** Rebuild the list of categories and shown faces from the filters. */
+	void BuildFaceList()
+	{
+		const auto &images = GetFaceImages();
+
+		this->categories.clear();
+		for (const FaceImageInfo &f : images) {
+			if (!this->type.empty() && f.type != this->type) continue;
+			if (f.category.empty()) continue;
+			if (std::ranges::find(this->categories, f.category) == this->categories.end()) this->categories.push_back(f.category);
+		}
+		std::ranges::sort(this->categories);
+		if (std::ranges::find(this->categories, this->category) == this->categories.end()) this->category.clear();
+
+		this->faces.clear();
+		for (const FaceImageInfo &f : images) {
+			if (!this->type.empty() && f.type != this->type) continue;
+			if (!this->category.empty() && f.category != this->category) continue;
+			if (!this->string_filter.IsEmpty()) {
+				this->string_filter.ResetState();
+				this->string_filter.AddLine(f.name);
+				this->string_filter.AddLine(f.category);
+				if (!this->string_filter.GetState()) continue;
+			}
+			this->faces.push_back(&f);
+		}
+		/* Real first, then the drawn types; within a type by category, then name. */
+		std::ranges::sort(this->faces, [](const FaceImageInfo *a, const FaceImageInfo *b) {
+			if (a->type != b->type) return a->type > b->type;
+			if (a->category != b->category) return a->category < b->category;
+			return a->name < b->name;
+		});
+
+		last_type = this->type;
+		last_category = this->category;
+
+		this->SetWidgetLoweredState(WID_SCMF_TYPE_ALL, this->type.empty());
+		this->SetWidgetLoweredState(WID_SCMF_TYPE_REAL, this->type == "real");
+		this->SetWidgetLoweredState(WID_SCMF_TYPE_ANIME, this->type == "anime");
+		this->SetWidgetLoweredState(WID_SCMF_TYPE_CARTOON, this->type == "cartoon");
+
+		this->UpdateScrollbar();
+		this->SetDirty();
+	}
+
+	/** Update the scrollbar for the number of faces and columns. */
+	void UpdateScrollbar()
+	{
+		this->GetScrollbar(WID_SCMF_GALLERY_SCROLLBAR)->SetCount(CeilDiv(static_cast<uint>(this->faces.size()), this->columns));
+	}
+
+	/** Scroll the gallery so the selected face is visible. */
+	void ScrollToSelected()
+	{
+		auto it = std::ranges::find(this->faces, this->selected, &FaceImageInfo::id);
+		if (it == this->faces.end()) return;
+		this->GetScrollbar(WID_SCMF_GALLERY_SCROLLBAR)->ScrollTowards(static_cast<int>(std::distance(this->faces.begin(), it) / this->columns));
+	}
 
 	/**
-	 * Make face bits valid and update visible face variables.
+	 * Get the face at a position in the gallery.
+	 * @param pt Position in the window.
+	 * @return Index into #faces, or std::nullopt if there is no face there.
 	 */
-	void UpdateData()
+	std::optional<size_t> GetFaceAt(Point pt) const
 	{
-		FaceVars vars = GetCompanyManagerFaceVars(this->face.style);
-		ScaleAllCompanyManagerFaceBits(this->face, vars);
+		const NWidgetBase *nwid = this->GetWidget<NWidgetBase>(WID_SCMF_GALLERY);
+		Rect r = nwid->GetCurrentRect().Shrink(WidgetDimensions::scaled.framerect);
+		if (!r.Contains(pt)) return std::nullopt;
 
-		uint64_t active_vars = GetActiveFaceVars(this->face, vars);
-		/* Exclude active parts which have no string. */
-		for (auto var : SetBitIterator(active_vars)) {
-			if (vars[var].name == STR_NULL) ClrBit(active_vars, var);
-		}
+		int x = _current_text_dir == TD_RTL ? r.right - pt.x : pt.x - r.left;
+		uint col = x / this->cell.width;
+		uint row = (pt.y - r.top) / this->cell.height + this->GetScrollbar(WID_SCMF_GALLERY_SCROLLBAR)->GetPosition();
+		if (col >= this->columns) return std::nullopt;
+		size_t index = static_cast<size_t>(row) * this->columns + col;
+		if (index >= this->faces.size()) return std::nullopt;
+		return index;
+	}
 
-		/* Rebuild the sorted list of face variable pointers. */
-		this->face_vars.clear();
-		for (auto var : SetBitIterator(active_vars)) {
-			this->face_vars.emplace_back(&vars[var]);
-		}
-		std::ranges::sort(this->face_vars, std::less{}, &FaceVar::position);
-
-		this->GetScrollbar(WID_SCMF_PARTS_SCROLLBAR)->SetCount(std::size(this->face_vars));
+	/**
+	 * Select a face.
+	 * @param id Face image id.
+	 */
+	void Select(const std::string &id)
+	{
+		this->selected = id;
+		this->automatic = false;
+		this->SetDirty();
 	}
 
 public:
-	SelectCompanyManagerFaceWindow(WindowDesc &desc, Window *parent) : Window(desc)
+	SelectCompanyManagerFaceWindow(WindowDesc &desc, Window *parent) : Window(desc), filter_editbox(MAX_FILTER_LENGTH * MAX_CHAR_LENGTH, MAX_FILTER_LENGTH)
 	{
 		this->CreateNestedTree();
-		this->SelectDisplayPlanes(this->advanced);
+		this->querystrings[WID_SCMF_FILTER] = &this->filter_editbox;
+		this->filter_editbox.cancel_button = QueryString::ACTION_CLEAR;
+
 		this->FinishInitNested(parent->window_number);
 		this->parent = parent;
 		this->owner = (Owner)this->window_number;
-		this->face = Company::Get((CompanyID)this->window_number)->face;
 
-		this->UpdateData();
+		const CompanyManagerFace &face = Company::Get((CompanyID)this->window_number)->face;
+		this->automatic = face.image.empty();
+		if (this->automatic) {
+			const FaceImageInfo *info = GetAutoFaceImage(face.bits);
+			if (info != nullptr) this->selected = info->id;
+		} else {
+			this->selected = face.image;
+		}
+
+		this->type = last_type;
+		this->category = last_category;
+		this->BuildFaceList();
+		this->ScrollToSelected();
 	}
 
 	void OnInit() override
 	{
-		this->line_height = std::max(SETTING_BUTTON_HEIGHT, GetCharacterHeight(FontSize::Normal)) + WidgetDimensions::scaled.matrix.Vertical();
-	}
-
-	/**
-	 * Select planes to display to the user with the #NWID_SELECTION widgets #WID_SCMF_SEL_LOADSAVE, #WID_SCMF_SEL_MALEFEMALE, and #WID_SCMF_SEL_PARTS.
-	 * @param advanced Display advanced face management window.
-	 */
-	void SelectDisplayPlanes(bool advanced)
-	{
-		this->GetWidget<NWidgetStacked>(WID_SCMF_SEL_LOADSAVE)->SetDisplayedPlane(advanced ? 0 : SZSP_HORIZONTAL);
-		this->GetWidget<NWidgetStacked>(WID_SCMF_SEL_PARTS)->SetDisplayedPlane(advanced ? 0 : SZSP_NONE);
-		this->GetWidget<NWidgetStacked>(WID_SCMF_SEL_RESIZE)->SetDisplayedPlane(advanced ? 0 : SZSP_NONE);
-
-		NWidgetCore *wi = this->GetWidget<NWidgetCore>(WID_SCMF_TOGGLE_LARGE_SMALL_BUTTON);
-		if (advanced) {
-			wi->SetStringTip(STR_FACE_SIMPLE, STR_FACE_SIMPLE_TOOLTIP);
-		} else {
-			wi->SetStringTip(STR_FACE_ADVANCED, STR_FACE_ADVANCED_TOOLTIP);
-		}
-	}
-
-	static StringID GetLongestString(StringID a, StringID b)
-	{
-		return GetStringBoundingBox(a).width > GetStringBoundingBox(b).width ? a : b;
-	}
-
-	static uint GetMaximumFacePartsWidth()
-	{
-		StringID yes_no = GetLongestString(STR_FACE_YES, STR_FACE_NO);
-
-		uint width = 0;
-		for (uint style_index = 0; style_index != GetNumCompanyManagerFaceStyles(); ++style_index) {
-			FaceVars vars = GetCompanyManagerFaceVars(style_index);
-			for (const auto &info : vars) {
-				if (info.name == STR_NULL) continue;
-				if (info.type == FaceVarType::Toggle) {
-					width = std::max(width, GetStringBoundingBox(GetString(STR_FACE_SETTING_TOGGLE, info.name, yes_no)).width);
-				} else {
-					uint64_t max_digits = GetParamMaxValue(info.valid_values);
-					width = std::max(width, GetStringBoundingBox(GetString(STR_FACE_SETTING_NUMERIC, info.name, max_digits, max_digits)).width);
-				}
-			}
-		}
-
-		/* Include width of button and spacing. */
-		width += SETTING_BUTTON_WIDTH + WidgetDimensions::scaled.hsep_wide + WidgetDimensions::scaled.frametext.Horizontal();
-		return width;
+		Dimension thumb = GetThumbnailSize();
+		uint pad = ScaleGUITrad(THUMB_PADDING);
+		this->cell = {thumb.width + pad * 2, thumb.height + pad * 2};
 	}
 
 	void UpdateWidgetSize(WidgetID widget, Dimension &size, [[maybe_unused]] const Dimension &padding, [[maybe_unused]] Dimension &fill, [[maybe_unused]] Dimension &resize) override
@@ -1367,61 +1409,83 @@ public:
 				size = maxdim(size, GetScaledSpriteSize(SPR_GRADIENT));
 				break;
 
-			case WID_SCMF_STYLE:
-				size.height = this->line_height;
+			case WID_SCMF_COUNT:
+				size = maxdim(size, GetStringBoundingBox(GetString(STR_FACE_GALLERY_COUNT, 9999)));
 				break;
 
-			case WID_SCMF_PARTS:
-				fill.height = resize.height = this->line_height;
-				size.width = GetMaximumFacePartsWidth();
-				size.height = resize.height * 5;
+			case WID_SCMF_GALLERY:
+				resize.width = fill.width = this->cell.width;
+				resize.height = fill.height = this->cell.height;
+				size.width = this->cell.width * 6 + padding.width;
+				size.height = this->cell.height * 4 + padding.height;
 				break;
+		}
+	}
+
+	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
+	{
+		switch (widget) {
+			case WID_SCMF_CATEGORY:
+				return GetString(STR_FACE_GALLERY_CATEGORY, this->category.empty() ? GetString(STR_FACE_GALLERY_CATEGORY_ALL) : FormatFaceImageWord(this->category));
+
+			case WID_SCMF_COUNT:
+				return GetString(STR_FACE_GALLERY_COUNT, this->faces.size());
+
+			default:
+				return this->Window::GetWidgetString(widget, stringid);
 		}
 	}
 
 	void DrawWidget(const Rect &r, WidgetID widget) const override
 	{
 		switch (widget) {
-			case WID_SCMF_FACE:
-				DrawCompanyManagerFace(this->face, Company::Get((CompanyID)this->window_number)->colour, r);
-				break;
-
-			case WID_SCMF_STYLE: {
-				Rect ir = r.Shrink(WidgetDimensions::scaled.frametext, RectPadding::zero).WithHeight(this->line_height);
-				bool rtl = _current_text_dir == TD_RTL;
-
-				Rect br = ir.CentreToHeight(SETTING_BUTTON_HEIGHT).WithWidth(SETTING_BUTTON_WIDTH, rtl);
-				Rect tr = ir.Shrink(RectPadding::zero, WidgetDimensions::scaled.matrix).CentreToHeight(GetCharacterHeight(FontSize::Normal)).Indent(SETTING_BUTTON_WIDTH + WidgetDimensions::scaled.hsep_wide, rtl);
-
-				DrawArrowButtons(br.left, br.top, Colours::Yellow, this->selected_var == UINT_MAX - 1 ? this->click_state : 0, true, true);
-				DrawString(tr, GetString(STR_FACE_SETTING_NUMERIC, STR_FACE_STYLE, this->face.style + 1, GetNumCompanyManagerFaceStyles()), TextColour::White);
+			case WID_SCMF_FACE: {
+				const Company *c = Company::Get((CompanyID)this->window_number);
+				CompanyManagerFace face = c->face;
+				face.image = this->selected;
+				DrawCompanyManagerFace(face, c->colour, r);
 				break;
 			}
 
-			case WID_SCMF_PARTS: {
-				Rect ir = r.Shrink(WidgetDimensions::scaled.frametext, RectPadding::zero).WithHeight(this->line_height);
-				bool rtl = _current_text_dir == TD_RTL;
+			case WID_SCMF_FACE_NAME: {
+				if (this->selected.empty()) break;
+				const FaceImageInfo *info = FindFaceImage(this->selected);
+				StringID str = info == nullptr ? STR_FACE_GALLERY_MISSING : (this->automatic ? STR_FACE_GALLERY_AUTOMATIC : STR_FACE_GALLERY_NAME);
+				DrawStringMultiLine(r, GetString(str, info == nullptr ? this->selected : info->name), TextColour::FromString, {AlignmentH::Centre, AlignmentV::Top});
+				break;
+			}
 
-				FaceVars vars = GetCompanyManagerFaceVars(this->face.style);
-
-				auto [first, last] = this->GetScrollbar(WID_SCMF_PARTS_SCROLLBAR)->GetVisibleRangeIterators(this->face_vars);
-				for (auto it = first; it != last; ++it) {
-					const uint8_t var = static_cast<uint8_t>(*it - vars.data());
-					const FaceVar &facevar = **it;
-
-					Rect br = ir.CentreToHeight(SETTING_BUTTON_HEIGHT).WithWidth(SETTING_BUTTON_WIDTH, rtl);
-					Rect tr = ir.Shrink(RectPadding::zero, WidgetDimensions::scaled.matrix).CentreToHeight(GetCharacterHeight(FontSize::Normal)).Indent(SETTING_BUTTON_WIDTH + WidgetDimensions::scaled.hsep_wide, rtl);
-
-					uint val = vars[var].GetBits(this->face);
-					if (facevar.type == FaceVarType::Toggle) {
-						DrawBoolButton(br.left, br.top, Colours::Yellow, Colours::Grey, val == 1, true);
-						DrawString(tr, GetString(STR_FACE_SETTING_TOGGLE, facevar.name, val == 1 ? STR_FACE_YES : STR_FACE_NO), TextColour::White);
-					} else {
-						DrawArrowButtons(br.left, br.top, Colours::Yellow, this->selected_var == var ? this->click_state : 0, true, true);
-						DrawString(tr, GetString(STR_FACE_SETTING_NUMERIC, facevar.name, val + 1, facevar.valid_values), TextColour::White);
+			case WID_SCMF_GALLERY: {
+				Rect ir = r.Shrink(WidgetDimensions::scaled.framerect);
+				if (this->faces.empty()) {
+					if (GetFaceImages().empty()) {
+						DrawStringMultiLine(ir, GetString(STR_FACE_GALLERY_EMPTY, _personal_dir + "faces" PATHSEP), TextColour::FromString, {AlignmentH::Centre, AlignmentV::Middle});
 					}
+					break;
+				}
 
-					ir = ir.Translate(0, this->line_height);
+				uint pad = ScaleGUITrad(THUMB_PADDING);
+				const Scrollbar *sb = this->GetScrollbar(WID_SCMF_GALLERY_SCROLLBAR);
+				bool rtl = _current_text_dir == TD_RTL;
+				for (int row = 0; row <= sb->GetCapacity(); row++) {
+					int y = ir.top + row * static_cast<int>(this->cell.height);
+					if (y > ir.bottom) break;
+					for (uint col = 0; col < this->columns; col++) {
+						size_t index = static_cast<size_t>(sb->GetPosition() + row) * this->columns + col;
+						if (index >= this->faces.size()) break;
+
+						int x = rtl ? ir.right - static_cast<int>((col + 1) * this->cell.width) + 1 : ir.left + static_cast<int>(col * this->cell.width);
+						Rect cr{x, y, x + static_cast<int>(this->cell.width) - 1, y + static_cast<int>(this->cell.height) - 1};
+
+						const FaceImageInfo *f = this->faces[index];
+						if (f->id == this->selected) GfxFillRect(cr, PC_WHITE);
+
+						Rect thumb = cr.Shrink(pad);
+						if (!DrawFaceImage(f->id, thumb)) {
+							GfxFillRect(thumb, PC_BLACK);
+							DrawStringMultiLine(thumb, "?", TextColour::White, {AlignmentH::Centre, AlignmentV::Middle});
+						}
+					}
 				}
 				break;
 			}
@@ -1431,157 +1495,117 @@ public:
 	void OnClick([[maybe_unused]] Point pt, WidgetID widget, [[maybe_unused]] int click_count) override
 	{
 		switch (widget) {
-			/* Toggle size, advanced/simple face selection */
-			case WID_SCMF_TOGGLE_LARGE_SMALL:
-			case WID_SCMF_TOGGLE_LARGE_SMALL_BUTTON:
-				this->advanced = !this->advanced;
-				this->SelectDisplayPlanes(this->advanced);
-				this->ReInit();
+			case WID_SCMF_TYPE_ALL:
+			case WID_SCMF_TYPE_REAL:
+			case WID_SCMF_TYPE_ANIME:
+			case WID_SCMF_TYPE_CARTOON: {
+				static const std::array<std::string_view, 4> types = {"", "real", "anime", "cartoon"};
+				this->type = types[widget - WID_SCMF_TYPE_ALL];
+				this->BuildFaceList();
+				this->GetScrollbar(WID_SCMF_GALLERY_SCROLLBAR)->SetPosition(0);
+				this->ScrollToSelected();
+				break;
+			}
+
+			case WID_SCMF_CATEGORY: {
+				DropDownList list;
+				list.push_back(MakeDropDownListStringItem(STR_FACE_GALLERY_CATEGORY_ALL, -1));
+				for (size_t i = 0; i < this->categories.size(); i++) {
+					list.push_back(MakeDropDownListStringItem(FormatFaceImageWord(this->categories[i]), static_cast<int>(i)));
+				}
+				auto it = std::ranges::find(this->categories, this->category);
+				int selected = it == this->categories.end() ? -1 : static_cast<int>(std::distance(this->categories.begin(), it));
+				ShowDropDownList(this, std::move(list), selected, widget);
+				break;
+			}
+
+			case WID_SCMF_GALLERY: {
+				auto index = this->GetFaceAt(pt);
+				if (!index.has_value()) break;
+				this->Select(this->faces[*index]->id);
+				if (click_count > 1) this->OnClick(pt, WID_SCMF_ACCEPT, 1);
+				break;
+			}
+
+			case WID_SCMF_RANDOM_NEW_FACE:
+				if (this->faces.empty()) break;
+				this->Select(this->faces[InteractiveRandomRange(static_cast<uint32_t>(this->faces.size()))]->id);
+				this->ScrollToSelected();
+				break;
+
+			case WID_SCMF_FAVOURITE:
+				if (this->selected.empty()) break;
+				_company_manager_face = this->selected;
+				ShowErrorMessage(GetEncodedString(STR_FACE_GALLERY_FAVOURITE_DONE), {}, WarningLevel::Info);
+				break;
+
+			case WID_SCMF_RESCAN:
+				ScanFaceImages();
+				this->BuildFaceList();
+				MarkWholeScreenDirty();
 				break;
 
 			/* OK button */
 			case WID_SCMF_ACCEPT:
-				Command<Commands::SetCompanyManagerFace>::Post(this->face.style, this->face.bits);
+				if (!this->automatic && !this->selected.empty()) {
+					Command<Commands::SetCompanyManagerFaceImage>::Post(this->selected);
+				}
 				[[fallthrough]];
 
 			/* Cancel button */
 			case WID_SCMF_CANCEL:
 				this->Close();
 				break;
-
-			/* Load button */
-			case WID_SCMF_LOAD: {
-				auto cmf = ParseCompanyManagerFaceCode(_company_manager_face);
-				if (cmf.has_value()) this->face = *cmf;
-				ShowErrorMessage(GetEncodedString(STR_FACE_LOAD_DONE), {}, WarningLevel::Info);
-				this->UpdateData();
-				this->SetDirty();
-				break;
-			}
-
-			/* 'Company manager face number' button, view and/or set company manager face number */
-			case WID_SCMF_FACECODE:
-				ShowQueryString(FormatCompanyManagerFaceCode(this->face), STR_FACE_FACECODE_CAPTION, 128, this, CS_ALPHANUMERAL, {});
-				break;
-
-			/* Save button */
-			case WID_SCMF_SAVE:
-				_company_manager_face = FormatCompanyManagerFaceCode(this->face);
-				ShowErrorMessage(GetEncodedString(STR_FACE_SAVE_DONE), {}, WarningLevel::Info);
-				break;
-
-			/* Randomize face button */
-			case WID_SCMF_RANDOM_NEW_FACE:
-				RandomiseCompanyManagerFace(this->face, _interactive_random);
-				this->UpdateData();
-				this->SetDirty();
-				break;
-
-			case WID_SCMF_STYLE: {
-				bool rtl = _current_text_dir == TD_RTL;
-				Rect ir = this->GetWidget<NWidgetCore>(widget)->GetCurrentRect().Shrink(WidgetDimensions::scaled.frametext, RectPadding::zero);
-				Rect br = ir.WithWidth(SETTING_BUTTON_WIDTH, rtl);
-
-				uint num_styles = GetNumCompanyManagerFaceStyles();
-				this->selected_var = UINT_MAX - 1;
-				if (IsInsideBS(pt.x, br.left, SETTING_BUTTON_WIDTH / 2)) {
-					SetCompanyManagerFaceStyle(this->face, (this->face.style + num_styles - 1) % num_styles);
-					this->click_state = 1;
-				} else if (IsInsideBS(pt.x, br.left + SETTING_BUTTON_WIDTH / 2, SETTING_BUTTON_WIDTH / 2)) {
-					SetCompanyManagerFaceStyle(this->face, (this->face.style + 1) % num_styles);
-					this->click_state = 2;
-				}
-
-				this->UpdateData();
-				this->SetTimeout();
-				this->SetDirty();
-				break;
-			}
-
-			case WID_SCMF_PARTS: {
-				bool rtl = _current_text_dir == TD_RTL;
-				Rect ir = this->GetWidget<NWidgetCore>(widget)->GetCurrentRect().Shrink(WidgetDimensions::scaled.frametext, RectPadding::zero);
-				Rect br = ir.WithWidth(SETTING_BUTTON_WIDTH, rtl);
-
-				this->selected_var = UINT_MAX;
-
-				FaceVars vars = GetCompanyManagerFaceVars(this->face.style);
-				auto it = this->GetScrollbar(WID_SCMF_PARTS_SCROLLBAR)->GetScrolledItemFromWidget(this->face_vars, pt.y, this, widget, 0, this->line_height);
-				if (it == std::end(this->face_vars)) break;
-
-				this->selected_var = static_cast<uint8_t>(*it - vars.data());
-				const auto &facevar = **it;
-
-				if (facevar.type == FaceVarType::Toggle) {
-					if (!IsInsideBS(pt.x, br.left, SETTING_BUTTON_WIDTH)) break;
-					facevar.ChangeBits(this->face, 1);
-					this->UpdateData();
-				} else {
-					if (IsInsideBS(pt.x, br.left, SETTING_BUTTON_WIDTH / 2)) {
-						facevar.ChangeBits(this->face, -1);
-						this->click_state = 1;
-					} else if (IsInsideBS(pt.x, br.left + SETTING_BUTTON_WIDTH / 2, SETTING_BUTTON_WIDTH / 2)) {
-						facevar.ChangeBits(this->face, 1);
-						this->click_state = 2;
-					} else {
-						break;
-					}
-				}
-
-				this->SetTimeout();
-				this->SetDirty();
-				break;
-			}
 		}
+	}
+
+	void OnDropdownSelect(WidgetID widget, int index, int) override
+	{
+		if (widget != WID_SCMF_CATEGORY) return;
+		this->category = (index < 0 || static_cast<size_t>(index) >= this->categories.size()) ? std::string{} : this->categories[index];
+		this->BuildFaceList();
+		this->GetScrollbar(WID_SCMF_GALLERY_SCROLLBAR)->SetPosition(0);
+		this->ScrollToSelected();
+	}
+
+	void OnEditboxChanged(WidgetID widget) override
+	{
+		if (widget != WID_SCMF_FILTER) return;
+		this->string_filter.SetFilterTerm(this->filter_editbox.text.GetText());
+		this->BuildFaceList();
+		this->GetScrollbar(WID_SCMF_GALLERY_SCROLLBAR)->SetPosition(0);
+	}
+
+	bool OnTooltip(Point pt, WidgetID widget, TooltipCloseCondition close_cond) override
+	{
+		if (widget != WID_SCMF_GALLERY) return false;
+		auto index = this->GetFaceAt(pt);
+		if (!index.has_value()) return false;
+		const FaceImageInfo *f = this->faces[*index];
+		GuiShowTooltips(this, GetEncodedString(STR_FACE_GALLERY_TOOLTIP, f->name, FormatFaceImageWord(f->type), FormatFaceImageWord(f->category)), close_cond);
+		return true;
 	}
 
 	void OnResize() override
 	{
-		if (auto *wid = this->GetWidget<NWidgetResizeBase>(WID_SCMF_PARTS); wid != nullptr) {
-			/* Workaround for automatic widget sizing ignoring resize steps. Manually ensure parts matrix is a
-			 * multiple of its resize step. This trick only works here as the window itself is not resizable. */
-			if (wid->UpdateVerticalSize((wid->current_y + wid->resize_y - 1) / wid->resize_y * wid->resize_y)) {
-				this->ReInit();
-				return;
-			}
-		}
-
-		this->GetScrollbar(WID_SCMF_PARTS_SCROLLBAR)->SetCapacityFromWidget(this, WID_SCMF_PARTS);
-	}
-
-	void OnTimeout() override
-	{
-		this->click_state = 0;
-		this->selected_var = UINT_MAX;
-		this->SetDirty();
-	}
-
-	void OnQueryTextFinished(std::optional<std::string> str) override
-	{
-		if (!str.has_value()) return;
-		/* Parse new company manager face number */
-		auto cmf = ParseCompanyManagerFaceCode(*str);
-		if (cmf.has_value()) {
-			this->face = *cmf;
-			ShowErrorMessage(GetEncodedString(STR_FACE_FACECODE_SET), {}, WarningLevel::Info);
-			this->UpdateData();
-			this->SetDirty();
-		} else {
-			ShowErrorMessage(GetEncodedString(STR_FACE_FACECODE_ERR), {}, WarningLevel::Info);
-		}
+		const NWidgetBase *nwid = this->GetWidget<NWidgetBase>(WID_SCMF_GALLERY);
+		uint width = nwid->current_x - WidgetDimensions::scaled.framerect.Horizontal();
+		this->columns = std::max(1u, width / std::max(1u, this->cell.width));
+		this->UpdateScrollbar();
+		this->GetScrollbar(WID_SCMF_GALLERY_SCROLLBAR)->SetCapacityFromWidget(this, WID_SCMF_GALLERY, WidgetDimensions::scaled.framerect.Vertical());
 	}
 };
 
 /** Company manager face selection window description */
 static WindowDesc _select_company_manager_face_desc(__FILE__, __LINE__,
-	WindowPosition::Automatic, nullptr, 0, 0,
+	WindowPosition::Automatic, "company_face_gallery", 0, 0,
 	WindowClass::CompanyManagerFace, WindowClass::None,
-	WindowDefaultFlag::Construction,
+	{},
 	_nested_select_company_manager_face_widgets
 );
 
 /**
- * Open the simple/advanced company manager face selection window
+ * Open the company manager face gallery
  *
  * @param parent the parent company window
  */

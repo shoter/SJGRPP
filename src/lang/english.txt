@@ -2379,6 +2379,27 @@ STR_LIVERY_FREIGHT_TRAM                                         :Freight Tram
 
 # Face selection window
 STR_FACE_CAPTION                                                :{WHITE}Face Selection
+STR_FACE_GALLERY_TYPE_ALL                                       :{BLACK}All
+STR_FACE_GALLERY_TYPE_REAL                                      :{BLACK}Real
+STR_FACE_GALLERY_TYPE_ANIME                                     :{BLACK}Anime
+STR_FACE_GALLERY_TYPE_CARTOON                                   :{BLACK}Cartoon
+STR_FACE_GALLERY_TYPE_TOOLTIP                                   :{BLACK}Show only faces of this type
+STR_FACE_GALLERY_CATEGORY                                       :{BLACK}{RAW_STRING}
+STR_FACE_GALLERY_CATEGORY_ALL                                   :All categories
+STR_FACE_GALLERY_CATEGORY_TOOLTIP                               :{BLACK}Show only faces of one category
+STR_FACE_GALLERY_NAME                                           :{GOLD}{RAW_STRING}
+STR_FACE_GALLERY_AUTOMATIC                                      :{GOLD}{RAW_STRING} {SILVER}(automatic)
+STR_FACE_GALLERY_MISSING                                        :{RED}{RAW_STRING} {SILVER}(not installed)
+STR_FACE_GALLERY_RANDOM                                         :{BLACK}Random
+STR_FACE_GALLERY_RANDOM_TOOLTIP                                 :{BLACK}Pick a random face from the faces shown
+STR_FACE_GALLERY_FAVOURITE                                      :{BLACK}Set as favourite
+STR_FACE_GALLERY_FAVOURITE_TOOLTIP                              :{BLACK}Use this face for new companies you start
+STR_FACE_GALLERY_FAVOURITE_DONE                                 :This face will be used for new companies you start
+STR_FACE_GALLERY_RESCAN                                         :{BLACK}Rescan
+STR_FACE_GALLERY_RESCAN_TOOLTIP                                 :{BLACK}Look for new face images in the faces folder
+STR_FACE_GALLERY_COUNT                                          :{BLACK}{NUM} face{P "" s}
+STR_FACE_GALLERY_EMPTY                                          :{BLACK}No face images found. Put PNG files named type_category_name.png (for example real_president_donald_trump.png) into:{}{SILVER}{RAW_STRING}
+STR_FACE_GALLERY_TOOLTIP                                        :{BLACK}{RAW_STRING}{}{SILVER}{RAW_STRING} / {RAW_STRING}
 STR_FACE_CANCEL_TOOLTIP                                         :{BLACK}Cancel new face selection
 STR_FACE_OK_TOOLTIP                                             :{BLACK}Accept new face selection
 

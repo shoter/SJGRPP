@@ -332,8 +332,9 @@ bool NetworkCompanyIsPassworded(CompanyID company_id)
  * @param str Arbitrary extra string, depending on the action. For example a complete message or company name.
  * @param data Arbitrary extra data, depending on the action. For example a client's ID or an amount of money that was given.
  * @param data_str Arbitrary extra data string view.
+ * @param sender Company of the client who wrote a chat message, shown as an avatar next to it.
  */
-void NetworkTextMessage(NetworkAction action, ExtendedTextColour colour, bool self_send, std::string_view name, std::string_view str, NetworkTextMessageData data, std::string_view data_str)
+void NetworkTextMessage(NetworkAction action, ExtendedTextColour colour, bool self_send, std::string_view name, std::string_view str, NetworkTextMessageData data, std::string_view data_str, CompanyID sender)
 {
 	std::string replacement_name;
 
@@ -400,7 +401,8 @@ void NetworkTextMessage(NetworkAction action, ExtendedTextColour colour, bool se
 
 	Debug(desync, 1, "msg: {}; {}", debug_date_dumper().HexDate(), message);
 	IConsolePrint(colour, message.to_string());
-	NetworkAddChatMessage(colour, _settings_client.gui.network_chat_timeout, message);
+	bool is_chat = action == NetworkAction::ChatBroadcast || action == NetworkAction::ChatTeam || action == NetworkAction::ChatClient;
+	NetworkAddChatMessage(colour, _settings_client.gui.network_chat_timeout, message, is_chat ? sender : CompanyID::Invalid());
 }
 
 /**

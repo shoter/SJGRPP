@@ -1011,6 +1011,18 @@ void DrawCharCentered(char32_t c, const Rect &r, TextColour colour)
 }
 
 /**
+ * Draw an already encoded sprite (not from the sprite cache) at its natural size.
+ * @param sprite Sprite encoded by the current blitter.
+ * @param x Left of the sprite.
+ * @param y Top of the sprite.
+ */
+void DrawEncodedSprite(const Sprite *sprite, int x, int y)
+{
+	GfxBlitterCtx ctx(_cur_dpi);
+	GfxMainBlitter(ctx, sprite, x, y, BlitterMode::Normal);
+}
+
+/**
  * Get the size of a sprite.
  * @param sprid Sprite to examine.
  * @param[out] offset Optionally returns the sprite position offset.

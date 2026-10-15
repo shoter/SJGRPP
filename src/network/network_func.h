@@ -99,7 +99,7 @@ uint NetworkServerKickOrBanIP(std::string_view ip, bool ban, std::string_view re
 
 void NetworkInitChatMessage();
 void NetworkReInitChatBoxSize();
-void NetworkAddChatMessage(ExtendedTextColour colour, uint duration, const std::string_view message);
+void NetworkAddChatMessage(ExtendedTextColour colour, uint duration, const std::string_view message, CompanyID sender = CompanyID::Invalid());
 void NetworkUndrawChatMessage();
 void NetworkChatMessageLoop();
 
