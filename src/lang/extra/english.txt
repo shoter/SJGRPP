@@ -2619,3 +2619,6 @@ STR_CONFIG_SETTING_NEWS_CARGO_FLOW                              :Overflowing car
 STR_CONFIG_SETTING_NEWS_CARGO_FLOW_HELPTEXT                     :Warn about stations where cargo is accumulating.{}The detection is based on shape of the cargo history graph, not on specific amount threshold.
 
 STR_STATION_CARGO_OVERFLOW                                      :{WHITE}{CARGO_LIST} overflowing at {STATION}
+
+STR_SHOW_UNAVAILABLE_ENGINES                                    :{BLACK}Show unavailable
+STR_SHOW_UNAVAILABLE_ENGINES_TOOLTIP                            :{BLACK}By enabling this button, vehicles which are not yet introduced or are no longer available are also displayed (greyed out). They cannot be bought

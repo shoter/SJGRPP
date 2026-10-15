@@ -66,6 +66,10 @@ enum BuildVehicleWidgets : WidgetID {
 	WID_BV_COMB_SHOW_HIDE,                  ///< Combined buttons: show/hide button.
 	WID_BV_COMB_RENAME,                     ///< Combined buttons: rename button.
 
+	WID_BV_SHOW_UNAVAILABLE_ENGINES,        ///< Toggle whether to display not yet/no longer available vehicles.
+	WID_BV_SHOW_UNAVAILABLE_LOCOS,          ///< Toggle whether to display not yet/no longer available locomotives.
+	WID_BV_SHOW_UNAVAILABLE_WAGONS,         ///< Toggle whether to display not yet/no longer available wagons.
+
 	WID_BV_CONFIGURE_BADGES = 0x1000,       ///< Button to configure badges.
 	WID_BV_BADGE_FILTER,                    ///< Container for dropdown badge filters.
 

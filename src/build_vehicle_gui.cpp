@@ -84,6 +84,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_build_vehicle_widget
 		EndContainer(),
 		NWidget(NWID_HORIZONTAL),
 			NWidget(WWT_TEXTBTN, Colours::Grey, WID_BV_SHOW_HIDDEN_ENGINES),
+			NWidget(WWT_TEXTBTN, Colours::Grey, WID_BV_SHOW_UNAVAILABLE_ENGINES), SetStringTip(STR_SHOW_UNAVAILABLE_ENGINES, STR_SHOW_UNAVAILABLE_ENGINES_TOOLTIP),
 			NWidget(WWT_DROPDOWN, Colours::Grey, WID_BV_CARGO_FILTER_DROPDOWN), SetResize(1, 0), SetFill(1, 0), SetToolTip(STR_TOOLTIP_FILTER_CRITERIA),
 			NWidget(WWT_IMGBTN, Colours::Grey, WID_BV_CONFIGURE_BADGES), SetAspect(WidgetDimensions::ASPECT_UP_DOWN_BUTTON), SetResize(0, 0), SetFill(0, 1), SetSpriteTip(SPR_EXTRA_MENU, STR_BADGE_CONFIG_MENU_TOOLTIP),
 		EndContainer(),
@@ -137,6 +138,7 @@ static constexpr NWidgetPart _nested_build_vehicle_widgets_train_advanced[] = {
 				EndContainer(),
 				NWidget(NWID_HORIZONTAL),
 					NWidget(WWT_TEXTBTN, Colours::Grey, WID_BV_SHOW_HIDDEN_LOCOS),
+					NWidget(WWT_TEXTBTN, Colours::Grey, WID_BV_SHOW_UNAVAILABLE_LOCOS), SetStringTip(STR_SHOW_UNAVAILABLE_ENGINES, STR_SHOW_UNAVAILABLE_ENGINES_TOOLTIP),
 					NWidget(WWT_DROPDOWN, Colours::Grey, WID_BV_CARGO_FILTER_DROPDOWN_LOCO), SetResize(1, 0), SetFill(1, 0), SetToolTip(STR_TOOLTIP_FILTER_CRITERIA),
 				EndContainer(),
 				NWidget(WWT_PANEL, Colours::Grey),
@@ -178,6 +180,7 @@ static constexpr NWidgetPart _nested_build_vehicle_widgets_train_advanced[] = {
 				EndContainer(),
 				NWidget(NWID_HORIZONTAL),
 					NWidget(WWT_TEXTBTN, Colours::Grey, WID_BV_SHOW_HIDDEN_WAGONS),
+					NWidget(WWT_TEXTBTN, Colours::Grey, WID_BV_SHOW_UNAVAILABLE_WAGONS), SetStringTip(STR_SHOW_UNAVAILABLE_ENGINES, STR_SHOW_UNAVAILABLE_ENGINES_TOOLTIP),
 					NWidget(WWT_DROPDOWN, Colours::Grey, WID_BV_CARGO_FILTER_DROPDOWN_WAGON), SetResize(1, 0), SetFill(1, 0), SetToolTip(STR_TOOLTIP_FILTER_CRITERIA),
 					NWidget(WWT_IMGBTN, Colours::Grey, WID_BV_CONFIGURE_BADGES), SetAspect(WidgetDimensions::ASPECT_UP_DOWN_BUTTON), SetResize(0, 0), SetFill(0, 1), SetSpriteTip(SPR_EXTRA_MENU, STR_BADGE_CONFIG_MENU_TOOLTIP),
 				EndContainer(),
@@ -225,6 +228,27 @@ VehicleTypeIndexArray<bool> _engine_sort_last_order = {false, false, false, fals
 VehicleTypeIndexArray<bool> _engine_sort_show_hidden_engines = {false, false, false, false}; ///< Last set 'show hidden engines' setting for each vehicle type.
 bool _engine_sort_show_hidden_locos = false;                                                 ///< Last set 'show hidden locos' setting.
 bool _engine_sort_show_hidden_wagons = false;                                                ///< Last set 'show hidden wagons' setting.
+VehicleTypeIndexArray<bool> _engine_sort_show_unavailable_engines = {false, false, false, false}; ///< Last set 'show unavailable engines' setting for each vehicle type.
+bool _engine_sort_show_unavailable_locos = false;                                                 ///< Last set 'show unavailable locos' setting.
+bool _engine_sort_show_unavailable_wagons = false;                                                ///< Last set 'show unavailable wagons' setting.
+
+/**
+ * Check whether an engine should be listed in the build vehicle window.
+ * @param eid Engine to check.
+ * @param type Vehicle type of the window.
+ * @param show_unavailable Whether engines which are not (yet or anymore) buildable should be listed too.
+ * @param[out] flags Display flags, EngineDisplayFlag::Unavailable is set if the engine is listed but not buildable.
+ * @return True if the engine should be listed.
+ */
+static bool IsEngineListedForBuild(EngineID eid, VehicleType type, bool show_unavailable, EngineDisplayFlags &flags)
+{
+	if (IsEngineBuildable(eid, type, _local_company)) return true;
+	if (!show_unavailable) return false;
+	const Engine *e = Engine::Get(eid);
+	if (e->type != type || !e->IsEnabled()) return false;
+	flags.Set(EngineDisplayFlag::Unavailable);
+	return true;
+}
 static VehicleTypeIndexArray<CargoType> _engine_sort_last_cargo_criteria = {CargoFilterCriteria::CF_ANY, CargoFilterCriteria::CF_ANY, CargoFilterCriteria::CF_ANY, CargoFilterCriteria::CF_ANY}; ///< Last set filter criteria, for each vehicle type.
 
 static uint8_t _last_sort_criteria_loco   = 0;
@@ -1159,7 +1183,7 @@ void DrawEngineList(VehicleType type, const Rect &r, const GUIEngineList &eng_li
 		uint indent       = item.indent * WidgetDimensions::scaled.hsep_indent;
 		bool has_variants = item.flags.Test(EngineDisplayFlag::HasVariants);
 		bool is_folded    = item.flags.Test(EngineDisplayFlag::IsFolded);
-		bool shaded       = item.flags.Test(EngineDisplayFlag::Shaded);
+		bool shaded       = item.flags.Any({EngineDisplayFlag::Shaded, EngineDisplayFlag::Unavailable});
 
 		/* Set up clipping area for the row, keeping coordinates relative to the window. */
 		DrawPixelInfo tmp_dpi;
@@ -1396,7 +1420,7 @@ void GUIEngineListAddChildren(GUIEngineList &dst, const GUIEngineList &src, Engi
 		if (item.flags.Test(EngineDisplayFlag::HasVariants) && !item.flags.Test(EngineDisplayFlag::IsFolded)) {
 			/* Add this engine again as a child */
 			if (!item.flags.Test(EngineDisplayFlag::Shaded)) {
-				dst.emplace_back(item.engine_id, item.engine_id, EngineDisplayFlags{}, indent + 1);
+				dst.emplace_back(item.engine_id, item.engine_id, item.flags & EngineDisplayFlags{EngineDisplayFlag::Unavailable}, indent + 1);
 			}
 			GUIEngineListAddChildren(dst, src, item.engine_id, indent + 1);
 		}
@@ -1597,6 +1621,7 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 	bool descending_sort_order = false;           ///< Sort direction, @see _engine_sort_direction
 	uint8_t sort_criteria = 0;                    ///< Current sort criterium.
 	bool show_hidden_engines = false;             ///< State of the 'show hidden engines' button.
+	bool show_unavailable_engines = false;        ///< State of the 'show unavailable engines' button.
 	EngineID sel_engine = EngineID::Invalid();    ///< Currently selected engine, or #EngineID::Invalid()
 	EngineID rename_engine = EngineID::Invalid(); ///< Engine being renamed.
 	GUIEngineList eng_list{};
@@ -1641,6 +1666,7 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 		this->sort_criteria         = _engine_sort_last_criteria[type];
 		this->descending_sort_order = _engine_sort_last_order[type];
 		this->show_hidden_engines   = _engine_sort_show_hidden_engines[type];
+		this->show_unavailable_engines = _engine_sort_show_unavailable_engines[type];
 
 		this->UpdateFilterByTile();
 
@@ -1666,6 +1692,8 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 		widget = this->GetWidget<NWidgetCore>(WID_BV_SHOW_HIDDEN_ENGINES);
 		widget->SetStringTip(STR_SHOW_HIDDEN_ENGINES_VEHICLE_TRAIN + to_underlying(type), STR_SHOW_HIDDEN_ENGINES_VEHICLE_TRAIN_TOOLTIP + to_underlying(type));
 		widget->SetLowered(this->show_hidden_engines);
+
+		this->GetWidget<NWidgetCore>(WID_BV_SHOW_UNAVAILABLE_ENGINES)->SetLowered(this->show_unavailable_engines);
 
 		this->details_height = ((this->vehicle_type == VehicleType::Train) ? 10 : 9);
 
@@ -1820,7 +1848,8 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 			const RailVehicleInfo *rvi = &e->VehInfo<RailVehicleInfo>();
 
 			if (this->filter.railtype != INVALID_RAILTYPE && !HasPowerOnRail(rvi->railtypes, this->filter.railtype)) continue;
-			if (!IsEngineBuildable(eid, VehicleType::Train, _local_company)) continue;
+			EngineDisplayFlags flags = e->display_flags;
+			if (!IsEngineListedForBuild(eid, VehicleType::Train, this->show_unavailable_engines, flags)) continue;
 
 			/* Filter now! So num_engines and num_wagons is valid */
 			if (!FilterSingleEngine(eid)) continue;
@@ -1830,7 +1859,7 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 			/* Filter by name or NewGRF extra text */
 			if (!FilterByText(e) && !btf.Filter(e->badges)) continue;
 
-			list.emplace_back(eid, e->info.variant_id, e->display_flags, 0);
+			list.emplace_back(eid, e->info.variant_id, flags, 0);
 
 			if (rvi->railveh_type != RailVehicleType::Wagon) num_engines++;
 
@@ -1885,14 +1914,15 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 		for (const Engine *e : Engine::IterateType(VehicleType::Road)) {
 			if (!this->show_hidden_engines && e->IsVariantHidden(_local_company)) continue;
 			EngineID eid = e->index;
-			if (!IsEngineBuildable(eid, VehicleType::Road, _local_company)) continue;
+			EngineDisplayFlags flags = e->display_flags;
+			if (!IsEngineListedForBuild(eid, VehicleType::Road, this->show_unavailable_engines, flags)) continue;
 			if (this->filter.roadtype != INVALID_ROADTYPE && !HasPowerOnRoad(e->VehInfo<RoadVehicleInfo>().roadtype, this->filter.roadtype)) continue;
 			if (!bdf.Filter(e->badges)) continue;
 
 			/* Filter by name or NewGRF extra text */
 			if (!FilterByText(e) && !btf.Filter(e->badges)) continue;
 
-			this->eng_list.emplace_back(eid, e->info.variant_id, e->display_flags, 0);
+			this->eng_list.emplace_back(eid, e->info.variant_id, flags, 0);
 
 			if (eid == this->sel_engine) sel_id = eid;
 		}
@@ -1911,13 +1941,14 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 		for (const Engine *e : Engine::IterateType(VehicleType::Ship)) {
 			if (!this->show_hidden_engines && e->IsVariantHidden(_local_company)) continue;
 			EngineID eid = e->index;
-			if (!IsEngineBuildable(eid, VehicleType::Ship, _local_company)) continue;
+			EngineDisplayFlags flags = e->display_flags;
+			if (!IsEngineListedForBuild(eid, VehicleType::Ship, this->show_unavailable_engines, flags)) continue;
 			if (!bdf.Filter(e->badges)) continue;
 
 			/* Filter by name or NewGRF extra text */
 			if (!FilterByText(e) && !btf.Filter(e->badges)) continue;
 
-			this->eng_list.emplace_back(eid, e->info.variant_id, e->display_flags, 0);
+			this->eng_list.emplace_back(eid, e->info.variant_id, flags, 0);
 
 			if (eid == this->sel_engine) sel_id = eid;
 		}
@@ -1943,7 +1974,8 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 		for (const Engine *e : Engine::IterateType(VehicleType::Aircraft)) {
 			if (!this->show_hidden_engines && e->IsVariantHidden(_local_company)) continue;
 			EngineID eid = e->index;
-			if (!IsEngineBuildable(eid, VehicleType::Aircraft, _local_company)) continue;
+			EngineDisplayFlags flags = e->display_flags;
+			if (!IsEngineListedForBuild(eid, VehicleType::Aircraft, this->show_unavailable_engines, flags)) continue;
 			/* First VehicleType::End window_numbers are fake to allow a window open for all different types at once */
 			if (!this->listview_mode && !CanVehicleUseStation(eid, st)) continue;
 			if (!bdf.Filter(e->badges)) continue;
@@ -1951,7 +1983,7 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 			/* Filter by name or NewGRF extra text */
 			if (!FilterByText(e) && !btf.Filter(e->badges)) continue;
 
-			this->eng_list.emplace_back(eid, e->info.variant_id, e->display_flags, 0);
+			this->eng_list.emplace_back(eid, e->info.variant_id, flags, 0);
 
 			if (eid == this->sel_engine) sel_id = eid;
 		}
@@ -2027,7 +2059,7 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 	void BuildVehicle()
 	{
 		EngineID sel_eng = this->sel_engine;
-		if (sel_eng == EngineID::Invalid()) return;
+		if (sel_eng == EngineID::Invalid() || !IsEngineBuildable(sel_eng, this->vehicle_type, _local_company)) return;
 
 		CargoType cargo = this->cargo_filter_criteria;
 		if (cargo == CargoFilterCriteria::CF_ANY || cargo == CargoFilterCriteria::CF_ENGINES || cargo == CargoFilterCriteria::CF_NONE) cargo = INVALID_CARGO;
@@ -2070,6 +2102,14 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 				_engine_sort_show_hidden_engines[this->vehicle_type] = this->show_hidden_engines;
 				this->eng_list.ForceRebuild();
 				this->SetWidgetLoweredState(widget, this->show_hidden_engines);
+				this->SetDirty();
+				break;
+
+			case WID_BV_SHOW_UNAVAILABLE_ENGINES:
+				this->show_unavailable_engines ^= true;
+				_engine_sort_show_unavailable_engines[this->vehicle_type] = this->show_unavailable_engines;
+				this->eng_list.ForceRebuild();
+				this->SetWidgetLoweredState(widget, this->show_unavailable_engines);
 				this->SetDirty();
 				break;
 
@@ -2286,7 +2326,8 @@ struct BuildVehicleWindow : BuildVehicleWindowBase {
 		this->GenerateBuildList();
 		this->vscroll->SetCount(this->eng_list.size());
 
-		this->SetWidgetsDisabledState(this->sel_engine == EngineID::Invalid(), WID_BV_SHOW_HIDE, WID_BV_BUILD);
+		this->SetWidgetDisabledState(WID_BV_SHOW_HIDE, this->sel_engine == EngineID::Invalid());
+		this->SetWidgetDisabledState(WID_BV_BUILD, this->sel_engine == EngineID::Invalid() || !IsEngineBuildable(this->sel_engine, this->vehicle_type, _local_company));
 
 		/* Disable renaming engines in network games if you are not the server. */
 		this->SetWidgetDisabledState(WID_BV_RENAME, this->sel_engine == EngineID::Invalid() || IsNonAdminNetworkClient());
@@ -2504,6 +2545,7 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 		Scrollbar *vscroll;
 		CargoType cargo_filter_criteria;                 ///< Selected cargo filter
 		bool show_hidden;                              ///< State of the 'show hidden' button.
+		bool show_unavailable;                         ///< State of the 'show unavailable' button.
 		int details_height;                            ///< Minimal needed height of the details panels (found so far).
 		TestedEngineDetails te;                        ///< Tested cost and capacity after refit.
 		StringFilter string_filter;                    ///< Filter for vehicle name
@@ -2574,11 +2616,13 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 		this->loco.sort_criteria          = _last_sort_criteria_loco;
 		this->loco.descending_sort_order  = _last_sort_order_loco;
 		this->loco.show_hidden            = _engine_sort_show_hidden_locos;
+		this->loco.show_unavailable       = _engine_sort_show_unavailable_locos;
 
 		this->wagon.sel_engine            = EngineID::Invalid();
 		this->wagon.sort_criteria         = _last_sort_criteria_wagon;
 		this->wagon.descending_sort_order = _last_sort_order_wagon;
 		this->wagon.show_hidden           = _engine_sort_show_hidden_wagons;
+		this->wagon.show_unavailable      = _engine_sort_show_unavailable_wagons;
 
 		this->railtype = (tile == INVALID_TILE) ? RAILTYPE_END : GetRailType(tile);
 
@@ -2609,6 +2653,7 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 		widget_loco = this->GetWidget<NWidgetCore>(WID_BV_SHOW_HIDDEN_LOCOS);
 		widget_loco->SetStringTip(STR_SHOW_HIDDEN_ENGINES_VEHICLE_TRAIN + to_underlying(VehicleType::Train), STR_SHOW_HIDDEN_ENGINES_VEHICLE_TRAIN_TOOLTIP + to_underlying(VehicleType::Train));
 		widget_loco->SetLowered(this->loco.show_hidden);
+		this->GetWidget<NWidgetCore>(WID_BV_SHOW_UNAVAILABLE_LOCOS)->SetLowered(this->loco.show_unavailable);
 
 		/* Wagons */
 
@@ -2624,6 +2669,7 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 		widget_wagon = this->GetWidget<NWidgetCore>(WID_BV_SHOW_HIDDEN_WAGONS);
 		widget_wagon->SetStringTip(STR_SHOW_HIDDEN_ENGINES_VEHICLE_TRAIN + to_underlying(VehicleType::Train), STR_SHOW_HIDDEN_ENGINES_VEHICLE_TRAIN_TOOLTIP + to_underlying(VehicleType::Train));
 		widget_wagon->SetLowered(this->wagon.show_hidden);
+		this->GetWidget<NWidgetCore>(WID_BV_SHOW_UNAVAILABLE_WAGONS)->SetLowered(this->wagon.show_unavailable);
 
 		this->UpdateButtonMode();
 
@@ -2780,7 +2826,8 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 			const RailVehicleInfo &rvi = engine->VehInfo<RailVehicleInfo>();
 
 			if (this->railtype != RAILTYPE_END && !HasPowerOnRail(rvi.railtypes, this->railtype)) continue;
-			if (!IsEngineBuildable(eid, VehicleType::Train, _local_company)) continue;
+			EngineDisplayFlags flags = engine->display_flags;
+			if (!IsEngineListedForBuild(eid, VehicleType::Train, state.show_unavailable, flags)) continue;
 
 			if (!FilterSingleEngine(state, eid)) continue;
 
@@ -2796,7 +2843,7 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 			/* Filter by name or NewGRF extra text */
 			if (!FilterByText(state, engine) && !btf.Filter(engine->badges)) continue;
 
-			list.emplace_back(eid, engine->info.variant_id, engine->display_flags, 0);
+			list.emplace_back(eid, engine->info.variant_id, flags, 0);
 
 			/* Add all parent variants of this engine to the variant list */
 			EngineID parent = engine->info.variant_id;
@@ -2859,7 +2906,7 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 
 	void BuildEngine(const EngineID selected, CargoType cargo)
 	{
-		if (selected != EngineID::Invalid()) {
+		if (selected != EngineID::Invalid() && IsEngineBuildable(selected, VehicleType::Train, _local_company)) {
 			if (cargo == CargoFilterCriteria::CF_ANY || cargo == CargoFilterCriteria::CF_ENGINES || cargo == CargoFilterCriteria::CF_NONE) cargo = INVALID_CARGO;
 			if (this->virtual_train_mode) {
 				Command<Commands::BuildVirtualRailVehicle>::Post(GetCmdBuildVehMsg(VehicleType::Train), CommandCallback::AddVirtualEngine, selected, cargo, ClientID::Invalid, this->GetNewVirtualEngineMoveTarget());
@@ -2954,6 +3001,15 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 				break;
 			}
 
+			case WID_BV_SHOW_UNAVAILABLE_LOCOS: {
+				this->loco.show_unavailable ^= true;
+				_engine_sort_show_unavailable_locos = this->loco.show_unavailable;
+				this->loco.eng_list.ForceRebuild();
+				this->SetWidgetLoweredState(widget, this->loco.show_unavailable);
+				this->SetDirty();
+				break;
+			}
+
 			case WID_BV_LIST_LOCO: {
 				if (this->OnClickList(pt, widget, this->loco, false)) return;
 
@@ -3014,6 +3070,15 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 				_engine_sort_show_hidden_wagons = this->wagon.show_hidden;
 				this->wagon.eng_list.ForceRebuild();
 				this->SetWidgetLoweredState(widget, this->wagon.show_hidden);
+				this->SetDirty();
+				break;
+			}
+
+			case WID_BV_SHOW_UNAVAILABLE_WAGONS: {
+				this->wagon.show_unavailable ^= true;
+				_engine_sort_show_unavailable_wagons = this->wagon.show_unavailable;
+				this->wagon.eng_list.ForceRebuild();
+				this->SetWidgetLoweredState(widget, this->wagon.show_unavailable);
 				this->SetDirty();
 				break;
 			}
@@ -3347,11 +3412,11 @@ struct BuildVehicleWindowTrainAdvanced final : BuildVehicleWindowBase {
 
 		/* disable renaming engines in network games if you are not the server */
 		this->SetWidgetDisabledState(WID_BV_RENAME_LOCO, (this->loco.sel_engine == EngineID::Invalid()) || (_networking && !_network_server));
-		this->SetWidgetDisabledState(WID_BV_BUILD_LOCO, this->loco.sel_engine == EngineID::Invalid());
+		this->SetWidgetDisabledState(WID_BV_BUILD_LOCO, this->loco.sel_engine == EngineID::Invalid() || !IsEngineBuildable(this->loco.sel_engine, VehicleType::Train, _local_company));
 
 		/* disable renaming engines in network games if you are not the server */
 		this->SetWidgetDisabledState(WID_BV_RENAME_WAGON, (this->wagon.sel_engine == EngineID::Invalid()) || (_networking && !_network_server));
-		this->SetWidgetDisabledState(WID_BV_BUILD_WAGON, this->wagon.sel_engine == EngineID::Invalid());
+		this->SetWidgetDisabledState(WID_BV_BUILD_WAGON, this->wagon.sel_engine == EngineID::Invalid() || !IsEngineBuildable(this->wagon.sel_engine, VehicleType::Train, _local_company));
 
 		this->DrawWidgets();
 

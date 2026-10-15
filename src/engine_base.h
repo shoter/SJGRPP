@@ -34,6 +34,7 @@ enum class EngineDisplayFlag : uint8_t {
 	HasVariants, ///< Set if engine has variants.
 	IsFolded, ///< Set if display of variants should be folded (hidden).
 	Shaded, ///< Set if engine should be masked.
+	Unavailable, ///< Set if engine is listed but not buildable (not yet introduced or expired).
 };
 
 /** Bitset of \c EngineDisplayFlag elements. */
