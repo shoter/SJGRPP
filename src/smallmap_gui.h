@@ -77,6 +77,18 @@ protected:
 	static SmallMapType map_type; ///< Currently displayed legends.
 	static bool show_towns;       ///< Display town names in the smallmap.
 	static bool show_ind_names;   ///< Display industry names in the smallmap.
+	static bool hide_served_industries; ///< Hide industries from which cargo is already picked up.
+	static bool show_industry_heat;     ///< Display the industry density heatmap.
+	static uint16_t industry_heat_radius; ///< Radius in tiles of the industry density heatmap.
+
+	static constexpr uint16_t HEAT_RADII[] = {64, 128, 256}; ///< Selectable heatmap radii.
+	static constexpr uint HEAT_CELL_SHIFT = 2; ///< Heatmap cells are 2^HEAT_CELL_SHIFT tiles wide.
+
+	mutable std::vector<float> heat{}; ///< Industry density per heatmap cell.
+	mutable uint heat_w = 0;           ///< Width of the heatmap in cells.
+	mutable uint heat_h = 0;           ///< Height of the heatmap in cells.
+	mutable float heat_max = 0;        ///< Highest heat value, for normalisation.
+	mutable bool heat_dirty = true;    ///< Whether the heatmap needs recomputing.
 	static int map_height_limit;  ///< Currently used/cached map height limit.
 
 	static const uint INDUSTRY_MIN_NUMBER_OF_COLUMNS = 2;     ///< Minimal number of columns in the #WID_SM_LEGEND widget for the #SMT_INDUSTRY legend.
@@ -182,6 +194,8 @@ protected:
 	void DrawTowns(const DrawPixelInfo *dpi, const int vertical_padding) const;
 	void DrawIndustryNames(const DrawPixelInfo *dpi, const int vertical_padding) const;
 	void DrawSmallMap(DrawPixelInfo *dpi, bool draw_indicators = true) const;
+	static bool IsIndustryShown(const struct Industry *ind);
+	void RecomputeIndustryHeat() const;
 
 	Point TileToPixel(int tx, int ty) const;
 	Point PixelToTile(int px, int py) const;
@@ -213,6 +227,7 @@ public:
 	bool OnRightClick(Point pt, WidgetID widget) override;
 	void OnMouseWheel(int wheel, WidgetID widget) override;
 	void OnRealtimeTick(uint delta_ms) override;
+	void OnDropdownSelect(WidgetID widget, int index, int click_result) override;
 	void OnScroll(Point delta) override;
 	void OnMouseOver(Point pt, WidgetID widget) override;
 

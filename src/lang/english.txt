@@ -844,6 +844,13 @@ STR_SMALLMAP_TOOLTIP_DISABLE_ALL_INDUSTRIES                     :{BLACK}Display 
 STR_SMALLMAP_TOOLTIP_ENABLE_ALL_INDUSTRIES                      :{BLACK}Display all industries on the map
 STR_SMALLMAP_TOOLTIP_SHOW_HEIGHT                                :{BLACK}Toggle display of heightmap
 STR_SMALLMAP_TOOLTIP_SHOW_INDUSTRY_NAMES                        :{BLACK}Toggle display of industry names
+STR_SMALLMAP_HIDE_SERVED                                        :{BLACK}Hide served
+STR_SMALLMAP_TOOLTIP_HIDE_SERVED                                :{BLACK}Hide industries which any company served (transported cargo from or delivered cargo to) this or last month
+STR_SMALLMAP_SHOW_HEAT                                          :{BLACK}Density
+STR_SMALLMAP_TOOLTIP_SHOW_HEAT                                  :{BLACK}Toggle heatmap of industry density for the displayed industries
+STR_SMALLMAP_HEAT_RADIUS                                        :{BLACK}Radius: {NUM}
+STR_SMALLMAP_HEAT_RADIUS_ITEM                                   :{NUM} tiles
+STR_SMALLMAP_TOOLTIP_HEAT_RADIUS                                :{BLACK}Select the radius in tiles of the industry density heatmap
 STR_SMALLMAP_TOOLTIP_DISABLE_ALL_COMPANIES                      :{BLACK}Display no company property on the map
 STR_SMALLMAP_TOOLTIP_ENABLE_ALL_COMPANIES                       :{BLACK}Display all company property on the map
 STR_SMALLMAP_TOOLTIP_DISABLE_ALL_CARGOS                         :{BLACK}Display no cargoes on the map
