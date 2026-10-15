@@ -792,3 +792,23 @@ void ClearExtraStationNames()
 
 	_extra_station_names_probability = 0;
 }
+
+/**
+ * Get the total cargo storage of this station, shared by all cargo types.
+ * @return Number of station tiles times the configured storage per tile.
+ */
+uint Station::GetCargoCapacity() const
+{
+	return std::max<uint>(1, this->station_tiles) * _settings_game.station.capacity_per_tile;
+}
+
+/**
+ * Get the total amount of cargo of all types stored at this station, including reserved cargo.
+ * @return Total cargo amount.
+ */
+uint Station::GetTotalCargoWaiting() const
+{
+	uint total = 0;
+	for (const GoodsEntry &ge : this->goods) total += ge.CargoTotalCount();
+	return total;
+}

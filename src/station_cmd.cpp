@@ -4817,6 +4817,9 @@ void ModifyStationRatingAround(TileIndex tile, Owner owner, int amount, uint rad
 	});
 }
 
+/** Amount of cargo rejected by a full station that costs one point of station rating. */
+static const uint STATION_CAPACITY_LOST_CARGO_PER_RATING_POINT = 16;
+
 static uint UpdateStationWaiting(Station *st, CargoType cargo, uint amount, Source source)
 {
 	/* We can't allocate a CargoPacket? Then don't do anything
@@ -4830,6 +4833,14 @@ static uint UpdateStationWaiting(Station *st, CargoType cargo, uint amount, Sour
 	amount >>= 8;
 	/* No new "real" cargo item yet. */
 	if (amount == 0) return 0;
+
+	/* A full station rejects new cargo; the lost cargo hurts the station rating. */
+	if (st->GetTotalCargoWaiting() >= st->GetCargoCapacity()) {
+		const uint penalty = std::max<uint>(1, amount / STATION_CAPACITY_LOST_CARGO_PER_RATING_POINT);
+		ge.rating = ClampTo<uint8_t>((int)ge.rating - (int)penalty);
+		SetWindowWidgetDirty(WindowClass::StationView, st->index, WID_SV_ACCEPT_RATING_LIST);
+		return 0;
+	}
 
 	StationID next = ge.GetVia(st->index);
 	ge.CreateData().cargo.Append(CargoPacket::Create(st->index, amount, source), next);
