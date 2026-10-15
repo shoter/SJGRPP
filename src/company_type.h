@@ -56,6 +56,7 @@ struct CompanyManagerFace {
 	uint style = 0; ///< Company manager face style.
 	uint32_t bits = 0; ///< Company manager face bits, meaning is dependent on style.
 	std::string style_label; ///< Face style label.
+	std::string image; ///< Id of the chosen face image (see face_images.h); empty to pick one from #bits.
 };
 
 /** The reason why the company was removed. */

@@ -200,6 +200,8 @@ add_files(
     error_gui.cpp
     event_logs.cpp
     event_logs.h
+    face_images.cpp
+    face_images.h
     fileio.cpp
     fileio_func.h
     fileio_type.h
