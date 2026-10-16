@@ -828,13 +828,15 @@ class StressTest:
                                            for f in ("profit_this_year", "profit_last_year", "profit_lifetime"))}
             for v, val in vals.items():
                 self.vehicle_history.setdefault(v, set()).add((val["tile"], val["x_pos"], val["y_pos"]))
-            moved = [v for v in vids if len(self.vehicle_history.get(v, ())) > 1]
             # profit_lifetime is only updated at the end of a year.
             earning = [v for v, val in vals.items()
                        if max(int(val["profit_this_year"]), int(val["profit_last_year"]), int(val["profit_lifetime"])) > 0]
+            # Positions are only sampled at sync checks: a vehicle loading or queueing at a station at each sample looks
+            # parked, but one that earned money has delivered cargo, so it moved.
+            moved = [v for v in vids if len(self.vehicle_history.get(v, ())) > 1 or v in earning]
             self.check(len(vals) == len(vids), f"{kind} vehicles still exist", f"{len(vals)}/{len(vids)}",
                        severity="warn")  # crashes at level crossings are normal gameplay
-            self.check(len(moved) >= max(1, len(vids) // 2), f"{kind} vehicles move", f"{len(moved)}/{len(vids)} changed position")
+            self.check(len(moved) >= max(1, len(vids) // 2), f"{kind} vehicles move", f"{len(moved)}/{len(vids)} changed position or earned money")
             self.check(len(earning) > 0, f"{kind} vehicles earn money",
                        f"{len(earning)}/{len(vids)} with positive profit",
                        severity="warn" if kind == "ship" or self.profile["months"] < 2 else "fail")
