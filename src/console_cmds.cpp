@@ -88,6 +88,8 @@
 
 #include "table/strings.h"
 #include "debug_bridge.h"
+#include "sector_base.h"
+#include "sector_func.h"
 
 #include "safeguards.h"
 
@@ -3602,6 +3604,33 @@ static bool ConDumpVehicle(std::span<std::string_view> argv)
  *       and y coordinates.
  * @return True when either console help was shown or a proper amount of parameters given.
  */
+static bool ConSectors(std::span<std::string_view> argv)
+{
+	if (argv.empty()) {
+		IConsolePrint(CC_HELP, "List the sectors, or show the sector of a tile.");
+		IConsolePrint(CC_HELP, "Usage: 'sectors' or 'sectors <tile>'");
+		return true;
+	}
+
+	if (argv.size() == 2) {
+		auto tile = ParseInteger(argv[1]);
+		if (!tile.has_value() || *tile >= Map::Size()) {
+			IConsolePrint(CC_ERROR, "Tile does not exist.");
+			return true;
+		}
+		SectorID sector = GetTileSector(TileIndex(*tile));
+		IConsolePrint(CC_DEFAULT, "tile {}: sector {} ({})", *tile, sector == SectorID::Invalid() ? -1 : (int)sector.base(), GetSectorName(sector));
+		return true;
+	}
+
+	IConsolePrint(CC_DEFAULT, "{} sectors, enabled: {}", Sector::GetNumItems(), AreSectorsEnabled() ? "yes" : "no");
+	for (const Sector *s : Sector::Iterate()) {
+		IConsolePrint(CC_DEFAULT, "  {}: '{}', tiles: {}, centre: {}, price: {}, free first: {}, rights: 0x{:X}",
+				s->index.base(), GetSectorName(s->index), s->tile_count, s->centre.base(), (int64_t)s->GetPrice(), s->no_first_pick ? "no" : "yes", s->rights.base());
+	}
+	return true;
+}
+
 static bool ConDumpTile(std::span<std::string_view> argv)
 {
 	switch (argv.size()) {
@@ -4670,6 +4699,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("dump_cargo_types",        ConDumpCargoTypes,   nullptr, true);
 	IConsole::CmdRegister("dump_vehicle",            ConDumpVehicle,      nullptr, true);
 	IConsole::CmdRegister("dump_tile",               ConDumpTile,         nullptr, true);
+	IConsole::CmdRegister("sectors",                 ConSectors);
 	IConsole::CmdRegister("dump_grf_cargo_tables",   ConDumpGrfCargoTables, nullptr, true);
 	IConsole::CmdRegister("dump_signal_styles",      ConDumpSignalStyles, nullptr, true);
 	IConsole::CmdRegister("dump_sprite_cache_stats", ConSpriteCacheStats, nullptr, true);

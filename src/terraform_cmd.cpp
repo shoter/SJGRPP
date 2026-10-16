@@ -20,6 +20,7 @@
 #include "terraform_cmd.h"
 #include "tile_cmd.h"
 #include "core/backup_type.hpp"
+#include "sector_func.h"
 
 #include "table/strings.h"
 
@@ -205,6 +206,15 @@ CommandCost CmdTerraformLand(DoCommandFlags flags, TileIndex tile, Slope slope, 
 		CommandCost cost = TerraformTileHeight(&ts, t, TileHeight(t) + direction);
 		if (cost.Failed()) return cost;
 		total_cost.AddCost(cost.GetCost());
+	}
+
+	/* Every tile changing shape must be in a sector the company has building rights in. */
+	for (const auto &t : ts.dirty_tiles) {
+		CommandCost sector_ret = CheckSectorBuildingRights(t);
+		if (sector_ret.Failed()) {
+			sector_ret.SetTile(t);
+			return sector_ret;
+		}
 	}
 
 	/* Check if the terraforming is valid wrt. tunnels, bridges and objects on the surface

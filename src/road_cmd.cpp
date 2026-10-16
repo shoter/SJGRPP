@@ -49,6 +49,7 @@
 #include "maintenance_func.h"
 #include "tile_cmd.h"
 #include "road_layout_func.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 #include "table/roadtypes.h"
@@ -641,6 +642,9 @@ static void UpdateRoadStopTileDisallowedRoadDirection(TileIndex tile, Disallowed
  */
 static CommandCost RemoveRoad(TileIndex tile, DoCommandFlags flags, RoadBits pieces, RoadTramType rtt, bool town_check)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	assert(pieces.Any());
 
 	RoadType existing_rt = MayHaveRoad(tile) ? GetRoadType(tile, rtt) : INVALID_ROADTYPE;
@@ -1012,6 +1016,9 @@ static bool CanConvertUnownedRoadType(Owner owner, RoadTramType rtt)
  */
 CommandCost CmdBuildRoad(DoCommandFlags flags, TileIndex tile, RoadBits pieces, RoadType rt, DisallowedRoadDirections toggle_drd, TownID town_id, BuildRoadFlags build_flags)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	CompanyID company = _current_company;
 	CommandCost cost(ExpensesType::Construction);
 
@@ -1779,6 +1786,9 @@ CommandCost CmdRemoveLongRoad(DoCommandFlags flags, TileIndex end_tile, TileInde
  */
 CommandCost CmdBuildRoadDepot(DoCommandFlags flags, TileIndex tile, RoadType rt, DiagDirection dir)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	if (!ValParamRoadType(rt) || !IsValidDiagDirection(dir)) return CMD_ERROR;
 
 	CommandCost cost(ExpensesType::Construction);
@@ -3225,6 +3235,12 @@ CommandCost CmdConvertRoad(DoCommandFlags flags, TileIndex tile, TileIndex area_
 				error = std::move(ret);
 				continue;
 			}
+		}
+
+		CommandCost sector_ret = CheckSectorBuildingRights(tile);
+		if (sector_ret.Failed()) {
+			error = std::move(sector_ret);
+			continue;
 		}
 
 		/* Base the ability to replace town roads and bridges on the town's

@@ -43,6 +43,7 @@ add_files(
     osk_widget.h
     picker_widget.h
     plans_widget.h
+    sector_widget.h
     rail_widget.h
     road_widget.h
     screenshot_widget.h

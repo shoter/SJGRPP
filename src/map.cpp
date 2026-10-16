@@ -16,6 +16,7 @@
 #include "tunnelbridge_map.h"
 #include "settings_type.h"
 #include "pathfinder/water_regions.h"
+#include "sector_func.h"
 #include "core/alloc_func.hpp"
 #include "3rdparty/cpp-ring-buffer/ring_buffer.hpp"
 #include "3rdparty/cpp-btree/btree_map.h"
@@ -144,6 +145,7 @@ void AllocateMap(uint size_x, uint size_y)
 	_me.tile_data = reinterpret_cast<TileExtended *>(buf + (_map_size * sizeof(Tile)));
 
 	InitializeWaterRegions();
+	InitializeSectorMap();
 }
 
 /** For use in the tests */
@@ -163,6 +165,7 @@ void DeallocateMap()
 	_me.tile_data = nullptr;
 
 	InitializeWaterRegions();
+	InitializeSectorMap();
 }
 
 void CountLandTiles()

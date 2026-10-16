@@ -1259,6 +1259,12 @@ static void TownZoneCustomValueChanged(int32_t new_value)
 	if (_settings_game.economy.town_zone_calc_mode) UpdateTownRadii();
 }
 
+static void SectorSettingsChanged(int32_t new_value)
+{
+	InvalidateWindowClassesData(WindowClass::Sectors);
+	MarkWholeScreenDirty();
+}
+
 static bool CheckTTDPatchSettingFlag(uint flag)
 {
 	extern bool HasTTDPatchFlagBeenObserved(uint flag);

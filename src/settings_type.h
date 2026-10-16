@@ -882,6 +882,9 @@ struct VehicleSettings {
 
 /** Settings related to the economy. */
 struct EconomySettings {
+	bool     sectors;                        ///< the map is divided into sectors and companies need building rights to build in them
+	uint32_t sector_size;                    ///< average number of tiles of a randomly generated sector
+	uint32_t sector_price_per_tile;          ///< price of building rights per tile of a sector without a custom price
 	bool     inflation;                      ///< disable inflation
 	bool     inflation_fixed_dates;          ///< whether inflation is applied between fixed dates
 	bool     bribe;                          ///< enable bribing the local authority

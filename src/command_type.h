@@ -36,7 +36,7 @@ DECLARE_ENUM_AS_BIT_SET(CommandCostIntlFlags)
 
 using CommandCostAllowedResultTypes = TypeList<uint32_t, struct PlanIDTag, struct VehicleIDTag, struct SignIDTag, struct GroupIDTag, struct GoalIDTag, struct TownIDTag,
 		struct StoryPageIDTag, struct StoryPageElementIDTag, struct LeagueTableElementIDTag, struct LeagueTableIDTag,
-		struct TraceRestrictSlotIDTag, struct TraceRestrictSlotGroupIDTag, struct TraceRestrictCounterIDTag>;
+		struct TraceRestrictSlotIDTag, struct TraceRestrictSlotGroupIDTag, struct TraceRestrictCounterIDTag, struct SectorIDTag>;
 using CommandCostResultTypeIndex = uint8_t;
 
 template <typename T>
@@ -774,6 +774,14 @@ enum class Commands : uint8_t {
 
 	DesyncCheck,                            ///< Force desync checks to be run
 
+	BuySectorRights,                        ///< buy building rights in a sector
+	SectorPaint,                            ///< scenario editor: assign an area to a sector
+	SectorCreate,                           ///< scenario editor: create a new sector
+	SectorRename,                           ///< scenario editor: rename a sector
+	SectorSetProperties,                    ///< scenario editor: change price and first pick flag of a sector
+	SectorGenerate,                         ///< scenario editor: divide the map randomly into sectors
+	SectorMerge,                            ///< scenario editor: merge a sector into another
+
 	End,                                    ///< Must ALWAYS be on the end of this list!! (period)
 };
 
@@ -868,6 +876,9 @@ enum class CommandCallback : uint8_t {
 
 	/* debug_bridge_cmd.cpp */
 	DebugBridge,
+
+	/* sector_gui.cpp */
+	SectorCreate,
 
 	End, ///< Must ALWAYS be on the end of this list
 };

@@ -124,3 +124,66 @@ STR_CONFIG_SETTING_LINEAR_MAINTENANCE                           :Liniowy wzrost 
 STR_CONFIG_SETTING_LINEAR_MAINTENANCE_HELPTEXT                  :Po włączeniu, koszty utrzymania infrastruktury rosną liniowo zamiast wielomianowo
 STR_CONFIG_SETTING_STATION_CAPACITY_PER_TILE                    :Pojemność magazynu stacji na pole stacji: {STRING2}
 STR_CONFIG_SETTING_STATION_CAPACITY_PER_TILE_HELPTEXT           :Każde pole stacji zwiększa łączną pojemność magazynu stacji o tyle jednostek, wspólną dla wszystkich rodzajów ładunku. Dopóki stacja przechowuje mniej niż wynosi jej pojemność, nowy ładunek jest przyjmowany, nawet jeśli przekroczy limit. Gdy stacja jest pełna, nowy ładunek jest odrzucany, a ocena stacji dla tego ładunku spada proporcjonalnie do utraconego ładunku.
+
+STR_CONFIG_SETTING_SECTORS                                      :Podziel mapę na sektory z prawami budowy: {STRING2}
+STR_CONFIG_SETTING_SECTORS_HELPTEXT                             :Gdy włączone, mapa jest podzielona na sektory, a firmy mogą budować, burzyć i zmieniać teren tylko w sektorach, w których kupiły prawa budowy. Most lub tunel wymaga praw budowy na każdym polu, nad lub pod którym przechodzi. Pierwszy sektor firmy jest darmowy, chyba że scenariusz tego zabrania dla danego sektora. Losowe mapy są dzielone losowo; w edytorze scenariuszy sektory można edytować
+STR_CONFIG_SETTING_SECTOR_SIZE                                  :Średnia wielkość losowych sektorów: {STRING2} pól
+STR_CONFIG_SETTING_SECTOR_SIZE_HELPTEXT                         :Średnia liczba pól sektora przy losowym podziale mapy na sektory. Powstaje najwyżej 255 sektorów
+STR_CONFIG_SETTING_SECTOR_PRICE_PER_TILE                        :Cena praw budowy za pole sektora: {STRING2}
+STR_CONFIG_SETTING_SECTOR_PRICE_PER_TILE_HELPTEXT               :Cena praw budowy w sektorze to ta kwota pomnożona przez liczbę pól sektora, chyba że scenariusz ustala cenę dla sektora. Ceny rosną wraz z inflacją
+
+STR_MAP_MENU_SECTOR_MAP                                         :Mapa sektorów
+STR_ABOUT_MENU_TOGGLE_SECTOR_OVERLAY                            :Pokaż granice sektorów
+
+STR_SECTOR_NAME_NONE                                            :(brak sektora)
+STR_SECTOR_NAME_NUMBER                                          :Sektor {COMMA}
+
+STR_SECTOR_CAPTION                                              :{WHITE}Sektory
+STR_SECTOR_MAP_TOOLTIP                                          :{BLACK}Kliknij sektor, aby go wybrać. Kliknij dwukrotnie, aby przewinąć do niego widok główny
+STR_SECTOR_INFO_NONE_SELECTED                                   :{BLACK}Kliknij sektor na mapie, aby go wybrać
+STR_SECTOR_INFO_SIZE                                            :{BLACK}Wielkość: {LTBLUE}{COMMA} {P pole pola pól}
+STR_SECTOR_INFO_PRICE                                           :{BLACK}Cena praw budowy: {LTBLUE}{CURRENCY_LONG}
+STR_SECTOR_INFO_PRICE_FREE                                      :{BLACK}Cena praw budowy: {GREEN}za darmo (pierwszy sektor)
+STR_SECTOR_INFO_PRICE_CUSTOM                                    :{BLACK}Cena praw budowy: {LTBLUE}{CURRENCY_LONG} (własna)
+STR_SECTOR_INFO_PRICE_AUTOMATIC                                 :{BLACK}Cena praw budowy: {LTBLUE}{CURRENCY_LONG} (z wielkości)
+STR_SECTOR_INFO_HAVE_RIGHTS                                     :{GREEN}Masz prawa budowy w tym sektorze
+STR_SECTOR_INFO_NO_RIGHTS                                       :{RED}Nie masz praw budowy w tym sektorze
+STR_SECTOR_INFO_RIGHTS_HEADER                                   :{BLACK}Firmy z prawami budowy:
+STR_SECTOR_INFO_RIGHTS_NONE                                     :{BLACK}  brak
+STR_SECTOR_INFO_FIRST_PICK_ALLOWED                              :{BLACK}Może być darmowym pierwszym sektorem firmy: {LTBLUE}tak
+STR_SECTOR_INFO_FIRST_PICK_FORBIDDEN                            :{BLACK}Może być darmowym pierwszym sektorem firmy: {ORANGE}nie
+STR_SECTOR_INFO_OWNED_COUNT                                     :{BLACK}Sektory z twoimi prawami budowy: {LTBLUE}{COMMA} z {COMMA}
+STR_SECTOR_INFO_DISABLED                                        :{ORANGE}Sektory są wyłączone w tej grze, budowa nie jest ograniczona
+
+STR_SECTOR_BUY                                                  :{BLACK}Kup prawa budowy
+STR_SECTOR_BUY_TOOLTIP                                          :{BLACK}Kup prawa budowy w wybranym sektorze, aby twoja firma mogła w nim budować
+STR_SECTOR_GOTO                                                 :{BLACK}Pokaż
+STR_SECTOR_GOTO_TOOLTIP                                         :{BLACK}Przewiń widok główny do środka wybranego sektora
+STR_SECTOR_OVERLAY                                              :{BLACK}Granice
+STR_SECTOR_OVERLAY_TOOLTIP                                      :{BLACK}Pokaż granice sektorów w widoku głównym: zielone tam, gdzie masz prawa budowy, czerwone tam, gdzie ich nie masz
+STR_SECTOR_RENAME                                               :{BLACK}Zmień nazwę
+STR_SECTOR_RENAME_TOOLTIP                                       :{BLACK}Zmień nazwę wybranego sektora. Pusta nazwa oznacza nazwę jego największego miasta
+STR_SECTOR_RENAME_QUERY                                         :{WHITE}Zmień nazwę sektora
+STR_SECTOR_PRICE                                                :{BLACK}Cena
+STR_SECTOR_PRICE_TOOLTIP                                        :{BLACK}Ustal cenę praw budowy wybranego sektora. 0 oznacza cenę z ustawienia ceny za pole
+STR_SECTOR_PRICE_QUERY                                          :{WHITE}Cena praw budowy (0 = z wielkości)
+STR_SECTOR_FIRST_PICK                                           :{BLACK}Darmowy pierwszy
+STR_SECTOR_FIRST_PICK_TOOLTIP                                   :{BLACK}Przełącz, czy wybrany sektor może być darmowym pierwszym sektorem firmy
+STR_SECTOR_PAINT                                                :{BLACK}Maluj
+STR_SECTOR_PAINT_TOOLTIP                                        :{BLACK}Przypisz obszar mapy do wybranego sektora, przeciągając w widoku głównym. Ctrl zaznacza obszar ukośny
+STR_SECTOR_NEW                                                  :{BLACK}Nowy
+STR_SECTOR_NEW_TOOLTIP                                          :{BLACK}Utwórz nowy sektor, klikając pole w widoku głównym, a potem powiększ go narzędziem Maluj
+STR_SECTOR_MERGE                                                :{BLACK}Połącz z
+STR_SECTOR_MERGE_TOOLTIP                                        :{BLACK}Usuń wybrany sektor i przekaż jego pola innemu sektorowi
+STR_SECTOR_GENERATE                                             :{BLACK}Generuj
+STR_SECTOR_GENERATE_TOOLTIP                                     :{BLACK}Zastąp wszystkie sektory losowym podziałem mapy
+STR_SECTOR_GENERATE_QUERY                                       :{WHITE}Średnia liczba pól na sektor
+
+STR_ERROR_SECTOR_NO_BUILDING_RIGHTS                             :{WHITE}... brak praw budowy w tym sektorze
+STR_ERROR_SECTOR_NO_BUILDING_RIGHTS_IN                          :{WHITE}... brak praw budowy w sektorze {RAW_STRING}
+STR_ERROR_SECTOR_ALREADY_HAVE_RIGHTS                            :{WHITE}... prawa budowy już posiadane
+STR_ERROR_SECTOR_TOO_MANY                                       :{WHITE}... zbyt wiele sektorów
+STR_ERROR_CAN_T_BUY_SECTOR_RIGHTS                               :{WHITE}Nie można kupić praw budowy...
+STR_ERROR_CAN_T_CHANGE_SECTOR                                   :{WHITE}Nie można zmienić sektora...
+
+STR_LAI_SECTOR                                                  :{BLACK}Sektor: {GOLD}{RAW_STRING}

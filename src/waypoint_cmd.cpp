@@ -37,6 +37,7 @@
 #include "road_layout_func.h"
 
 #include "widgets/misc_widget.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 
@@ -259,6 +260,9 @@ CommandCost CmdBuildRailWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
 
 	Waypoint *wp = nullptr;
 	TileArea new_location(start_tile, width, height);
+	CommandCost sector_ret = CheckSectorBuildingRights(new_location);
+	if (sector_ret.Failed()) return sector_ret;
+
 	CommandCost ret = FindJoiningWaypoint(est, station_to_join, adjacent, new_location, &wp, false);
 	if (ret.Failed()) return ret;
 
@@ -390,6 +394,9 @@ CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
 	if (!IsValidTile(start_tile) || TileAddWrap(start_tile, width - 1, height - 1) == INVALID_TILE) return CMD_ERROR;
 
 	TileArea roadstop_area(start_tile, width, height);
+
+	CommandCost sector_ret = CheckSectorBuildingRights(roadstop_area);
+	if (sector_ret.Failed()) return sector_ret;
 	/* Total road stop cost. */
 	Money unit_cost;
 	if (spec != nullptr) {
@@ -516,6 +523,9 @@ CommandCost CmdBuildRoadWaypoint(DoCommandFlags flags, TileIndex start_tile, Axi
  */
 CommandCost CmdBuildBuoy(DoCommandFlags flags, TileIndex tile)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	if (!HasTileWaterGround(tile)) return CommandCost(STR_ERROR_SITE_UNSUITABLE);
 
 	if (!IsTileFlat(tile)) return CommandCost(STR_ERROR_SITE_UNSUITABLE);

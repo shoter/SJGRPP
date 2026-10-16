@@ -59,6 +59,7 @@
 #include "depot_bridge.h"
 #include "rail_settings.h"
 #include "road_layout_func.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 #include "table/bridge_land.h"
@@ -464,6 +465,10 @@ CommandCost CmdBuildBridge(DoCommandFlags flags, TileIndex tile_end, TileIndex t
 	}
 
 	if (tile_end < tile_start) std::swap(tile_start, tile_end);
+
+	/* The whole bridge, including the tiles it spans, must be in sectors with building rights. */
+	CommandCost sector_ret = CheckSectorBuildingRightsLine(tile_start, tile_end);
+	if (sector_ret.Failed()) return sector_ret;
 
 	uint bridge_len = GetTunnelBridgeLength(tile_start, tile_end);
 	if (transport_type != TransportType::Water) {
@@ -1172,6 +1177,10 @@ CommandCost CmdBuildTunnel(DoCommandFlags flags, TileIndex start_tile, Transport
 
 	/* if the command fails from here on we want the end tile to be highlighted */
 	_build_tunnel_endtile = end_tile;
+
+	/* The whole tunnel, including the tiles it passes under, must be in sectors with building rights. */
+	CommandCost sector_ret = CheckSectorBuildingRightsLine(start_tile, end_tile);
+	if (sector_ret.Failed()) return sector_ret;
 
 	if (tiles > _settings_game.construction.max_tunnel_length) return CommandCost(STR_ERROR_TUNNEL_TOO_LONG);
 
