@@ -407,6 +407,8 @@ class StressTest:
         self.log(f"starting dedicated server + {a.clients} clients (seed {a.seed}, map {2 ** a.map_bits}^2)")
         self.cluster = Cluster(clients=a.clients, session="stress", root=self.out / "instances", seed=a.seed,
                                company="new", debug=a.debug, server_config=self.server_config(),
+                               # Network progress in client logs, so a stalled join or timeout can be diagnosed.
+                               client_debug=a.debug or "net=2",
                                resolution=tuple(self.profile.get("resolution", (1280, 720))))
         c = self.cluster
         c.root.mkdir(parents=True, exist_ok=True)
@@ -636,13 +638,19 @@ class StressTest:
             self.builders[ci].commands_sent, self.builders[ci].commands_failed = old.commands_sent, old.commands_failed
         elif event == "spectator":
             self.spectators_started += 1
-            spec = Instance(f"spectator{self.spectators_started}", mode="headless", root=c.root)
+            spec = Instance(f"spectator{self.spectators_started}", mode="headless", root=c.root, debug="net=3")
             self.extra_instances.append(spec)
             self.log(f"churn: {spec.name} joins as spectator (map download)")
             t0 = time.monotonic()
             spec.start("-n", f"127.0.0.1:{c.server_port}#255", wait=300)
-            spec.bridge.wait_until(lambda b: (i := b.info())["networking"] and i["game_mode"] == "normal"
-                                   and i["client_id"] != 0, timeout=300, what="spectator to join")
+            try:
+                spec.bridge.wait_until(lambda b: (i := b.info())["networking"] and i["game_mode"] == "normal"
+                                       and i["client_id"] != 0, timeout=300, what="spectator to join")
+            except TimeoutError:
+                detail = self.describe_stuck(spec)
+                self.drop_mon(spec)
+                spec.stop()
+                raise TimeoutError(f"{spec.name} did not join within 300s: {detail}") from None
             self.join_seconds[spec.name] = round(time.monotonic() - t0, 1)
             # Long enough for the join-time cache/desync checks of a client that rebuilt its caches from the map.
             spec.bridge.wait_ticks(500, timeout_ms=120000)
@@ -682,6 +690,19 @@ class StressTest:
             self.check(False, f"GUI exercise on {client.name} ({label})",
                        f"client process died (exit code {client.proc.returncode}) while drawing windows; crash files: "
                        f"{[p.name for p in client.crash_files()]}")
+
+    def describe_stuck(self, inst: Instance) -> str:
+        """State of a client that did not get into the game, for the report (and a screenshot in the run dir)."""
+        try:
+            b = inst.bridge
+            info = b.info()
+            windows = [w["class_name"] for w in b.windows()]
+            lines = [l["text"] for l in b.log(0, 1000)["lines"] if "[net" in l["text"] or "rror" in l["text"]][-8:]
+            shot = b.screenshot(self.out / f"stuck_{inst.name}.png")
+            return (f"mode {info['game_mode']}, networking {info['networking']}, client_id {info['client_id']}, "
+                    f"windows {windows}, screenshot {shot}, log: {' / '.join(lines) or '(no network log lines)'}")
+        except Exception as e:  # noqa: BLE001
+            return f"(could not inspect: {type(e).__name__}: {e})"
 
     def expand(self, rng: random.Random) -> None:
         """Add a vehicle to a random road/air route while the game runs: keeps client commands flowing."""
@@ -801,7 +822,8 @@ class StressTest:
                 self.vehicle_history.setdefault(v, set()).add((val["tile"], val["x_pos"], val["y_pos"]))
             moved = [v for v in vids if len(self.vehicle_history.get(v, ())) > 1]
             # profit_lifetime is only updated at the end of a year.
-            earning = [v for v, val in vals.items() if max(val["profit_this_year"], val["profit_last_year"], val["profit_lifetime"]) > 0]
+            earning = [v for v, val in vals.items()
+                       if max(int(val["profit_this_year"]), int(val["profit_last_year"]), int(val["profit_lifetime"])) > 0]
             self.check(len(vals) == len(vids), f"{kind} vehicles still exist", f"{len(vals)}/{len(vids)}")
             self.check(len(moved) >= max(1, len(vids) // 2), f"{kind} vehicles move", f"{len(moved)}/{len(vids)} changed position")
             self.check(len(earning) > 0, f"{kind} vehicles earn money",
