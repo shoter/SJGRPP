@@ -80,7 +80,7 @@ string(REGEX REPLACE "\\\[script:[0-9]\\\]" "" REGRESSION_RESULT "${REGRESSION_R
 
 # Convert the output to a format that is expected (and more readable) by result.txt
 string(REPLACE "dbg:  " "ERROR: " REGRESSION_RESULT "${REGRESSION_RESULT}")
-string(REGEX REPLACE "ERROR: \\\[18?\\\] " "" REGRESSION_RESULT "${REGRESSION_RESULT}")
+string(REGEX REPLACE "ERROR: \\\[(18?|31)\\\] " "" REGRESSION_RESULT "${REGRESSION_RESULT}")
 string(REPLACE "[P] " "" REGRESSION_RESULT "${REGRESSION_RESULT}")
 string(REPLACE "[S] " "" REGRESSION_RESULT "${REGRESSION_RESULT}")
 string(REGEX REPLACE "dbg: ([^\n]*)\n?" "" REGRESSION_RESULT "${REGRESSION_RESULT}")
