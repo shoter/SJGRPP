@@ -162,6 +162,7 @@ class StressTest:
         self.growth_ok: dict[int, int] = {}
         self.growth_failed: dict[int, int] = {}
         self._monitors: dict[str, Bridge] = {}
+        self.spectators_started = 0
 
     # ---- reporting ----
 
@@ -634,7 +635,8 @@ class StressTest:
             self.builders[ci].command_ms = old.command_ms
             self.builders[ci].commands_sent, self.builders[ci].commands_failed = old.commands_sent, old.commands_failed
         elif event == "spectator":
-            spec = Instance(f"spectator{index}", mode="headless", root=c.root)
+            self.spectators_started += 1
+            spec = Instance(f"spectator{self.spectators_started}", mode="headless", root=c.root)
             self.extra_instances.append(spec)
             self.log(f"churn: {spec.name} joins as spectator (map download)")
             t0 = time.monotonic()
@@ -652,6 +654,7 @@ class StressTest:
             self.check(set(ref["vehicles"]) == set(got["vehicles"]) and set(ref["stations"]) == set(got["stations"]),
                        f"{spec.name} sees the same stations and vehicles",
                        f"joined in {self.join_seconds[spec.name]}s, {len(got['vehicles'])} vehicles")
+            self.drop_mon(spec)
             spec.stop()
         elif event == "save":
             name = f"stress_mid{index}"
@@ -811,6 +814,14 @@ class StressTest:
         out = server.console("save stress_final", timeout=180)
         self.unpause()
         save = c.server.dir / "save" / "stress_final.sav"
+        # Saving runs on a background thread: wait until the file exists and stopped growing.
+        deadline, last_size = time.monotonic() + 120, -1
+        while time.monotonic() < deadline:
+            size = save.stat().st_size if save.exists() else -1
+            if size > 0 and size == last_size:
+                break
+            last_size = size
+            time.sleep(1)
         if not self.check(save.exists(), "server saved the game", "; ".join(out)[:200]):
             return
         loader = Instance("load_check", mode="headless", root=c.root, lockstep=True)
