@@ -249,14 +249,14 @@ class StressTest:
 
     # ---- state comparison ----
 
-    def pause_synced(self, timeout: float = 60.0) -> int:
-        """Pause the server and wait until every client has caught up to the same game tick. Returns that tick."""
+    def pause_synced(self, timeout: float = 60.0, extra: list[Instance] | None = None) -> int:
+        """Pause the server and wait until every client (and extra instances) reached the same game tick. Returns it."""
         assert self.cluster is not None
         server = self.mon(self.cluster.server)
         server.console("pause")
         server.wait_until(lambda b: b.info()["paused"], timeout=timeout, what="server pause")
         tick = server.info()["tick_counter"]
-        for c in self.cluster.clients:
+        for c in self.cluster.clients + (extra or []):
             self.mon(c).wait_until(lambda b: (i := b.info())["paused"] and i["tick_counter"] == tick, timeout=timeout,
                                 what=f"{c.name} to reach paused tick {tick}")
         return tick
@@ -407,6 +407,8 @@ class StressTest:
         self.log(f"starting dedicated server + {a.clients} clients (seed {a.seed}, map {2 ** a.map_bits}^2)")
         self.cluster = Cluster(clients=a.clients, session="stress", root=self.out / "instances", seed=a.seed,
                                company="new", debug=a.debug, server_config=self.server_config(),
+                               # Network progress in client logs, so a stalled join or timeout can be diagnosed.
+                               client_debug=a.debug or "net=2",
                                resolution=tuple(self.profile.get("resolution", (1280, 720))))
         c = self.cluster
         c.root.mkdir(parents=True, exist_ok=True)
@@ -636,24 +638,34 @@ class StressTest:
             self.builders[ci].commands_sent, self.builders[ci].commands_failed = old.commands_sent, old.commands_failed
         elif event == "spectator":
             self.spectators_started += 1
-            spec = Instance(f"spectator{self.spectators_started}", mode="headless", root=c.root)
+            spec = Instance(f"spectator{self.spectators_started}", mode="headless", root=c.root, debug="net=3")
             self.extra_instances.append(spec)
             self.log(f"churn: {spec.name} joins as spectator (map download)")
             t0 = time.monotonic()
             spec.start("-n", f"127.0.0.1:{c.server_port}#255", wait=300)
-            spec.bridge.wait_until(lambda b: (i := b.info())["networking"] and i["game_mode"] == "normal"
-                                   and i["client_id"] != 0, timeout=300, what="spectator to join")
+            try:
+                spec.bridge.wait_until(lambda b: (i := b.info())["networking"] and i["game_mode"] == "normal"
+                                       and i["client_id"] != 0, timeout=300, what="spectator to join")
+            except TimeoutError:
+                detail = self.describe_stuck(spec)
+                self.drop_mon(spec)
+                spec.stop()
+                raise TimeoutError(f"{spec.name} did not join within 300s: {detail}") from None
             self.join_seconds[spec.name] = round(time.monotonic() - t0, 1)
             # Long enough for the join-time cache/desync checks of a client that rebuilt its caches from the map.
             spec.bridge.wait_ticks(500, timeout_ms=120000)
             problems = [p for p in self.health_problems() if "desync" in p.lower() or spec.name in p]
             self.check(not problems and spec.alive(), f"{spec.name} stays in sync after joining", "; ".join(problems[:6]))
-            ref = self.state_snapshot(self.mon(c.server))
-            got = self.state_snapshot(spec.bridge)
-            # Not paused: only compare things that do not change every tick.
-            self.check(set(ref["vehicles"]) == set(got["vehicles"]) and set(ref["stations"]) == set(got["stations"]),
-                       f"{spec.name} sees the same stations and vehicles",
-                       f"joined in {self.join_seconds[spec.name]}s, {len(got['vehicles'])} vehicles")
+            # Compare at the same paused tick, like the regular state comparison.
+            try:
+                tick = self.pause_synced(extra=[spec])
+                diffs = self.diff_snapshots(self.state_snapshot(self.mon(c.server)), self.state_snapshot(spec.bridge))
+                self.check(not diffs, f"{spec.name} sees the same game state",
+                           f"joined in {self.join_seconds[spec.name]}s, tick {tick}" + (" | " + "; ".join(diffs) if diffs else ""))
+            except TimeoutError as e:
+                self.check(False, f"{spec.name} sees the same game state", f"did not reach the paused server tick: {e}")
+            finally:
+                self.unpause()
             self.drop_mon(spec)
             spec.stop()
         elif event == "save":
@@ -682,6 +694,19 @@ class StressTest:
             self.check(False, f"GUI exercise on {client.name} ({label})",
                        f"client process died (exit code {client.proc.returncode}) while drawing windows; crash files: "
                        f"{[p.name for p in client.crash_files()]}")
+
+    def describe_stuck(self, inst: Instance) -> str:
+        """State of a client that did not get into the game, for the report (and a screenshot in the run dir)."""
+        try:
+            b = inst.bridge
+            info = b.info()
+            windows = [w["class_name"] for w in b.windows()]
+            lines = [l["text"] for l in b.log(0, 1000)["lines"] if "[net" in l["text"] or "rror" in l["text"]][-8:]
+            shot = b.screenshot(self.out / f"stuck_{inst.name}.png")
+            return (f"mode {info['game_mode']}, networking {info['networking']}, client_id {info['client_id']}, "
+                    f"windows {windows}, screenshot {shot}, log: {' / '.join(lines) or '(no network log lines)'}")
+        except Exception as e:  # noqa: BLE001
+            return f"(could not inspect: {type(e).__name__}: {e})"
 
     def expand(self, rng: random.Random) -> None:
         """Add a vehicle to a random road/air route while the game runs: keeps client commands flowing."""
@@ -796,13 +821,19 @@ class StressTest:
             if not vids:
                 continue
             resp = server.batch([f"obj vehicle {v} tile x_pos y_pos cur_speed profit_this_year profit_last_year profit_lifetime" for v in vids])
-            vals = {v: r["result"] for v, r in zip(vids, resp) if r.get("ok")}
+            # A route's vehicle may be gone (e.g. a bus destroyed by a train at a level crossing) and its id reused
+            # by another kind of vehicle that has no profit fields: only count the route's own vehicles.
+            vals = {v: r["result"] for v, r in zip(vids, resp)
+                    if r.get("ok") and all(str(r["result"].get(f, "")).lstrip("-").isdigit()
+                                           for f in ("profit_this_year", "profit_last_year", "profit_lifetime"))}
             for v, val in vals.items():
                 self.vehicle_history.setdefault(v, set()).add((val["tile"], val["x_pos"], val["y_pos"]))
             moved = [v for v in vids if len(self.vehicle_history.get(v, ())) > 1]
             # profit_lifetime is only updated at the end of a year.
-            earning = [v for v, val in vals.items() if max(val["profit_this_year"], val["profit_last_year"], val["profit_lifetime"]) > 0]
-            self.check(len(vals) == len(vids), f"{kind} vehicles still exist", f"{len(vals)}/{len(vids)}")
+            earning = [v for v, val in vals.items()
+                       if max(int(val["profit_this_year"]), int(val["profit_last_year"]), int(val["profit_lifetime"])) > 0]
+            self.check(len(vals) == len(vids), f"{kind} vehicles still exist", f"{len(vals)}/{len(vids)}",
+                       severity="warn")  # crashes at level crossings are normal gameplay
             self.check(len(moved) >= max(1, len(vids) // 2), f"{kind} vehicles move", f"{len(moved)}/{len(vids)} changed position")
             self.check(len(earning) > 0, f"{kind} vehicles earn money",
                        f"{len(earning)}/{len(vids)} with positive profit",

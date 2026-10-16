@@ -1250,7 +1250,7 @@ CommandCost CmdCompanyAllowListCtrl(DoCommandFlags flags, CompanyAllowListCtrlAc
  */
 CommandCost CmdSetCompanyManagerFace(DoCommandFlags flags, uint style, uint32_t bits)
 {
-	CompanyManagerFace tmp_face{style, bits, {}};
+	CompanyManagerFace tmp_face{style, bits, {}, {}};
 	if (!IsValidCompanyManagerFace(tmp_face)) return CMD_ERROR;
 
 	if (flags.Test(DoCommandFlag::Execute)) {
