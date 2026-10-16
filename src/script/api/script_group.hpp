@@ -274,6 +274,44 @@ public:
 	 * @return The secondary colour of the group.
 	 */
 	static ScriptCompany::Colours GetSecondaryColour(GroupID group_id);
+
+	/**
+	 * Set a custom (RGB) primary colour for a group.
+	 * @param group_id The group id to set the colour of.
+	 * @param rgb Colour to set, as 0xRRGGBB.
+	 * @pre IsValidGroup(group_id).
+	 * @pre rgb >= 0 && rgb <= 0xFFFFFF.
+	 * @game @pre ScriptCompanyMode::IsValid().
+	 * @return True iff the colour was set.
+	 */
+	static bool SetPrimaryCustomColour(GroupID group_id, SQInteger rgb);
+
+	/**
+	 * Set a custom (RGB) secondary colour for a group.
+	 * @param group_id The group id to set the colour of.
+	 * @param rgb Colour to set, as 0xRRGGBB.
+	 * @pre IsValidGroup(group_id).
+	 * @pre rgb >= 0 && rgb <= 0xFFFFFF.
+	 * @game @pre ScriptCompanyMode::IsValid().
+	 * @return True iff the colour was set.
+	 */
+	static bool SetSecondaryCustomColour(GroupID group_id, SQInteger rgb);
+
+	/**
+	 * Get the custom (RGB) primary colour of a group.
+	 * @param group_id The group id to get the colour of.
+	 * @pre IsValidGroup(group_id).
+	 * @return The colour as 0xRRGGBB, or -1 if the group uses a preset colour.
+	 */
+	static SQInteger GetPrimaryCustomColour(GroupID group_id);
+
+	/**
+	 * Get the custom (RGB) secondary colour of a group.
+	 * @param group_id The group id to get the colour of.
+	 * @pre IsValidGroup(group_id).
+	 * @return The colour as 0xRRGGBB, or -1 if the group uses a preset colour.
+	 */
+	static SQInteger GetSecondaryCustomColour(GroupID group_id);
 };
 
 #endif /* SCRIPT_GROUP_HPP */

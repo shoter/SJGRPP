@@ -376,13 +376,13 @@
 /* static */ bool ScriptCompany::SetPrimaryLiveryColour(LiveryScheme scheme, Colours colour)
 {
 	EnforceCompanyModeValid(false);
-	return ScriptObject::Command<Commands::SetCompanyColour>::Do((::LiveryScheme)scheme, true, (::Colours)colour);
+	return ScriptObject::Command<Commands::SetCompanyColour>::Do((::LiveryScheme)scheme, true, (::Colours)colour, CUSTOM_COLOUR_NONE);
 }
 
 /* static */ bool ScriptCompany::SetSecondaryLiveryColour(LiveryScheme scheme, Colours colour)
 {
 	EnforceCompanyModeValid(false);
-	return ScriptObject::Command<Commands::SetCompanyColour>::Do((::LiveryScheme)scheme, false, (::Colours)colour);
+	return ScriptObject::Command<Commands::SetCompanyColour>::Do((::LiveryScheme)scheme, false, (::Colours)colour, CUSTOM_COLOUR_NONE);
 }
 
 /* static */ ScriptCompany::Colours ScriptCompany::GetPrimaryLiveryColour(ScriptCompany::LiveryScheme scheme)
@@ -403,4 +403,38 @@
 
 	const Company *c = ::Company::Get(ScriptObject::GetCompany());
 	return (ScriptCompany::Colours)c->livery[static_cast<::LiveryScheme>(scheme)].colour2;
+}
+
+/* static */ bool ScriptCompany::SetPrimaryLiveryCustomColour(LiveryScheme scheme, SQInteger rgb)
+{
+	EnforceCompanyModeValid(false);
+	EnforcePrecondition(false, rgb >= 0 && rgb <= 0xFFFFFF);
+	return ScriptObject::Command<Commands::SetCompanyColour>::Do((::LiveryScheme)scheme, true, ::Colours::Begin, MakeCustomColour(GB(rgb, 16, 8), GB(rgb, 8, 8), GB(rgb, 0, 8)));
+}
+
+/* static */ bool ScriptCompany::SetSecondaryLiveryCustomColour(LiveryScheme scheme, SQInteger rgb)
+{
+	EnforceCompanyModeValid(false);
+	EnforcePrecondition(false, rgb >= 0 && rgb <= 0xFFFFFF);
+	return ScriptObject::Command<Commands::SetCompanyColour>::Do((::LiveryScheme)scheme, false, ::Colours::Begin, MakeCustomColour(GB(rgb, 16, 8), GB(rgb, 8, 8), GB(rgb, 0, 8)));
+}
+
+/* static */ SQInteger ScriptCompany::GetPrimaryLiveryCustomColour(ScriptCompany::LiveryScheme scheme)
+{
+	EnforceCompanyModeValid(-1);
+	EnforcePrecondition(-1, static_cast<::LiveryScheme>(scheme) >= ::LiveryScheme::Begin);
+	EnforcePrecondition(-1, static_cast<::LiveryScheme>(scheme) < ::LiveryScheme::End);
+
+	const CustomColour custom = ::Company::Get(ScriptObject::GetCompany())->livery[static_cast<::LiveryScheme>(scheme)].custom1;
+	return IsCustomColour(custom) ? static_cast<SQInteger>(GB(custom, 0, 24)) : -1;
+}
+
+/* static */ SQInteger ScriptCompany::GetSecondaryLiveryCustomColour(ScriptCompany::LiveryScheme scheme)
+{
+	EnforceCompanyModeValid(-1);
+	EnforcePrecondition(-1, static_cast<::LiveryScheme>(scheme) >= ::LiveryScheme::Begin);
+	EnforcePrecondition(-1, static_cast<::LiveryScheme>(scheme) < ::LiveryScheme::End);
+
+	const CustomColour custom = ::Company::Get(ScriptObject::GetCompany())->livery[static_cast<::LiveryScheme>(scheme)].custom2;
+	return IsCustomColour(custom) ? static_cast<SQInteger>(GB(custom, 0, 24)) : -1;
 }

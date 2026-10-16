@@ -8,6 +8,7 @@
 /** @file linkgraph_gui.cpp Implementation of linkgraph overlay GUI. */
 
 #include "../stdafx.h"
+#include "../custom_colour.h"
 #include "../window_gui.h"
 #include "../window_func.h"
 #include "../company_base.h"
@@ -534,7 +535,7 @@ void LinkGraphOverlay::DrawStationDots(Blitter *blitter, const DrawPixelInfo *dp
 		uint r = width * 2 + width * 2 * std::min<uint>(200, i.quantity) / 200;
 
 		LinkGraphOverlay::DrawVertex(blitter, dpi, pt.x, pt.y, r,
-				GetColourGradient(st->owner != OWNER_NONE ? Company::Get(st->owner)->colour : Colours::Grey, Shade::Light),
+				st->owner != OWNER_NONE ? GetCompanyColourGradient(st->owner, Shade::Light) : GetColourGradient(Colours::Grey, Shade::Light),
 				GetColourGradient(Colours::Grey, Shade::Darkest));
 	}
 }
@@ -694,7 +695,7 @@ void LinkGraphOverlay::SetCompanyMask(CompanyMask company_mask)
 /** Make a number of rows with buttons for each company for the linkgraph legend window. @copydoc NWidgetFunctionType */
 std::unique_ptr<NWidgetBase> MakeCompanyButtonRowsLinkGraphGUI()
 {
-	return MakeCompanyButtonRows(WID_LGL_COMPANY_FIRST, WID_LGL_COMPANY_LAST, Colours::Grey, 3, STR_NULL);
+	return MakeCompanyButtonRows(WID_LGL_COMPANY_FIRST, WID_LGL_COMPANY_LAST, Colours::Grey, 4, STR_NULL);
 }
 
 std::unique_ptr<NWidgetBase> MakeSaturationLegendLinkGraphGUI()

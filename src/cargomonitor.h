@@ -42,7 +42,7 @@ constexpr uint8_t CCB_IS_INDUSTRY_BIT = 16; ///< Bit indicating the town/industr
 constexpr uint8_t CCB_CARGO_TYPE_START = 19; ///< Start bit of the cargo type field.
 constexpr uint8_t CCB_CARGO_TYPE_LENGTH = 6; ///< Number of bits of the cargo type field.
 constexpr uint8_t CCB_COMPANY_START = 25; ///< Start bit of the company field.
-constexpr uint8_t CCB_COMPANY_LENGTH = 4; ///< Number of bits of the company field.
+constexpr uint8_t CCB_COMPANY_LENGTH = 5; ///< Number of bits of the company field.
 
 static_assert(NUM_CARGO     <= (1 << CCB_CARGO_TYPE_LENGTH));
 static_assert(MAX_COMPANIES <= (1 << CCB_COMPANY_LENGTH));

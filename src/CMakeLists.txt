@@ -140,6 +140,11 @@ add_files(
     currency.cpp
     currency_func.h
     currency_type.h
+    custom_colour.cpp
+    custom_colour.h
+    custom_colour_gui.cpp
+    custom_colour_gui.h
+    custom_colour_type.h
     date.cpp
     date_func.h
     date_gui.cpp

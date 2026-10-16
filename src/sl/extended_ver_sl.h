@@ -120,7 +120,7 @@ enum SlXvFeatureIndex {
 	XSLFI_BANKRUPTCY_EXTRA,                       ///< Extra company bankruptcy fields
 	XSLFI_OBJECT_GROUND_TYPES,                    ///< Object ground types
 	XSLFI_LINKGRAPH_AIRCRAFT,                     ///< Link graph last aircraft update field and aircraft link scaling setting
-	XSLFI_COMPANY_PW,                             ///< Company passwords
+	XSLFI_COMPANY_PW,                             ///< Company passwords, v3: 32-bit invalid company mask
 	XSLFI_ST_INDUSTRY_CARGO_MODE,                 ///< Station industry cargo mode setting
 	XSLFI_TL_SPEED_LIMIT,                         ///< Through load maximum speed setting
 	XSLFI_MAX_RELIABILITY_FLOOR,                  ///< The minimum value (%) for maximum reliability randomizer
@@ -149,6 +149,8 @@ enum SlXvFeatureIndex {
 	XSLFI_ORDER_VECTOR,                           ///< Use std::vector for order lists
 	XSLFI_ERNC_CHUNK,                             ///< ERNC chunk
 	XSLFI_STATION_CARGO_TRUNCATE,                 ///< Station cargo truncation setting
+	XSLFI_MORE_COMPANIES,                         ///< Company limit raised from 15 to 28, special owner IDs renumbered, 5-bit tram owner
+	XSLFI_CUSTOM_COMPANY_COLOURS,                 ///< Custom RGB livery colours
 
 	XSLFI_SCRIPT_INT64,                           ///< See: SLV_SCRIPT_INT64
 	XSLFI_U64_TICK_COUNTER,                       ///< See: SLV_U64_TICK_COUNTER

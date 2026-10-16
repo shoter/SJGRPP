@@ -38,7 +38,7 @@ DEF_CMD_TUPLE_NT (Commands::RenameCompany,            CmdRenameCompany,         
 DEF_CMD_TUPLE_NT (Commands::RenamePresident,          CmdRenamePresident,       {},                                         CommandType::CompanySetting,  CmdDataT<std::string>)
 DEF_CMD_TUPLE_NT (Commands::SetCompanyManagerFace,    CmdSetCompanyManagerFace, {},                                         CommandType::CompanySetting,  CmdDataT<uint, uint32_t>)
 DEF_CMD_TUPLE_NT (Commands::SetCompanyManagerFaceImage, CmdSetCompanyManagerFaceImage, {},                                    CommandType::CompanySetting,  CmdDataT<std::string>)
-DEF_CMD_TUPLE_NT (Commands::SetCompanyColour,         CmdSetCompanyColour,      {},                                         CommandType::CompanySetting,  CmdDataT<LiveryScheme, bool, Colours>)
+DEF_CMD_TUPLE_NT (Commands::SetCompanyColour,         CmdSetCompanyColour,      {},                                         CommandType::CompanySetting,  CmdDataT<LiveryScheme, bool, Colours, CustomColour>)
 DEF_CMD_TUPLE_NT (Commands::BuyShareInCompany,        CmdBuyShareInCompany,     {},                                         CommandType::MoneyManagement, CmdDataT<CompanyID>)
 DEF_CMD_TUPLE_NT (Commands::SellShareInCompany,       CmdSellShareInCompany,    {},                                         CommandType::MoneyManagement, CmdDataT<CompanyID>)
 DEF_CMD_TUPLE_NT (Commands::BuyCompany,               CmdBuyCompany,            {},                                         CommandType::MoneyManagement, CmdDataT<CompanyID, bool>)

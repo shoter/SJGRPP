@@ -1227,7 +1227,7 @@ struct ScriptDebugWindow : public Window {
 /** Make a number of rows with buttons for each company for the Script debug window. @copydoc NWidgetFunctionType */
 std::unique_ptr<NWidgetBase> MakeCompanyButtonRowsScriptDebug()
 {
-	return MakeCompanyButtonRows(WID_SCRD_COMPANY_BUTTON_START, WID_SCRD_COMPANY_BUTTON_END, Colours::Grey, 5, STR_AI_DEBUG_SELECT_AI_TOOLTIP, false);
+	return MakeCompanyButtonRows(WID_SCRD_COMPANY_BUTTON_START, WID_SCRD_COMPANY_BUTTON_END, Colours::Grey, 7, STR_AI_DEBUG_SELECT_AI_TOOLTIP, false);
 }
 
 /** Widgets for the Script debug window. */

@@ -224,7 +224,7 @@
 	EnforceCompanyModeValid(false);
 	EnforcePrecondition(false, IsValidGroup(group_id));
 
-	return ScriptObject::Command<Commands::SetGroupLivery>::Do(group_id, true, (::Colours)colour);
+	return ScriptObject::Command<Commands::SetGroupLivery>::Do(group_id, true, (::Colours)colour, CUSTOM_COLOUR_NONE);
 }
 
 /* static */ bool ScriptGroup::SetSecondaryColour(GroupID group_id, ScriptCompany::Colours colour)
@@ -232,7 +232,7 @@
 	EnforceCompanyModeValid(false);
 	EnforcePrecondition(false, IsValidGroup(group_id));
 
-	return ScriptObject::Command<Commands::SetGroupLivery>::Do(group_id, false, (::Colours)colour);
+	return ScriptObject::Command<Commands::SetGroupLivery>::Do(group_id, false, (::Colours)colour, CUSTOM_COLOUR_NONE);
 }
 
 /* static */ ScriptCompany::Colours ScriptGroup::GetPrimaryColour(GroupID group_id)
@@ -251,4 +251,40 @@
 	const Group *g = ::Group::Get(group_id);
 	if (!g->livery.in_use.Test(Livery::Flag::Secondary)) return ScriptCompany::Colours::COLOUR_INVALID;
 	return (ScriptCompany::Colours)g->livery.colour2;
+}
+
+/* static */ bool ScriptGroup::SetPrimaryCustomColour(GroupID group_id, SQInteger rgb)
+{
+	EnforceCompanyModeValid(false);
+	EnforcePrecondition(false, IsValidGroup(group_id));
+	EnforcePrecondition(false, rgb >= 0 && rgb <= 0xFFFFFF);
+
+	return ScriptObject::Command<Commands::SetGroupLivery>::Do(group_id, true, ::Colours::Begin, MakeCustomColour(GB(rgb, 16, 8), GB(rgb, 8, 8), GB(rgb, 0, 8)));
+}
+
+/* static */ bool ScriptGroup::SetSecondaryCustomColour(GroupID group_id, SQInteger rgb)
+{
+	EnforceCompanyModeValid(false);
+	EnforcePrecondition(false, IsValidGroup(group_id));
+	EnforcePrecondition(false, rgb >= 0 && rgb <= 0xFFFFFF);
+
+	return ScriptObject::Command<Commands::SetGroupLivery>::Do(group_id, false, ::Colours::Begin, MakeCustomColour(GB(rgb, 16, 8), GB(rgb, 8, 8), GB(rgb, 0, 8)));
+}
+
+/* static */ SQInteger ScriptGroup::GetPrimaryCustomColour(GroupID group_id)
+{
+	EnforcePrecondition(-1, IsValidGroup(group_id));
+
+	const Group *g = ::Group::Get(group_id);
+	if (!g->livery.in_use.Test(Livery::Flag::Primary) || !IsCustomColour(g->livery.custom1)) return -1;
+	return static_cast<SQInteger>(GB(g->livery.custom1, 0, 24));
+}
+
+/* static */ SQInteger ScriptGroup::GetSecondaryCustomColour(GroupID group_id)
+{
+	EnforcePrecondition(-1, IsValidGroup(group_id));
+
+	const Group *g = ::Group::Get(group_id);
+	if (!g->livery.in_use.Test(Livery::Flag::Secondary) || !IsCustomColour(g->livery.custom2)) return -1;
+	return static_cast<SQInteger>(GB(g->livery.custom2, 0, 24));
 }

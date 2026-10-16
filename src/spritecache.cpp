@@ -799,6 +799,32 @@ void DupSprite(SpriteID old_spr, SpriteID new_spr)
 	}
 }
 
+/**
+ * Assign a recolour sprite which is generated at runtime to a sprite ID.
+ * The sprite ID may be beyond the currently loaded sprites, the sprite cache is extended as required.
+ * @param id Sprite ID to assign.
+ * @param remap The recolour table.
+ */
+void SetGeneratedRecolourSprite(SpriteID id, std::span<const uint8_t, RECOLOUR_SPRITE_SIZE> remap)
+{
+	SpriteCache *sc = AllocateSpriteCache(id); // may reallocate: so put it first
+	const SpriteCache *src = GetSpriteCache(PALETTE_RECOLOUR_START);
+
+	sc->Clear();
+	/* Borrow the file details of the first company colour remap, so that the sprite is considered to exist. */
+	sc->file = src->file;
+	sc->file_pos = src->file_pos;
+	sc->id = src->id;
+	sc->SetType(SpriteType::Recolour);
+	sc->count = 0;
+	sc->flags = 0;
+	sc->SetWarned(false);
+
+	auto &buffer = _recolour_cache.GetBuffer();
+	std::copy(remap.begin(), remap.end(), buffer.begin());
+	sc->AssignRecolourSpriteData(_recolour_cache.GetCachePtr());
+}
+
 static size_t GetSpriteCacheUsage()
 {
 	return _spritecache_bytes_used;

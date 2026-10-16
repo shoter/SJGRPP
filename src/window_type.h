@@ -276,6 +276,12 @@ enum class WindowClass : uint16_t {
 	CompanyLivery,
 
 	/**
+	 * Custom company colour picker; %Window numbers:
+	 *   - 0 = #CustomColourPickerWidgets
+	 */
+	CustomColourPicker,
+
+	/**
 	 * Alter company face window; %Window numbers:
 	 *   - #CompanyID = #SelectCompanyManagerFaceWidgets
 	 */

@@ -17,6 +17,7 @@
 #include "transport_type.h"
 #include "network/network_type.h"
 #include "company_type.h"
+#include "custom_colour_type.h"
 #include "cargotype.h"
 #include "currency_type.h"
 #include "linkgraph/linkgraph_type.h"
@@ -426,6 +427,8 @@ struct GUISettings : public TimeSettings {
 	OskActivation osk_activation;                                ///< Mouse gesture to trigger the OSK.
 	Colours     starting_colour;                                 ///< default colour scheme for the company to start a new game with
 	Colours     starting_colour_secondary;                       ///< default secondary colour scheme for the company to start a new game with
+	CustomColour starting_colour_custom;                         ///< default custom (RGB) colour for the company to start a new game with, overrides #starting_colour if set
+	CustomColour starting_colour_secondary_custom;               ///< default custom (RGB) secondary colour for the company to start a new game with, overrides #starting_colour_secondary if set
 	bool        show_newgrf_name;                                ///< Show the name of the NewGRF in the build vehicle window
 	bool        show_cargo_in_vehicle_lists;                     ///< Show the cargoes the vehicles can carry in the list windows
 	bool        show_wagon_intro_year;                           ///< Show the introduction year for wagons in the build vehicle window

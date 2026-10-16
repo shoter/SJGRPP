@@ -10,6 +10,8 @@
 #ifndef LIVERY_H
 #define LIVERY_H
 
+#include "custom_colour_type.h"
+
 #include "core/enum_type.hpp"
 #include "company_type.h"
 #include "gfx_type.h"
@@ -97,6 +99,34 @@ struct Livery {
 	Flags in_use{}; ///< Livery flags.
 	Colours colour1 = Colours::Begin; ///< First colour, for all vehicles.
 	Colours colour2 = Colours::Begin; ///< Second colour, for vehicles with 2CC support.
+	CustomColour custom1 = CUSTOM_COLOUR_NONE; ///< Custom RGB first colour, overrides the appearance of #colour1 if set.
+	CustomColour custom2 = CUSTOM_COLOUR_NONE; ///< Custom RGB second colour, overrides the appearance of #colour2 if set.
+
+	/**
+	 * Copy the primary colour (preset and custom) from another livery.
+	 * @param other Livery to copy from.
+	 */
+	inline void CopyPrimaryColour(const Livery &other)
+	{
+		this->colour1 = other.colour1;
+		this->custom1 = other.custom1;
+	}
+
+	/**
+	 * Copy the secondary colour (preset and custom) from another livery.
+	 * @param other Livery to copy from.
+	 */
+	inline void CopySecondaryColour(const Livery &other)
+	{
+		this->colour2 = other.colour2;
+		this->custom2 = other.custom2;
+	}
+
+	/**
+	 * Check whether this livery uses any custom colour.
+	 * @return True iff either colour is a custom colour.
+	 */
+	inline bool HasCustomColour() const { return IsCustomColour(this->custom1) || IsCustomColour(this->custom2); }
 
 	/**
 	 * Get offset for recolour palette.
@@ -109,6 +139,6 @@ struct Livery {
 	}
 };
 
-void ResetCompanyLivery(Company *c);
+void ResetCompanyLivery(Company *c, CustomColour custom = CUSTOM_COLOUR_NONE);
 
 #endif /* LIVERY_H */

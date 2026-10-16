@@ -8,6 +8,7 @@
 /** @file graph_gui.cpp GUI that shows performance graphs. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include <ranges>
 #include "misc/history_func.hpp"
 #include "graph_gui.h"
@@ -958,7 +959,7 @@ public:
 			if (c == nullptr) continue;
 
 			DataSet &dataset = this->data.emplace_back();
-			dataset.colour = GetColourGradient(c->colour, Shade::Lighter);
+			dataset.colour = GetCompanyColourGradient(c->index, Shade::Lighter);
 			dataset.exclude_bit = k.base();
 
 			for (int j = this->num_on_x_axis, i = 0; --j >= 0;) {
@@ -2564,7 +2565,7 @@ static std::unique_ptr<NWidgetBase> MakePerformanceDetailPanels()
 /** Make a number of rows with buttons for each company for the performance rating detail window. @copydoc NWidgetFunctionType */
 std::unique_ptr<NWidgetBase> MakeCompanyButtonRowsGraphGUI()
 {
-	return MakeCompanyButtonRows(WID_PRD_COMPANY_FIRST, WID_PRD_COMPANY_LAST, Colours::Brown, 8, STR_PERFORMANCE_DETAIL_SELECT_COMPANY_TOOLTIP);
+	return MakeCompanyButtonRows(WID_PRD_COMPANY_FIRST, WID_PRD_COMPANY_LAST, Colours::Brown, 7, STR_PERFORMANCE_DETAIL_SELECT_COMPANY_TOOLTIP);
 }
 
 static constexpr std::initializer_list<NWidgetPart> _nested_performance_rating_detail_widgets = {

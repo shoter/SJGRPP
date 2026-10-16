@@ -8,6 +8,7 @@
 /** @file company_cmd.cpp Handling of companies. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include "company_base.h"
 #include "company_cmd.h"
 #include "company_func.h"
@@ -191,7 +192,7 @@ void SetLocalCompany(CompanyID new_company)
 ExtendedTextColour GetDrawStringCompanyColour(CompanyID company)
 {
 	if (!Company::IsValidID(company)) return ExtendedTextColour{GetColourGradient(Colours::White, Shade::Normal)};
-	return ExtendedTextColour{GetColourGradient(_company_colours[company], Shade::Normal)};
+	return ExtendedTextColour{GetCompanyColourGradient(company, Shade::Normal)};
 }
 
 /**
@@ -201,7 +202,9 @@ ExtendedTextColour GetDrawStringCompanyColour(CompanyID company)
  */
 PaletteID GetCompanyPalette(CompanyID company)
 {
-	return GetColourPalette(_company_colours[company]);
+	const Company *c = Company::GetIfValid(company);
+	if (c == nullptr) return GetColourPalette(_company_colours[company]);
+	return GetLiveryPalette(c->livery[LiveryScheme::Default], false);
 }
 
 /**
@@ -547,9 +550,10 @@ static const std::initializer_list<Colours> _similar_colour[to_underlying(Colour
 
 /**
  * Generate a company colour.
- * @return Generated company colour.
+ * While there are unused preset colours one of those is used, after that a distinct custom colour is generated.
+ * @return Generated company colour: the preset colour and the custom colour (or #CUSTOM_COLOUR_NONE).
  */
-static Colours GenerateCompanyColour()
+static std::pair<Colours, CustomColour> GenerateCompanyColour()
 {
 	/* Initialize colour table. */
 	std::vector<Colours> colours(to_underlying(Colours::End));
@@ -576,7 +580,27 @@ static Colours GenerateCompanyColour()
 	}
 
 	/* Return the first available colour */
-	return colours.at(0);
+	if (!colours.empty()) return { colours.front(), CUSTOM_COLOUR_NONE };
+
+	/* There are more companies than preset colours: generate a custom colour which is as different as possible from all others. */
+	std::vector<CustomColour> used;
+	for (const Company *c : Company::Iterate()) {
+		const Livery &l = c->livery[LiveryScheme::Default];
+		used.push_back(IsCustomColour(l.custom1) ? l.custom1 : GetPresetColourRGB(l.colour1));
+	}
+
+	CustomColour best = CUSTOM_COLOUR_NONE;
+	uint32_t best_distance = 0;
+	for (uint i = 0; i < 32; i++) {
+		const CustomColour candidate = GenerateDistinctCustomColour(Random());
+		uint32_t distance = UINT32_MAX;
+		for (CustomColour other : used) distance = std::min(distance, GetCustomColourDistance(candidate, other));
+		if (best == CUSTOM_COLOUR_NONE || distance > best_distance) {
+			best = candidate;
+			best_distance = distance;
+		}
+	}
+	return { GetNearestPresetColour(best), best };
 }
 
 /**
@@ -624,13 +648,16 @@ static void GeneratePresidentName(Company *c)
  * Reset the livery schemes to the company's primary colour.
  * This is used on loading games without livery information and on new company start up.
  * @param c Company to reset.
+ * @param custom Custom colour to use for all liveries, or #CUSTOM_COLOUR_NONE.
  */
-void ResetCompanyLivery(Company *c)
+void ResetCompanyLivery(Company *c, CustomColour custom)
 {
 	for (LiveryScheme scheme : EnumRange(LiveryScheme::End)) {
 		c->livery[scheme].in_use.Reset();
 		c->livery[scheme].colour1 = c->colour;
 		c->livery[scheme].colour2 = c->colour;
+		c->livery[scheme].custom1 = custom;
+		c->livery[scheme].custom2 = custom;
 	}
 
 	for (Group *g : Group::Iterate()) {
@@ -638,6 +665,8 @@ void ResetCompanyLivery(Company *c)
 			g->livery.in_use.Reset();
 			g->livery.colour1 = c->colour;
 			g->livery.colour2 = c->colour;
+			g->livery.custom1 = custom;
+			g->livery.custom2 = custom;
 		}
 	}
 }
@@ -656,7 +685,7 @@ Company *DoStartupNewCompany(DoStartupNewCompanyFlag flags, CompanyID company)
 	const bool is_ai = (flags & DSNC_AI);
 
 	/* we have to generate colour before this company is valid */
-	Colours colour = GenerateCompanyColour();
+	auto [colour, custom_colour] = GenerateCompanyColour();
 
 	Company *c;
 	if (company == CompanyID::Invalid()) {
@@ -668,7 +697,7 @@ Company *DoStartupNewCompany(DoStartupNewCompanyFlag flags, CompanyID company)
 
 	c->colour = colour;
 
-	ResetCompanyLivery(c);
+	ResetCompanyLivery(c, custom_colour);
 	_company_colours[c->index] = c->colour;
 
 	/* Scale the initial loan based on the inflation rounded down to the loan interval. The maximum loan has already been inflation adjusted. */
@@ -1261,8 +1290,8 @@ CommandCost CmdSetCompanyManagerFaceImage(DoCommandFlags flags, const std::strin
 void UpdateCompanyLiveries(Company *c)
 {
 	for (LiveryScheme i : EnumRange(LiveryScheme::Steam, LiveryScheme::End)) {
-		if (!c->livery[i].in_use.Test(Livery::Flag::Primary)) c->livery[i].colour1 = c->livery[LiveryScheme::Default].colour1;
-		if (!c->livery[i].in_use.Test(Livery::Flag::Secondary)) c->livery[i].colour2 = c->livery[LiveryScheme::Default].colour2;
+		if (!c->livery[i].in_use.Test(Livery::Flag::Primary)) c->livery[i].CopyPrimaryColour(c->livery[LiveryScheme::Default]);
+		if (!c->livery[i].in_use.Test(Livery::Flag::Secondary)) c->livery[i].CopySecondaryColour(c->livery[LiveryScheme::Default]);
 	}
 	UpdateCompanyGroupLiveries(c);
 }
@@ -1273,10 +1302,13 @@ void UpdateCompanyLiveries(Company *c)
  * @param scheme scheme to set
  * @param primary set first/second colour
  * @param colour new colour for vehicles, property, etc.
+ * @param custom custom RGB colour, or #CUSTOM_COLOUR_NONE to use the preset colour. If set,  colour is ignored.
  * @return the cost of this operation or an error
  */
-CommandCost CmdSetCompanyColour(DoCommandFlags flags, LiveryScheme scheme, bool primary, Colours colour)
+CommandCost CmdSetCompanyColour(DoCommandFlags flags, LiveryScheme scheme, bool primary, Colours colour, CustomColour custom)
 {
+	if (!IsValidCustomColour(custom)) return CMD_ERROR;
+	if (IsCustomColour(custom)) colour = GetNearestPresetColour(custom);
 	if (scheme >= LiveryScheme::End || (colour >= Colours::End && colour != Colours::Invalid)) return CMD_ERROR;
 
 	/* Default scheme can't be reset to invalid. */
@@ -1284,18 +1316,16 @@ CommandCost CmdSetCompanyColour(DoCommandFlags flags, LiveryScheme scheme, bool 
 
 	Company *c = Company::Get(_current_company);
 
-	/* Ensure no two companies have the same primary colour */
-	if (scheme == LiveryScheme::Default && primary) {
-		for (const Company *cc : Company::Iterate()) {
-			if (cc != c && cc->colour == colour) return CMD_ERROR;
-		}
-	}
-
 	if (flags.Test(DoCommandFlag::Execute)) {
 		if (primary) {
 			if (scheme != LiveryScheme::Default) c->livery[scheme].in_use.Set(Livery::Flag::Primary, colour != Colours::Invalid);
-			if (colour == Colours::Invalid) colour = c->livery[LiveryScheme::Default].colour1;
-			c->livery[scheme].colour1 = colour;
+			if (colour == Colours::Invalid) {
+				c->livery[scheme].CopyPrimaryColour(c->livery[LiveryScheme::Default]);
+				colour = c->livery[scheme].colour1;
+			} else {
+				c->livery[scheme].colour1 = colour;
+				c->livery[scheme].custom1 = custom;
+			}
 
 			/* If setting the first colour of the default scheme, adjust the
 			 * original and cached company colours too. */
@@ -1307,8 +1337,12 @@ CommandCost CmdSetCompanyColour(DoCommandFlags flags, LiveryScheme scheme, bool 
 			}
 		} else {
 			if (scheme != LiveryScheme::Default) c->livery[scheme].in_use.Set(Livery::Flag::Secondary, colour != Colours::Invalid);
-			if (colour == Colours::Invalid) colour = c->livery[LiveryScheme::Default].colour2;
-			c->livery[scheme].colour2 = colour;
+			if (colour == Colours::Invalid) {
+				c->livery[scheme].CopySecondaryColour(c->livery[LiveryScheme::Default]);
+			} else {
+				c->livery[scheme].colour2 = colour;
+				c->livery[scheme].custom2 = custom;
+			}
 
 			if (scheme == LiveryScheme::Default) {
 				UpdateCompanyLiveries(c);
