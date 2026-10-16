@@ -191,6 +191,8 @@ enum ViewportDragDropSelectionProcess : uint8_t {
 	DDSP_BUILD_OBJECT,         ///< Build an object
 	DDSP_PLACE_HOUSE,          ///< Place a house
 	DDSP_SECTOR_PAINT,         ///< Assign an area to a sector
+	DDSP_SECTOR_LASSO,         ///< Assign the inside of a drawn outline to a sector
+	DDSP_SECTOR_BRUSH,         ///< Assign the tiles below the cursor to a sector
 
 	/* Rail specific actions */
 	DDSP_PLACE_RAIL,           ///< Rail placement

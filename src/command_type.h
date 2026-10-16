@@ -781,6 +781,8 @@ enum class Commands : uint8_t {
 	SectorSetProperties,                    ///< scenario editor: change price and first pick flag of a sector
 	SectorGenerate,                         ///< scenario editor: divide the map randomly into sectors
 	SectorMerge,                            ///< scenario editor: merge a sector into another
+	SectorPaintTiles,                       ///< scenario editor: assign a list of tiles or a polygon to a sector
+	SectorRemoveEmpty,                      ///< scenario editor: remove sectors without tiles
 
 	End,                                    ///< Must ALWAYS be on the end of this list!! (period)
 };

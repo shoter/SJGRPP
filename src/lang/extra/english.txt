@@ -2671,11 +2671,17 @@ STR_SECTOR_PRICE_QUERY                                          :{WHITE}Price of
 STR_SECTOR_FIRST_PICK                                           :{BLACK}Free first
 STR_SECTOR_FIRST_PICK_TOOLTIP                                   :{BLACK}Toggle whether the selected sector can be the free first sector of a company
 STR_SECTOR_PAINT                                                :{BLACK}Paint
-STR_SECTOR_PAINT_TOOLTIP                                        :{BLACK}Assign an area of the map to the selected sector by dragging in the main view. Ctrl selects a diagonal area
+STR_SECTOR_PAINT_TOOLTIP                                        :{BLACK}Assign a rectangle of the map to the selected sector by dragging in the main view. Ctrl selects a diagonal area
+STR_SECTOR_LASSO                                                :{BLACK}Lasso
+STR_SECTOR_LASSO_TOOLTIP                                        :{BLACK}Draw an outline in the main view while holding the mouse button; the outline and everything inside it are assigned to the selected sector
+STR_SECTOR_BRUSH                                                :{BLACK}Brush
+STR_SECTOR_BRUSH_TOOLTIP                                        :{BLACK}Hold the mouse button and move over the main view; every tile below the cursor is assigned to the selected sector
 STR_SECTOR_NEW                                                  :{BLACK}New
 STR_SECTOR_NEW_TOOLTIP                                          :{BLACK}Create a new sector by clicking on a tile in the main view, then enlarge it with Paint
 STR_SECTOR_MERGE                                                :{BLACK}Merge into
 STR_SECTOR_MERGE_TOOLTIP                                        :{BLACK}Remove the selected sector and give its tiles to another sector
+STR_SECTOR_REMOVE_EMPTY                                         :{BLACK}Remove empty
+STR_SECTOR_REMOVE_EMPTY_TOOLTIP                                 :{BLACK}Remove all sectors which have no tiles
 STR_SECTOR_GENERATE                                             :{BLACK}Generate
 STR_SECTOR_GENERATE_TOOLTIP                                     :{BLACK}Replace all sectors with a random division of the map
 STR_SECTOR_GENERATE_QUERY                                       :{WHITE}Average number of tiles per sector
