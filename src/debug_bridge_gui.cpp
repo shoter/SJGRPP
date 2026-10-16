@@ -10,47 +10,30 @@
 #include "stdafx.h"
 #include "company_base.h"
 #include "company_func.h"
+#include "company_gui.h"
+#include "framerate_type.h"
+#include "goal_gui.h"
+#include "graph_gui.h"
+#include "gui.h"
+#include "league_gui.h"
+#include "news_gui.h"
+#include "plans_func.h"
+#include "smallmap_gui.h"
 #include "station_base.h"
 #include "station_func.h"
+#include "timetable.h"
 #include "town.h"
 #include "vehicle_base.h"
 #include "vehicle_gui.h"
+#include "linkgraph/linkgraph_gui.h"
+#include "network/network_gui.h"
 
 #include <functional>
 #include <map>
 
 #include "safeguards.h"
 
-/* Window openers without a convenient header. */
-void ShowSmallMap();
-void ShowTownDirectory();
-void ShowIndustryDirectory();
-void ShowIndustryCargoesWindow();
-void ShowSubsidiesList();
-void ShowMessageHistory();
-void ShowLastNewsMessage();
-void ShowClientList();
-void ShowFramerateWindow();
-void ShowLinkGraphLegend();
-void ShowCargoPaymentRates();
-void ShowCompanyValueGraph();
-void ShowIncomeGraph();
-void ShowOperatingProfitGraph();
-void ShowDeliveredCargoGraph();
-void ShowPerformanceHistoryGraph();
-void ShowPerformanceRatingDetail();
-void ShowPerformanceLeagueTable();
-void ShowFirstLeagueTable();
-void ShowPlansWindow();
-void ShowCompany(CompanyID company);
-void ShowCompanyFinances(CompanyID company);
-void ShowCompanyStations(CompanyID company);
-void ShowGoalsList(CompanyID company);
-void ShowOrdersWindow(const Vehicle *v);
-void ShowDeparturesWindow(StationID station);
-void ShowStationCargo(StationID station);
-void ShowExtraViewportWindow(TileIndex tile);
-void ShowLandInfo(TileIndex tile);
+void ShowDeparturesWindow(StationID station); // departures_gui.h is not self-contained
 
 namespace {
 
