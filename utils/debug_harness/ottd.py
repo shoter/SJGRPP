@@ -26,9 +26,12 @@ from pathlib import Path
 from typing import Any, Iterable
 
 REPO = Path(__file__).resolve().parents[2]
-DEFAULT_EXE = Path(os.environ.get("OTTD_EXE", REPO / "build" / "openttd.exe"))
+DEFAULT_EXE = Path(os.environ.get("OTTD_EXE", REPO / "build" / ("openttd.exe" if sys.platform == "win32" else "openttd")))
 DEFAULT_RUN_ROOT = Path(os.environ.get("OTTD_RUN_ROOT", REPO / "build" / "harness_runs"))
-DEFAULT_CONTENT = Path(os.environ.get("OTTD_CONTENT_DIR", Path.home() / "Documents" / "OpenTTD"))
+# Where base sets / NewGRFs / scripts are found: the user's OpenTTD folder for the platform.
+_PLATFORM_CONTENT = (Path.home() / "Documents" / "OpenTTD" if sys.platform == "win32"
+                     else Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "openttd")
+DEFAULT_CONTENT = Path(os.environ.get("OTTD_CONTENT_DIR", _PLATFORM_CONTENT))
 
 # Shared content folders, linked (junctions) into every instance so base sets/NewGRFs/scripts are found,
 # while saves, autosaves, screenshots, crash logs and configs stay per instance.

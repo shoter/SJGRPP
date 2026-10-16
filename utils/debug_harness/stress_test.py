@@ -842,14 +842,18 @@ class StressTest:
     def perf_checks(self) -> dict:
         a = self.args
         summary = self.perf_summary()
+        # On shared CI machines timings are noisy: report them, but let only correctness checks fail the run.
+        perf = "warn" if a.perf_report_only else "fail"
         if "speed_ratio_median" in summary:
             self.check(summary["speed_ratio_median"] >= a.min_speed, "server keeps up with real time",
-                       f"median speed {summary['speed_ratio_median']:.2f} (min {summary['speed_ratio_min']:.2f}), limit {a.min_speed}")
+                       f"median speed {summary['speed_ratio_median']:.2f} (min {summary['speed_ratio_min']:.2f}), limit {a.min_speed}",
+                       severity=perf)
             self.check(summary["speed_ratio_min"] >= a.min_speed * 0.7, "no long server stalls",
                        f"slowest sample {summary['speed_ratio_min']:.2f}", severity="warn")
         if "game_loop_ms_p95" in summary:
             self.check(summary["game_loop_ms_p95"] <= a.max_game_loop_ms, "game loop time",
-                       f"p95 {summary['game_loop_ms_p95']}ms, avg {summary.get('game_loop_ms_avg')}ms, limit {a.max_game_loop_ms}ms")
+                       f"p95 {summary['game_loop_ms_p95']}ms, avg {summary.get('game_loop_ms_avg')}ms, limit {a.max_game_loop_ms}ms",
+                       severity=perf)
         if "command_ms_p95" in summary:
             self.check(summary["command_ms_p95"] <= a.max_command_ms, "command round trip",
                        f"p95 {summary['command_ms_p95']}ms over {summary['commands']} commands", severity="warn")
@@ -863,7 +867,7 @@ class StressTest:
                 if key in base and key in summary:
                     limit = base[key] * (1 + tol) + (0.2 if key.endswith("ms_avg") else 0)
                     self.check(summary[key] <= limit, f"perf vs baseline: {key}",
-                               f"{summary[key]} (baseline {base[key]}, limit {limit:.3f})")
+                               f"{summary[key]} (baseline {base[key]}, limit {limit:.3f})", severity=perf)
         if a.save_baseline:
             Path(a.save_baseline).write_text(json.dumps(summary, indent=2), encoding="utf-8")
             self.log(f"baseline written to {a.save_baseline}")
@@ -956,6 +960,8 @@ def main() -> int:
     ap.add_argument("--max-command-ms", type=float, default=2000.0, help="warn if p95 command round trip exceeds this")
     ap.add_argument("--baseline", help="perf summary JSON from --save-baseline to compare against")
     ap.add_argument("--perf-tolerance", type=float, default=0.5, help="allowed relative regression vs baseline")
+    ap.add_argument("--perf-report-only", action="store_true",
+                    help="performance limits only warn (for noisy CI machines); correctness checks still fail")
     ap.add_argument("--save-baseline", help="write this run's perf summary as a baseline")
     ap.add_argument("--debug", default="", help="-d debug levels for all instances, e.g. desync=2")
     ap.add_argument("--out", default=str(DEFAULT_RUN_ROOT / "stress"))

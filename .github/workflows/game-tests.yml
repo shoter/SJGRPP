@@ -1,0 +1,212 @@
+name: Game tests
+
+# Multiplayer stress / regression tests driven by utils/debug_harness: a dedicated server and headless clients play
+# a generated map through real game commands. The game is built once, then every test runs as its own parallel job,
+# and a final job renders all results into the run summary (and a PR comment).
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+  workflow_dispatch:
+    inputs:
+      tests:
+        description: 'Comma separated tests: scenarios, quick, normal, max-28'
+        default: 'scenarios,quick,normal,max-28'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (Linux)
+    runs-on: ubuntu-latest
+    outputs:
+      tests: ${{ steps.tests.outputs.tests }}
+      expect: ${{ steps.tests.outputs.expect }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Select tests
+      id: tests
+      env:
+        EVENT: ${{ github.event_name }}
+        INPUT: ${{ github.event.inputs.tests }}
+      run: |
+        case "$EVENT" in
+          pull_request)      list="scenarios,quick,normal,max-28" ;;
+          push)              list="quick" ;;
+          workflow_dispatch) list="$INPUT" ;;
+        esac
+        echo "tests=$(python3 -c "import json,sys; print(json.dumps([t.strip() for t in sys.argv[1].split(',') if t.strip()]))" "$list")" >> "$GITHUB_OUTPUT"
+        echo "expect=$list" >> "$GITHUB_OUTPUT"
+
+    - name: Install dependencies
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          ccache cmake ninja-build \
+          libcurl4-openssl-dev libfontconfig-dev libfreetype-dev libharfbuzz-dev libicu-dev \
+          liblzma-dev liblzo2-dev libpng-dev libsdl2-dev libzstd-dev zlib1g-dev
+
+    - name: Restore compiler cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ccache
+        key: game-tests-ccache-${{ github.sha }}
+        restore-keys: game-tests-ccache-
+
+    - name: Build
+      run: |
+        # vcpkg is not needed: system libraries are used.
+        mv vcpkg.json vcpkg-disabled.json
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DOPTION_USE_ASSERTS=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake --build build --target openttd -j $(nproc)
+        ccache -s
+
+    - name: Package
+      run: |
+        # The binary plus the data files it loads from its own directory.
+        tar czf openttd-linux.tgz build/openttd $(cd build && for d in lang ai game baseset scripts; do [ -d "$d" ] && echo "build/$d"; done)
+
+    - name: Upload build
+      uses: actions/upload-artifact@v7
+      with:
+        name: openttd-linux
+        path: openttd-linux.tgz
+        retention-days: 3
+
+  test:
+    name: Test ${{ matrix.test }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        test: ${{ fromJSON(needs.build.outputs.tests) }}
+    env:
+      OTTD_CONTENT_DIR: ${{ github.workspace }}/content
+      PYTHONUNBUFFERED: 1
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Download build
+      uses: actions/download-artifact@v8
+      with:
+        name: openttd-linux
+
+    - name: Unpack build and get OpenGFX
+      run: |
+        tar xzf openttd-linux.tgz
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+          libcurl4 libfontconfig1 libfreetype6 libharfbuzz0b liblzo2-2 libsdl2-2.0-0
+        mkdir -p content/baseset
+        curl -sSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d content/baseset   # the game reads the .tar directly
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    - name: Run ${{ matrix.test }}
+      id: run
+      run: |
+        out="results/game-test-${{ matrix.test }}"
+        mkdir -p "$out"
+        set +e
+        if [ "${{ matrix.test }}" = "scenarios" ]; then
+          python utils/debug_harness/scenario.py utils/debug_harness/scenarios/*.py --out "$out"
+        else
+          python utils/debug_harness/stress_test.py --profile "${{ matrix.test }}" --name "${{ matrix.test }}" \
+            --out "$out" --perf-report-only
+        fi
+        echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Summary for this test
+      if: always()
+      run: |
+        python utils/debug_harness/ci_report.py results --expect "${{ matrix.test }}" \
+          --title "🚂 ${{ matrix.test }}" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload results
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: game-test-${{ matrix.test }}
+        path: |
+          results/**/report.json
+          results/**/result.json
+          results/**/summary.txt
+          results/**/perf.csv
+          results/**/events.log
+          results/**/collected/**
+          results/**/screenshots/**
+        if-no-files-found: warn
+        retention-days: 14
+
+    - name: Fail if tests failed
+      if: steps.run.outputs.exit_code != '0'
+      run: |
+        echo "::error::${{ matrix.test }} failed (exit code ${{ steps.run.outputs.exit_code }}), see the Game tests report"
+        exit 1
+
+  report:
+    name: Report
+    needs: [build, test]
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Download results
+      uses: actions/download-artifact@v8
+      with:
+        pattern: game-test-*
+        path: results
+
+    - name: Render report
+      env:
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        python3 utils/debug_harness/ci_report.py results --expect "${{ needs.build.outputs.expect }}" \
+          --run-url "$RUN_URL" --out report.md
+        cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment on PR
+      # Pull requests from forks get a read-only token: the report is still in the run summary.
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const marker = '<!-- game-tests-report -->';
+          const body = marker + '\n' + fs.readFileSync('report.md', 'utf8');
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+          const existing = comments.find(c => c.body && c.body.startsWith(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
