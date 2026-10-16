@@ -57,7 +57,20 @@ PROFILES = {
     "max-28": {"months": 24, "check_interval": 60, "sync_every": 3, "clients": 28, "map_bits": 10,
                "monthly_growth": True, "monthly_join": True, "resolution": (640, 480),
                "churn": ["save", "rejoin", "spectator", "rejoin", "save", "spectator"]},
+    # Infrastructure sharing for every transport type with inflation: companies run vehicles on each other's networks
+    # and pay fees; halfway the server doubles the price inflation. Fees must follow inflation on every instance.
+    "sharing": {"months": 12, "check_interval": 45, "sync_every": 2, "sharing": True,
+                "churn": ["save", "rejoin", "spectator"]},
 }
+
+# Sharing fee settings of the sharing profile, per vehicle type (rail per 1000 tonnes): money per day of 74 ticks.
+SHARING_FEES = {"rail": 5_000, "road": 7_400, "water": 7_400, "air": 14_800}
+SHARING_TYPES = ["rail", "road", "water", "air"]
+EXPENSES_SHARING_COST = 13     # ExpensesType::SharingCost
+EXPENSES_SHARING_REVENUE = 14  # ExpensesType::SharingRevenue
+EXPENSES_TYPES = 15
+CHT_INFLATION_COST = 8
+SELL_IN_DEPOT = 1 << 4         # DepotCommandFlag::Sell
 
 MONEY_TOP_UP = 1_000_000_000   # given by the server to each company...
 MONEY_LOW = 300_000_000        # ...whenever its money is below this (checked every game month)
@@ -163,6 +176,9 @@ class StressTest:
         self.growth_failed: dict[int, int] = {}
         self._monitors: dict[str, Bridge] = {}
         self.spectators_started = 0
+        self.foreign_vehicles: list[dict] = []
+        self.initial_fees: dict[str, int] = {}
+        self.inflation_bumped = False
 
     # ---- reporting ----
 
@@ -196,9 +212,123 @@ class StressTest:
             "station": {"never_expire_airports": "true"},
             "pf": {"forbid_90_deg": "false"},
             "vehicle": {"plane_crashes": 0},
+            "economy": {"inflation": "true" if self.profile.get("sharing") else "false"},
             "network": {"pause_on_join": "false", "max_clients": a.clients + 8,
                         "max_companies": min(28, max(15, a.clients + 1)), "autoclean_companies": "false"},
         }
+
+    # ---- infrastructure sharing ----
+
+    @staticmethod
+    def sharing_fees(bridge) -> dict:
+        """Current fees from the 'sharing_fees' console command: inflation flag, inflation_prices, fee fraction per type."""
+        out: dict = {}
+        for line in bridge.console("sharing_fees"):
+            m = re.match(r"inflation: (\w+), inflation_prices: (\d+)", line)
+            if m:
+                out["inflation"], out["inflation_prices"] = m[1] == "on", int(m[2])
+            m = re.match(r"(\w+): setting (\d+), enabled (\d), fee_fract (-?\d+)", line)
+            if m:
+                out[m[1]] = {"setting": int(m[2]), "enabled": m[3] == "1", "fee_fract": int(m[4])}
+        return out
+
+    @staticmethod
+    def sharing_totals(bridge) -> dict[int, tuple[int, int]]:
+        """Sharing cost and revenue of every company, summed over the three years kept."""
+        out = {}
+        for cid in bridge.objs("company"):
+            exp = [int(x) for x in bridge.obj("company", cid, "yearly_expenses")["yearly_expenses"]]
+            out[cid] = tuple(sum(exp[y * EXPENSES_TYPES + k] for y in range(3))
+                             for k in (EXPENSES_SHARING_COST, EXPENSES_SHARING_REVENUE))
+        return out
+
+    def setup_sharing(self) -> None:
+        """Server enables sharing for every transport type, with fees that rise with inflation."""
+        server = self.mon(self.cluster.server)
+        for i, name in enumerate(SHARING_TYPES):
+            server.console(f"setting economy.infrastructure_sharing[{i}] 1")
+            server.console(f"setting economy.sharing_fee[{i}] {SHARING_FEES[name]}")
+        server.wait_ticks(5, timeout_ms=30000)
+        fees = self.sharing_fees(server)
+        self.initial_fees = {t: fees[t]["fee_fract"] for t in SHARING_TYPES}
+        self.check(fees.get("inflation") is True and all(fees[t]["enabled"] for t in SHARING_TYPES),
+                   "sharing enabled for every transport type, fees scale with inflation", json.dumps(fees))
+
+    def sharing_check(self, label: str) -> None:
+        """While paused: fees follow inflation and match on every instance; paid fees equal received fees."""
+        server = self.mon(self.cluster.server)
+        ref = self.sharing_fees(server)
+        bad = [f"{t}: {ref[t]['fee_fract']} != {(ref[t]['setting'] * ref['inflation_prices']) >> 8}" for t in SHARING_TYPES
+               if ref[t]["fee_fract"] != (ref[t]["setting"] * ref["inflation_prices"]) >> 8]
+        self.check(not bad, f"sharing fees follow inflation ({label})",
+                   f"inflation {ref['inflation_prices'] / 65536:.3f}" + ("; " + "; ".join(bad) if bad else ""))
+        mismatches = [c.name for c in self.cluster.clients if self.sharing_fees(self.mon(c)) != ref]
+        self.check(not mismatches, f"sharing fees match on every client ({label})", ", ".join(mismatches))
+        totals = self.sharing_totals(server)
+        paid, received = sum(c for c, _ in totals.values()), -sum(r for _, r in totals.values())
+        # Fractions of a currency unit are carried per company across all expense types, so a carry may be booked
+        # under another expense type: per payment up to 1 off. Fees are hundreds per tick, so allow 1%.
+        self.check(abs(paid - received) <= max(len(totals), received // 100), f"sharing fees paid = received ({label})",
+                   f"paid {paid:,}, received {received:,}")
+
+    def add_foreign_vehicles(self) -> None:
+        """Every client runs a bus on the next client's road route; client1's train replaces client2's train."""
+        n = len(self.builders)
+        if n < 2:
+            return
+        server = self.mon(self.cluster.server)
+        for ci in range(n):
+            owner = (ci + 1) % n
+            road = next((r for r in self.routes.get(owner, []) if r.kind == "road"), None)
+            if road is None:
+                continue
+            try:
+                engine = server.obj("vehicle", road.vehicles[0], "engine_type")["engine_type"]
+                builder = self.builders[ci]
+                bus = builder.build_vehicle(road.depot_tile, engine)
+                for st in road.stations:
+                    builder.order(bus, "station", st)
+                builder.start_vehicle(bus)
+                self.foreign_vehicles.append({"vehicle": bus, "payer": ci, "owner": owner, "kind": "road"})
+                self.log(f"sharing: client{ci + 1} runs bus {bus} on client{owner + 1}'s road route")
+            except (BuildError, BridgeError) as e:
+                self.check(False, f"client{ci + 1} runs a bus on client{owner + 1}'s road route", str(e))
+        # A shuttle line has a single track: the owner's train is sold before the foreign train enters.
+        rail = next((r for r in self.routes.get(1, []) if r.kind == "rail"), None)
+        if rail is None:
+            self.check(False, "a rail route to share", "client2 has no rail route", severity="warn")
+            return
+        try:
+            old = rail.vehicles[0]
+            loco = server.obj("vehicle", old, "engine_type")["engine_type"]
+            self.builders[1].cmd("SendVehicleToDepot", 0, old, SELL_IN_DEPOT, 0)
+            server.wait_until(lambda b: old not in b.objs("vehicle"), timeout=600, what="client2's train sold in its depot")
+            rail.vehicles.remove(old)
+            builder = self.builders[0]
+            train = builder.build_vehicle(rail.depot_tile, loco)
+            for st in rail.stations:
+                builder.order(train, "station", st)
+            builder.start_vehicle(train)
+            self.routes.setdefault(0, []).append(Route("rail", builder.company, stations=list(rail.stations),
+                                                       depot_tile=rail.depot_tile, vehicles=[train]))
+            self.foreign_vehicles.append({"vehicle": train, "payer": 0, "owner": 1, "kind": "rail"})
+            self.log(f"sharing: client1 runs train {train} on client2's rail route")
+        except (BuildError, BridgeError, TimeoutError) as e:
+            self.check(False, "client1 runs a train on client2's rail route", str(e))
+
+    def sharing_final_checks(self) -> None:
+        server = self.mon(self.cluster.server)
+        fees = self.sharing_fees(server)
+        for t in SHARING_TYPES:
+            self.check(fees[t]["fee_fract"] >= 2 * self.initial_fees[t], f"{t} sharing fee rose with inflation",
+                       f"{self.initial_fees[t] / 256:,.0f} -> {fees[t]['fee_fract'] / 256:,.0f} per day")
+        totals = self.sharing_totals(server)
+        cids = sorted(totals)
+        for fv in self.foreign_vehicles:
+            payer, owner = cids[fv["payer"]], cids[fv["owner"]]
+            self.check(totals[payer][0] > 0 and totals[owner][1] < 0,
+                       f"client{fv['payer'] + 1} pays client{fv['owner'] + 1} sharing fees ({fv['kind']})",
+                       f"cost {totals[payer][0]:,}, revenue {-totals[owner][1]:,}")
 
     def instances_for_collect(self) -> dict:
         insts = (self.cluster.instances if self.cluster else []) + self.extra_instances
@@ -349,6 +479,8 @@ class StressTest:
             self.check(not mismatches, f"state match ({label})",
                        f"tick {tick}, {len(ref['companies'])} companies, {len(ref['stations'])} stations, "
                        f"{len(ref['vehicles'])} vehicles" + (" | " + " | ".join(mismatches) if mismatches else ""))
+            if self.profile.get("sharing"):
+                self.sharing_check(label)
         finally:
             self.unpause()
 
@@ -616,6 +748,8 @@ class StressTest:
                     self.aborted = True
                     return
         self.log(f"build phase done in {time.monotonic() - t0:.1f}s")
+        if self.profile.get("sharing"):
+            self.add_foreign_vehicles()
         for kind in KINDS:
             built_by = [ci for ci, rs in self.routes.items() if any(r.kind == kind for r in rs)]
             self.check(len(built_by) > 0, f"{kind} network built", f"by {len(built_by)}/{len(self.builders)} clients")
@@ -806,6 +940,11 @@ class StressTest:
                     return
             if n % self.profile["sync_every"] == 0:
                 self.sync_check(date)
+            if self.profile.get("sharing") and not self.inflation_bumped and done >= months / 2:
+                self.inflation_bumped = True
+                infl = self.sharing_fees(server)["inflation_prices"]
+                res = server.docmd("CheatSetting", 0, CHT_INFLATION_COST, min(infl * 2, 2**32 - 1))
+                self.check(res["success"], "server doubles the price inflation", f"{infl / 65536:.3f} -> {infl * 2 / 65536:.3f}")
             if not self.args.no_expand:
                 self.expand(rng)
             while churn and done / months >= churn_at[0]:
@@ -833,6 +972,8 @@ class StressTest:
                        f"{st['rounds']} rounds, {st['windows']} windows, {st['clicks']} clicks on clients")
             self.check(not st["errors"], "GUI exercise without bridge errors", "; ".join(st["errors"][:6]), severity="warn")
         self.sync_check("final")
+        if self.profile.get("sharing"):
+            self.sharing_final_checks()
         # Gameplay sanity per route kind: vehicles move and earn money.
         server = self.mon(c.server)
         for kind in KINDS:
@@ -863,6 +1004,7 @@ class StressTest:
         # Save on the server and load it in a separate instance: same content, keeps running.
         tick = self.pause_synced()
         ref = self.state_snapshot(server)
+        ref_fees = self.sharing_fees(server)
         out = server.console("save stress_final", timeout=180)
         self.unpause()
         save = c.server.dir / "save" / "stress_final.sav"
@@ -884,6 +1026,8 @@ class StressTest:
             got = self.state_snapshot(loader.bridge)
             diffs = [d for d in self.diff_snapshots(ref, got) if not d.startswith("globals")]
             self.check(not diffs, "saved game loads with the same content", f"saved at tick {tick}; " + "; ".join(diffs))
+            if self.profile.get("sharing"):
+                self.check(self.sharing_fees(loader.bridge) == ref_fees, "saved game loads with the same sharing fees")
             loader.bridge.step(500)
             self.check(loader.alive(), "loaded game keeps running", "500 ticks")
         except Exception as e:  # noqa: BLE001
@@ -931,6 +1075,8 @@ class StressTest:
         summary: dict = {}
         try:
             self.start_cluster()
+            if self.profile.get("sharing"):
+                self.setup_sharing()
             self.build_phase()
             if not self.aborted:
                 self.run_phase()
@@ -992,7 +1138,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--clients", type=int, help="number of client companies (default 3; max-28 profile: 28)")
     ap.add_argument("--profile", choices=sorted(PROFILES), default="normal",
-                    help="quick = 3 game months, normal = 2 game years, max-28 = 28 companies on 1024x1024 growing monthly for 2 game years")
+                    help="quick = 3 game months, normal = 2 game years, max-28 = 28 companies on 1024x1024 growing monthly for 2 game years, "
+                         "sharing = 1 game year with infrastructure sharing, foreign vehicles and inflation")
     ap.add_argument("--months", type=float, help="override the game months of the run phase")
     ap.add_argument("--check-interval", type=float, help="seconds between checks (default from profile)")
     ap.add_argument("--seed", type=int, default=4242, help="map generation seed")
