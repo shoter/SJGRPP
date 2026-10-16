@@ -817,14 +817,19 @@ class StressTest:
             if not vids:
                 continue
             resp = server.batch([f"obj vehicle {v} tile x_pos y_pos cur_speed profit_this_year profit_last_year profit_lifetime" for v in vids])
-            vals = {v: r["result"] for v, r in zip(vids, resp) if r.get("ok")}
+            # A vehicle can be gone (e.g. crashed) and its id reused by an effect vehicle without these fields.
+            vals = {v: r["result"] for v, r in zip(vids, resp)
+                    if r.get("ok") and all(str(r["result"].get(f, "")).lstrip("-").isdigit()
+                                           for f in ("profit_this_year", "profit_last_year", "profit_lifetime"))}
             for v, val in vals.items():
                 self.vehicle_history.setdefault(v, set()).add((val["tile"], val["x_pos"], val["y_pos"]))
             moved = [v for v in vids if len(self.vehicle_history.get(v, ())) > 1]
             # profit_lifetime is only updated at the end of a year.
             earning = [v for v, val in vals.items()
                        if max(int(val["profit_this_year"]), int(val["profit_last_year"]), int(val["profit_lifetime"])) > 0]
-            self.check(len(vals) == len(vids), f"{kind} vehicles still exist", f"{len(vals)}/{len(vids)}")
+            # A few vehicles may crash during a long run; losing more than a tenth of them is a failure.
+            self.check(len(vals) == len(vids), f"{kind} vehicles still exist", f"{len(vals)}/{len(vids)}",
+                       severity="warn" if len(vals) * 10 >= len(vids) * 9 else "fail")
             self.check(len(moved) >= max(1, len(vids) // 2), f"{kind} vehicles move", f"{len(moved)}/{len(vids)} changed position")
             self.check(len(earning) > 0, f"{kind} vehicles earn money",
                        f"{len(earning)}/{len(vids)} with positive profit",
