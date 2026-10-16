@@ -800,6 +800,7 @@ static inline uint32_t GetSmallMapOwnerPixels(TileIndex tile, TileType t)
 		return MKCOLOUR_XXXX(PC_DARK_RED);
 	}
 
+	assert_msg(o < MAX_COMPANIES, "smallmap: unexpected owner {} of tile {}", o, tile);
 	return MKCOLOUR_XXXX(_legend_land_owners[_company_to_list_pos[o]].colour);
 }
 
