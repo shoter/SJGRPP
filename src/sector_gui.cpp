@@ -66,6 +66,8 @@ static constexpr NWidgetPart _nested_sector_widgets[] = {
 					NWidget(WWT_TEXTBTN, Colours::Brown, WID_SEC_PAINT), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_PAINT, STR_SECTOR_PAINT_TOOLTIP),
 					NWidget(WWT_TEXTBTN, Colours::Brown, WID_SEC_LASSO), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_LASSO, STR_SECTOR_LASSO_TOOLTIP),
 					NWidget(WWT_TEXTBTN, Colours::Brown, WID_SEC_BRUSH), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_BRUSH, STR_SECTOR_BRUSH_TOOLTIP),
+					NWidget(WWT_DROPDOWN, Colours::Brown, WID_SEC_BRUSH_SIZE), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_BRUSH_SIZE, STR_SECTOR_BRUSH_SIZE_TOOLTIP),
+					NWidget(WWT_PUSHTXTBTN, Colours::Brown, WID_SEC_UNDO), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_UNDO, STR_SECTOR_UNDO_TOOLTIP),
 					NWidget(WWT_TEXTBTN, Colours::Brown, WID_SEC_NEW), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_NEW, STR_SECTOR_NEW_TOOLTIP),
 					NWidget(WWT_PUSHTXTBTN, Colours::Brown, WID_SEC_EDITOR_GOTO), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_GOTO, STR_SECTOR_GOTO_TOOLTIP),
 					NWidget(WWT_TEXTBTN, Colours::Brown, WID_SEC_EDITOR_OVERLAY), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_OVERLAY, STR_SECTOR_OVERLAY_TOOLTIP),
@@ -74,6 +76,7 @@ static constexpr NWidgetPart _nested_sector_widgets[] = {
 					NWidget(WWT_PUSHTXTBTN, Colours::Brown, WID_SEC_RENAME), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_RENAME, STR_SECTOR_RENAME_TOOLTIP),
 					NWidget(WWT_PUSHTXTBTN, Colours::Brown, WID_SEC_PRICE), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_PRICE, STR_SECTOR_PRICE_TOOLTIP),
 					NWidget(WWT_TEXTBTN, Colours::Brown, WID_SEC_FIRST_PICK), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_FIRST_PICK, STR_SECTOR_FIRST_PICK_TOOLTIP),
+					NWidget(WWT_TEXTBTN, Colours::Brown, WID_SEC_LOCK), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_LOCK, STR_SECTOR_LOCK_TOOLTIP),
 					NWidget(WWT_DROPDOWN, Colours::Brown, WID_SEC_MERGE), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_MERGE, STR_SECTOR_MERGE_TOOLTIP),
 					NWidget(WWT_PUSHTXTBTN, Colours::Brown, WID_SEC_REMOVE_EMPTY), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_REMOVE_EMPTY, STR_SECTOR_REMOVE_EMPTY_TOOLTIP),
 					NWidget(WWT_PUSHTXTBTN, Colours::Brown, WID_SEC_GENERATE), SetFill(1, 0), SetResize(1, 0), SetStringTip(STR_SECTOR_GENERATE, STR_SECTOR_GENERATE_TOOLTIP),
@@ -97,6 +100,12 @@ static const Colours _sector_map_colours[] = {
 	Colours::Mauve, Colours::Orange, Colours::Grey, Colours::Brown, Colours::Green,
 };
 
+/** Brush sizes, in tiles along each side. */
+static const uint8_t _sector_brush_sizes[] = { 1, 3, 5, 7, 11 };
+
+/** Maximum number of paint actions which can be undone. */
+static constexpr size_t MAX_SECTOR_UNDO = 20;
+
 /** Window showing a map of the sectors, information about the selected sector, and buttons to buy rights or edit sectors. */
 struct SectorWindow : Window {
 	SectorID selected = SectorID::Invalid();   ///< The selected sector.
@@ -104,6 +113,11 @@ struct SectorWindow : Window {
 	enum class Query : uint8_t { None, Rename, Price, Generate } query = Query::None; ///< What the open query string is for.
 	std::vector<TileIndex> stroke;             ///< Corners of the lasso outline, or brush tiles not yet sent, while dragging.
 	TileIndex last_stroke_tile = INVALID_TILE; ///< Last tile below the cursor while dragging with the lasso or brush.
+	uint8_t brush_size = 1;                    ///< Side length of the brush, in tiles.
+	std::vector<uint8_t> undo_snapshot;        ///< Sectors of all tiles before the paint action in progress.
+	/** Undo information of one paint action: the previous sector of each changed tile. */
+	using UndoStep = std::vector<std::pair<TileIndex, SectorID>>;
+	std::vector<UndoStep> undo;                ///< Paint actions which can be undone, oldest first.
 
 	SectorWindow(WindowDesc &desc, WindowNumber window_number) : Window(desc)
 	{
@@ -316,6 +330,7 @@ struct SectorWindow : Window {
 		if (_game_mode == GameMode::Editor) {
 			draw(GetString(s->custom_price > 0 ? STR_SECTOR_INFO_PRICE_CUSTOM : STR_SECTOR_INFO_PRICE_AUTOMATIC, s->GetPrice()));
 			draw(GetString(s->no_first_pick ? STR_SECTOR_INFO_FIRST_PICK_FORBIDDEN : STR_SECTOR_INFO_FIRST_PICK_ALLOWED));
+			if (s->locked) draw(GetString(STR_SECTOR_INFO_LOCKED));
 			return;
 		}
 
@@ -383,6 +398,9 @@ struct SectorWindow : Window {
 		}
 		this->SetWidgetDisabledState(WID_SEC_MERGE, s == nullptr || Sector::GetNumItems() < 2);
 		this->SetWidgetLoweredState(WID_SEC_FIRST_PICK, s != nullptr && !s->no_first_pick);
+		this->SetWidgetDisabledState(WID_SEC_LOCK, s == nullptr);
+		this->SetWidgetLoweredState(WID_SEC_LOCK, s != nullptr && s->locked);
+		this->SetWidgetDisabledState(WID_SEC_UNDO, this->undo.empty());
 		this->SetWidgetLoweredState(WID_SEC_OVERLAY, _show_sector_overlay);
 		this->SetWidgetLoweredState(WID_SEC_EDITOR_OVERLAY, _show_sector_overlay);
 		this->DrawWidgets();
@@ -464,6 +482,25 @@ struct SectorWindow : Window {
 				Command<Commands::SectorRemoveEmpty>::Post(STR_ERROR_CAN_T_CHANGE_SECTOR);
 				break;
 
+			case WID_SEC_LOCK: {
+				const Sector *s = Sector::GetIfValid(this->selected);
+				if (s != nullptr) Command<Commands::SectorSetLocked>::Post(STR_ERROR_CAN_T_CHANGE_SECTOR, s->index, !s->locked);
+				break;
+			}
+
+			case WID_SEC_BRUSH_SIZE: {
+				DropDownList list;
+				for (uint8_t size : _sector_brush_sizes) {
+					list.push_back(MakeDropDownListStringItem(GetString(STR_SECTOR_BRUSH_SIZE_ITEM, size, size), size));
+				}
+				ShowDropDownList(this, std::move(list), this->brush_size, widget);
+				break;
+			}
+
+			case WID_SEC_UNDO:
+				this->Undo();
+				break;
+
 			case WID_SEC_NEW:
 				HandlePlacePushButton(this, WID_SEC_NEW, SPR_CURSOR_BUY_LAND, HT_RECT);
 				break;
@@ -485,8 +522,61 @@ struct SectorWindow : Window {
 		}
 	}
 
+	std::string GetWidgetString(WidgetID widget, StringID stringid) const override
+	{
+		if (widget == WID_SEC_BRUSH_SIZE) return GetString(STR_SECTOR_BRUSH_SIZE, this->brush_size, this->brush_size);
+		return this->Window::GetWidgetString(widget, stringid);
+	}
+
+	/** Remember the sectors of all tiles, to find what the paint action which starts now changes. */
+	void StartUndoStep()
+	{
+		this->undo_snapshot = _sector_map;
+	}
+
+	/** Record the changes of the paint action since #StartUndoStep, so it can be undone. */
+	void FinishUndoStep()
+	{
+		if (this->undo_snapshot.size() != _sector_map.size()) {
+			this->undo_snapshot.clear();
+			return;
+		}
+		UndoStep step;
+		for (size_t i = 0; i < _sector_map.size(); i++) {
+			if (_sector_map[i] != this->undo_snapshot[i]) step.emplace_back(TileIndex(static_cast<uint32_t>(i)), SectorID(this->undo_snapshot[i]));
+		}
+		this->undo_snapshot.clear();
+		if (step.empty()) return;
+		this->undo.push_back(std::move(step));
+		if (this->undo.size() > MAX_SECTOR_UNDO) this->undo.erase(this->undo.begin());
+		this->SetWidgetDirty(WID_SEC_UNDO);
+	}
+
+	/** Give the tiles changed by the last paint action back to their previous sectors, as far as those still exist. */
+	void Undo()
+	{
+		if (this->undo.empty()) return;
+		UndoStep step = std::move(this->undo.back());
+		this->undo.pop_back();
+
+		std::sort(step.begin(), step.end(), [](const auto &a, const auto &b) { return a.second < b.second || (a.second == b.second && a.first < b.first); });
+		for (auto it = step.begin(); it != step.end();) {
+			SectorPaintTilesCmdData data;
+			data.sector = it->second;
+			data.polygon = false;
+			for (; it != step.end() && it->second == data.sector && data.tiles.size() < MAX_SECTOR_PAINT_TILES; ++it) data.tiles.push_back(it->first);
+			if (Sector::IsValidID(data.sector)) DoCommandP<Commands::SectorPaintTiles>(data, STR_ERROR_CAN_T_CHANGE_SECTOR);
+		}
+		this->SetDirty();
+	}
+
 	void OnDropdownSelect(WidgetID widget, int index, int) override
 	{
+		if (widget == WID_SEC_BRUSH_SIZE) {
+			this->brush_size = static_cast<uint8_t>(index);
+			this->SetWidgetDirty(WID_SEC_BRUSH_SIZE);
+			return;
+		}
 		if (widget != WID_SEC_MERGE || !Sector::IsValidID(this->selected)) return;
 		Command<Commands::SectorMerge>::Post(STR_ERROR_CAN_T_CHANGE_SECTOR, this->selected, SectorID(index));
 		this->Select(SectorID(index));
@@ -531,9 +621,16 @@ struct SectorWindow : Window {
 	void OnPlaceObject([[maybe_unused]] Point pt, TileIndex tile) override
 	{
 		if (this->IsWidgetLowered(WID_SEC_PAINT)) {
+			this->StartUndoStep();
 			VpStartPlaceSizing(tile, VPM_X_AND_Y, DDSP_SECTOR_PAINT);
 		} else if (this->IsWidgetLowered(WID_SEC_LASSO) || this->IsWidgetLowered(WID_SEC_BRUSH)) {
+			/* Ctrl+click picks the sector of the tile to paint with. */
+			if (_ctrl_pressed) {
+				if (Sector::IsValidID(GetTileSector(tile))) this->Select(GetTileSector(tile));
+				return;
+			}
 			const bool lasso = this->IsWidgetLowered(WID_SEC_LASSO);
+			this->StartUndoStep();
 			VpStartPlaceSizing(tile, VPM_X_AND_Y, lasso ? DDSP_SECTOR_LASSO : DDSP_SECTOR_BRUSH);
 			this->stroke.clear();
 			this->last_stroke_tile = INVALID_TILE;
@@ -568,8 +665,30 @@ struct SectorWindow : Window {
 			if (lasso) {
 				_sector_lasso_mask[t.base()] = true;
 				MarkTileDirtyByTile(t);
-			} else if (GetTileSector(t) != this->selected && this->stroke.size() < MAX_SECTOR_PAINT_TILES) {
-				this->stroke.push_back(t);
+			} else {
+				this->AddBrushTiles(x, y);
+			}
+		}
+	}
+
+	/** Brush tiles around the brush centre: the offset of the first tile, so the brush is centred on the cursor. */
+	int BrushOffset() const { return -static_cast<int>(this->brush_size - 1) / 2; }
+
+	/**
+	 * Add the tiles below the brush to the stroke.
+	 * @param cx X of the tile below the cursor.
+	 * @param cy Y of the tile below the cursor.
+	 */
+	void AddBrushTiles(int cx, int cy)
+	{
+		const int offset = this->BrushOffset();
+		for (int dy = 0; dy < this->brush_size; dy++) {
+			for (int dx = 0; dx < this->brush_size; dx++) {
+				const int x = cx + offset + dx;
+				const int y = cy + offset + dy;
+				if (x < 0 || y < 0 || x >= static_cast<int>(Map::SizeX()) || y >= static_cast<int>(Map::SizeY())) continue;
+				const TileIndex t = TileXY(x, y);
+				if (GetTileSector(t) != this->selected && this->stroke.size() < MAX_SECTOR_PAINT_TILES) this->stroke.push_back(t);
 			}
 		}
 	}
@@ -605,11 +724,16 @@ struct SectorWindow : Window {
 		const uint y = pt.y / TILE_SIZE;
 		if (x >= Map::SizeX() || y >= Map::SizeY()) return;
 
-		/* Only highlight the tile below the cursor. */
-		_thd.selstart = pt;
-		VpSelectTilesWithMethod(pt.x, pt.y, VPM_X_AND_Y);
-
+		/* Highlight the tile below the cursor, or the area of the brush. */
 		const bool lasso = select_proc == DDSP_SECTOR_LASSO;
+		const int offset = lasso ? 0 : this->BrushOffset();
+		const int last = lasso ? 0 : offset + this->brush_size - 1;
+		const int max_x = static_cast<int>(Map::MaxX()) * TILE_SIZE;
+		const int max_y = static_cast<int>(Map::MaxY()) * TILE_SIZE;
+		_thd.selstart.x = Clamp<int>(static_cast<int>(x + offset) * TILE_SIZE, 0, max_x);
+		_thd.selstart.y = Clamp<int>(static_cast<int>(y + offset) * TILE_SIZE, 0, max_y);
+		VpSelectTilesWithMethod(Clamp<int>(static_cast<int>(x + last) * TILE_SIZE, 0, max_x), Clamp<int>(static_cast<int>(y + last) * TILE_SIZE, 0, max_y), VPM_X_AND_Y);
+
 		this->ExtendStroke(TileXY(x, y), lasso);
 		if (!lasso) this->SendBrush();
 	}
@@ -618,6 +742,7 @@ struct SectorWindow : Window {
 	{
 		if (select_proc == DDSP_SECTOR_BRUSH) {
 			this->SendBrush();
+			this->FinishUndoStep();
 			return;
 		}
 		if (select_proc == DDSP_SECTOR_LASSO) {
@@ -630,11 +755,13 @@ struct SectorWindow : Window {
 			}
 			this->stroke.clear();
 			this->ClearLasso();
+			this->FinishUndoStep();
 			return;
 		}
 		if (pt.x == -1 || select_proc != DDSP_SECTOR_PAINT) return;
 		if (!Sector::IsValidID(this->selected)) return;
 		Command<Commands::SectorPaint>::Post(STR_ERROR_CAN_T_CHANGE_SECTOR, end_tile, start_tile, this->selected, _ctrl_pressed);
+		this->FinishUndoStep();
 	}
 
 	void OnPlaceObjectAbort() override

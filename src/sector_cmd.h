@@ -40,6 +40,7 @@ DEF_CMD_TUPLE_NT(Commands::SectorSetProperties, CmdSectorSetProperties, {}, Comm
 DEF_CMD_TUPLE_NT(Commands::SectorGenerate,      CmdSectorGenerate,      {}, CommandType::LandscapeConstruction, CmdDataT<uint32_t>)
 DEF_CMD_TUPLE_NT(Commands::SectorMerge,         CmdSectorMerge,         {}, CommandType::LandscapeConstruction, CmdDataT<SectorID, SectorID>)
 DEF_CMD_DIRECT_NT(Commands::SectorPaintTiles,    CmdSectorPaintTiles,    {}, CommandType::LandscapeConstruction, SectorPaintTilesCmdData)
+DEF_CMD_TUPLE_NT(Commands::SectorSetLocked,     CmdSectorSetLocked,     {}, CommandType::OtherManagement,       CmdDataT<SectorID, bool>)
 DEF_CMD_TUPLE_NT(Commands::SectorRemoveEmpty,   CmdSectorRemoveEmpty,   {}, CommandType::LandscapeConstruction, CmdDataT<>)
 
 #endif /* SECTOR_CMD_H */

@@ -61,6 +61,18 @@ static void DeleteEmptySectors()
 }
 
 /**
+ * Assign a tile to a sector, unless the tile belongs to another, locked, sector.
+ * @param tile The tile.
+ * @param sector The sector.
+ */
+static void PaintSectorTile(TileIndex tile, SectorID sector)
+{
+	const Sector *current = Sector::GetIfValid(GetTileSector(tile));
+	if (current != nullptr && current->locked && current->index != sector) return;
+	SetTileSector(tile, sector);
+}
+
+/**
  * Assign an area of the map to a sector (scenario editor only).
  * @param flags Type of operation.
  * @param tile End tile of the area.
@@ -78,7 +90,7 @@ CommandCost CmdSectorPaint(DoCommandFlags flags, TileIndex tile, TileIndex start
 	if (flags.Test(DoCommandFlag::Execute)) {
 		OrthogonalOrDiagonalTileIterator iter(tile, start_tile, diagonal);
 		for (; *iter != INVALID_TILE; ++iter) {
-			SetTileSector(*iter, sector);
+			PaintSectorTile(*iter, sector);
 		}
 		UpdateSectorCaches();
 		DeleteEmptySectors();
@@ -106,7 +118,7 @@ CommandCost CmdSectorPaintTiles(DoCommandFlags flags, const SectorPaintTilesCmdD
 
 	if (flags.Test(DoCommandFlag::Execute)) {
 		if (!data.polygon) {
-			for (TileIndex t : data.tiles) SetTileSector(t, data.sector);
+			for (TileIndex t : data.tiles) PaintSectorTile(t, data.sector);
 		} else {
 			/* Even-odd fill of the tile centres inside the polygon, plus the outline itself. */
 			uint min_y = UINT_MAX, max_y = 0;
@@ -130,7 +142,7 @@ CommandCost CmdSectorPaintTiles(DoCommandFlags flags, const SectorPaintTilesCmdD
 					const int from = (crossings[i] - 1 + 1) / 2;  // First tile whose doubled centre >= crossing.
 					const int to = (crossings[i + 1] - 1) / 2;    // Last tile whose doubled centre <= crossing.
 					for (int x = std::max(from, 0); x <= to && x < static_cast<int>(Map::SizeX()); x++) {
-						SetTileSector(TileXY(x, y), data.sector);
+						PaintSectorTile(TileXY(x, y), data.sector);
 					}
 				}
 			}
@@ -143,7 +155,7 @@ CommandCost CmdSectorPaintTiles(DoCommandFlags flags, const SectorPaintTilesCmdD
 				for (int k = 0; k <= steps; k++) {
 					const int x = TileX(a) + (steps == 0 ? 0 : (dx * k + (dx > 0 ? steps / 2 : -steps / 2)) / steps);
 					const int y = TileY(a) + (steps == 0 ? 0 : (dy * k + (dy > 0 ? steps / 2 : -steps / 2)) / steps);
-					SetTileSector(TileXY(x, y), data.sector);
+					PaintSectorTile(TileXY(x, y), data.sector);
 				}
 			}
 		}
@@ -180,6 +192,27 @@ void SectorPaintTilesCmdData::FormatDebugSummary(format_target &output) const
 }
 
 /**
+ * Protect the tiles of a sector from being painted into other sectors, or remove the protection (scenario editor only).
+ * @param flags Type of operation.
+ * @param sector The sector.
+ * @param locked Whether the sector is protected.
+ * @return The cost of this operation or an error.
+ */
+CommandCost CmdSectorSetLocked(DoCommandFlags flags, SectorID sector, bool locked)
+{
+	if (_game_mode != GameMode::Editor) return CMD_ERROR;
+	Sector *s = Sector::GetIfValid(sector);
+	if (s == nullptr) return CMD_ERROR;
+
+	if (flags.Test(DoCommandFlag::Execute)) {
+		s->locked = locked;
+		InvalidateWindowData(WindowClass::Sectors, 0);
+	}
+
+	return CommandCost();
+}
+
+/**
  * Remove all sectors without tiles (scenario editor only).
  * @param flags Type of operation.
  * @return The cost of this operation or an error.
@@ -208,6 +241,8 @@ CommandCost CmdSectorCreate(DoCommandFlags flags, TileIndex tile)
 {
 	if (_game_mode != GameMode::Editor) return CMD_ERROR;
 	if (!Sector::CanAllocateItem()) return CommandCost(STR_ERROR_SECTOR_TOO_MANY);
+	const Sector *current = Sector::GetIfValid(GetTileSector(tile));
+	if (current != nullptr && current->locked) return CommandCost(STR_ERROR_SECTOR_LOCKED);
 
 	if (flags.Test(DoCommandFlag::Execute)) {
 		Sector *s = Sector::Create();

@@ -783,6 +783,7 @@ enum class Commands : uint8_t {
 	SectorMerge,                            ///< scenario editor: merge a sector into another
 	SectorPaintTiles,                       ///< scenario editor: assign a list of tiles or a polygon to a sector
 	SectorRemoveEmpty,                      ///< scenario editor: remove sectors without tiles
+	SectorSetLocked,                        ///< scenario editor: protect the tiles of a sector from painting
 
 	End,                                    ///< Must ALWAYS be on the end of this list!! (period)
 };

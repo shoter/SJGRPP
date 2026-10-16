@@ -75,6 +75,11 @@ def run(ctx):
     ctx.check(sectors(b)[new]["tiles"] - before >= 200, f"lasso painted about 231 tiles ({sectors(b)[new]['tiles'] - before})")
     res = paint_tiles(new, False, [50 * mx + 50, 50 * mx + 51])
     ctx.check(res["success"] and sector_of(b, 50 * mx + 51) == new, f"brush: {res.get('error')}")
+    other = next(i for i in sectors(b) if i != new)
+    ctx.check(b.docmd("SectorSetLocked", 0, new, True)["success"], "lock")
+    paint_tiles(other, False, [50 * mx + 50])
+    ctx.check(sector_of(b, 50 * mx + 50) == new, "painting does not take tiles of a locked sector")
+    ctx.check(b.docmd("SectorSetLocked", 0, new, False)["success"], "unlock")
     count = len(sectors(b))
     ctx.check(b.docmd("SectorRemoveEmpty", 0)["success"] and len(sectors(b)) == count, "remove empty keeps sectors with tiles")
 

@@ -2653,6 +2653,7 @@ STR_SECTOR_INFO_RIGHTS_COMPANY                                  :{BLACK}  {COMPA
 STR_SECTOR_INFO_RIGHTS_NONE                                     :{BLACK}  none
 STR_SECTOR_INFO_FIRST_PICK_ALLOWED                              :{BLACK}Can be a company's free first sector: {LTBLUE}yes
 STR_SECTOR_INFO_FIRST_PICK_FORBIDDEN                            :{BLACK}Can be a company's free first sector: {ORANGE}no
+STR_SECTOR_INFO_LOCKED                                          :{ORANGE}Locked: painting does not change its tiles
 STR_SECTOR_INFO_OWNED_COUNT                                     :{BLACK}Sectors with your building rights: {LTBLUE}{COMMA} of {COMMA}
 STR_SECTOR_INFO_DISABLED                                        :{ORANGE}Sectors are disabled in this game, building is not restricted
 
@@ -2673,9 +2674,16 @@ STR_SECTOR_FIRST_PICK_TOOLTIP                                   :{BLACK}Toggle w
 STR_SECTOR_PAINT                                                :{BLACK}Paint
 STR_SECTOR_PAINT_TOOLTIP                                        :{BLACK}Assign a rectangle of the map to the selected sector by dragging in the main view. Ctrl selects a diagonal area
 STR_SECTOR_LASSO                                                :{BLACK}Lasso
-STR_SECTOR_LASSO_TOOLTIP                                        :{BLACK}Draw an outline in the main view while holding the mouse button; the outline and everything inside it are assigned to the selected sector
+STR_SECTOR_LASSO_TOOLTIP                                        :{BLACK}Draw an outline in the main view while holding the mouse button; the outline and everything inside it are assigned to the selected sector. Ctrl+click picks the sector of a tile
 STR_SECTOR_BRUSH                                                :{BLACK}Brush
-STR_SECTOR_BRUSH_TOOLTIP                                        :{BLACK}Hold the mouse button and move over the main view; every tile below the cursor is assigned to the selected sector
+STR_SECTOR_BRUSH_TOOLTIP                                        :{BLACK}Hold the mouse button and move over the main view; every tile below the brush is assigned to the selected sector. Ctrl+click picks the sector of a tile
+STR_SECTOR_BRUSH_SIZE                                           :{BLACK}{NUM}×{NUM}
+STR_SECTOR_BRUSH_SIZE_ITEM                                      :{NUM}×{NUM}
+STR_SECTOR_BRUSH_SIZE_TOOLTIP                                   :{BLACK}Size of the brush
+STR_SECTOR_UNDO                                                 :{BLACK}Undo
+STR_SECTOR_UNDO_TOOLTIP                                         :{BLACK}Undo the last painting. Tiles taken from a sector which was removed because it became empty stay where they are
+STR_SECTOR_LOCK                                                 :{BLACK}Lock
+STR_SECTOR_LOCK_TOOLTIP                                         :{BLACK}Protect the tiles of the selected sector: painting other sectors does not take them away
 STR_SECTOR_NEW                                                  :{BLACK}New
 STR_SECTOR_NEW_TOOLTIP                                          :{BLACK}Create a new sector by clicking on a tile in the main view, then enlarge it with Paint
 STR_SECTOR_MERGE                                                :{BLACK}Merge into
@@ -2690,6 +2698,7 @@ STR_ERROR_SECTOR_NO_BUILDING_RIGHTS                             :{WHITE}... no b
 STR_ERROR_SECTOR_NO_BUILDING_RIGHTS_IN                          :{WHITE}... no building rights in sector {RAW_STRING}
 STR_ERROR_SECTOR_ALREADY_HAVE_RIGHTS                            :{WHITE}... building rights already owned
 STR_ERROR_SECTOR_TOO_MANY                                       :{WHITE}... too many sectors
+STR_ERROR_SECTOR_LOCKED                                         :{WHITE}... the sector is locked
 STR_ERROR_CAN_T_BUY_SECTOR_RIGHTS                               :{WHITE}Can't buy building rights...
 STR_ERROR_CAN_T_CHANGE_SECTOR                                   :{WHITE}Can't change sector...
 
