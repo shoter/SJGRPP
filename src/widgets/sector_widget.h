@@ -28,6 +28,12 @@ enum SectorWidgets : WidgetID {
 	WID_SEC_GENERATE,      ///< Divide the map randomly (scenario editor).
 	WID_SEC_EDITOR_GOTO,   ///< Scroll the main view to the sector (scenario editor).
 	WID_SEC_EDITOR_OVERLAY,///< Toggle the sector borders in the main view (scenario editor).
+	WID_SEC_LASSO,         ///< Assign the inside of a drawn outline to the sector (scenario editor).
+	WID_SEC_BRUSH,         ///< Assign the tiles dragged over to the sector (scenario editor).
+	WID_SEC_REMOVE_EMPTY,  ///< Remove sectors without tiles (scenario editor).
+	WID_SEC_BRUSH_SIZE,    ///< Size of the brush (scenario editor).
+	WID_SEC_UNDO,          ///< Undo the last painting (scenario editor).
+	WID_SEC_LOCK,          ///< Toggle protecting the tiles of the sector from painting (scenario editor).
 };
 
 #endif /* WIDGETS_SECTOR_WIDGET_H */

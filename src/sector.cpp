@@ -444,6 +444,9 @@ CommandCost CheckSectorBuildingRightsLine(TileIndex begin, TileIndex end)
 }
 
 /** Redraw the viewports if the sector overlay is visible. */
+/** Tiles of the outline being drawn with the lasso tool in the scenario editor, empty when none is drawn. */
+std::vector<bool> _sector_lasso_mask;
+
 void MarkSectorOverlayDirty()
 {
 	if (_show_sector_overlay) MarkWholeScreenDirty();
@@ -473,6 +476,7 @@ static bool IsSectorBorderTile(TileIndex tile, SectorID sector)
  */
 void DrawTileSectorOverlay(const TileInfo *ti)
 {
+	if (!_sector_lasso_mask.empty() && _sector_lasso_mask[ti->tile.base()]) DrawTileSelectionRect(ti, PALETTE_SEL_TILE_RED);
 	if (!_show_sector_overlay || _sector_map.empty()) return;
 	if (_game_mode != GameMode::Normal && _game_mode != GameMode::Editor) return;
 

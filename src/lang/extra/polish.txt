@@ -152,6 +152,7 @@ STR_SECTOR_INFO_RIGHTS_HEADER                                   :{BLACK}Firmy z 
 STR_SECTOR_INFO_RIGHTS_NONE                                     :{BLACK}  brak
 STR_SECTOR_INFO_FIRST_PICK_ALLOWED                              :{BLACK}Może być darmowym pierwszym sektorem firmy: {LTBLUE}tak
 STR_SECTOR_INFO_FIRST_PICK_FORBIDDEN                            :{BLACK}Może być darmowym pierwszym sektorem firmy: {ORANGE}nie
+STR_SECTOR_INFO_LOCKED                                          :{ORANGE}Zablokowany: malowanie nie zmienia jego pól
 STR_SECTOR_INFO_OWNED_COUNT                                     :{BLACK}Sektory z twoimi prawami budowy: {LTBLUE}{COMMA} z {COMMA}
 STR_SECTOR_INFO_DISABLED                                        :{ORANGE}Sektory są wyłączone w tej grze, budowa nie jest ograniczona
 
@@ -170,11 +171,24 @@ STR_SECTOR_PRICE_QUERY                                          :{WHITE}Cena pra
 STR_SECTOR_FIRST_PICK                                           :{BLACK}Darmowy pierwszy
 STR_SECTOR_FIRST_PICK_TOOLTIP                                   :{BLACK}Przełącz, czy wybrany sektor może być darmowym pierwszym sektorem firmy
 STR_SECTOR_PAINT                                                :{BLACK}Maluj
-STR_SECTOR_PAINT_TOOLTIP                                        :{BLACK}Przypisz obszar mapy do wybranego sektora, przeciągając w widoku głównym. Ctrl zaznacza obszar ukośny
+STR_SECTOR_PAINT_TOOLTIP                                        :{BLACK}Przypisz prostokąt mapy do wybranego sektora, przeciągając w widoku głównym. Ctrl zaznacza obszar ukośny
+STR_SECTOR_LASSO                                                :{BLACK}Lasso
+STR_SECTOR_LASSO_TOOLTIP                                        :{BLACK}Narysuj kontur w widoku głównym, trzymając przycisk myszy; kontur i wszystko w jego środku zostanie przypisane do wybranego sektora. Ctrl+klik wybiera sektor pola
+STR_SECTOR_BRUSH                                                :{BLACK}Pędzel
+STR_SECTOR_BRUSH_TOOLTIP                                        :{BLACK}Trzymaj przycisk myszy i przesuwaj nad widokiem głównym; każde pole pod pędzlem zostanie przypisane do wybranego sektora. Ctrl+klik wybiera sektor pola
+STR_SECTOR_BRUSH_SIZE                                           :{BLACK}{NUM}×{NUM}
+STR_SECTOR_BRUSH_SIZE_ITEM                                      :{NUM}×{NUM}
+STR_SECTOR_BRUSH_SIZE_TOOLTIP                                   :{BLACK}Wielkość pędzla
+STR_SECTOR_UNDO                                                 :{BLACK}Cofnij
+STR_SECTOR_UNDO_TOOLTIP                                         :{BLACK}Cofnij ostatnie malowanie. Pola zabrane sektorowi, który został usunięty, bo stał się pusty, zostają tam, gdzie są
+STR_SECTOR_LOCK                                                 :{BLACK}Zablokuj
+STR_SECTOR_LOCK_TOOLTIP                                         :{BLACK}Chroń pola wybranego sektora: malowanie innych sektorów ich nie zabiera
 STR_SECTOR_NEW                                                  :{BLACK}Nowy
 STR_SECTOR_NEW_TOOLTIP                                          :{BLACK}Utwórz nowy sektor, klikając pole w widoku głównym, a potem powiększ go narzędziem Maluj
 STR_SECTOR_MERGE                                                :{BLACK}Połącz z
 STR_SECTOR_MERGE_TOOLTIP                                        :{BLACK}Usuń wybrany sektor i przekaż jego pola innemu sektorowi
+STR_SECTOR_REMOVE_EMPTY                                         :{BLACK}Usuń puste
+STR_SECTOR_REMOVE_EMPTY_TOOLTIP                                 :{BLACK}Usuń wszystkie sektory, które nie mają pól
 STR_SECTOR_GENERATE                                             :{BLACK}Generuj
 STR_SECTOR_GENERATE_TOOLTIP                                     :{BLACK}Zastąp wszystkie sektory losowym podziałem mapy
 STR_SECTOR_GENERATE_QUERY                                       :{WHITE}Średnia liczba pól na sektor
@@ -183,6 +197,7 @@ STR_ERROR_SECTOR_NO_BUILDING_RIGHTS                             :{WHITE}... brak
 STR_ERROR_SECTOR_NO_BUILDING_RIGHTS_IN                          :{WHITE}... brak praw budowy w sektorze {RAW_STRING}
 STR_ERROR_SECTOR_ALREADY_HAVE_RIGHTS                            :{WHITE}... prawa budowy już posiadane
 STR_ERROR_SECTOR_TOO_MANY                                       :{WHITE}... zbyt wiele sektorów
+STR_ERROR_SECTOR_LOCKED                                         :{WHITE}... sektor jest zablokowany
 STR_ERROR_CAN_T_BUY_SECTOR_RIGHTS                               :{WHITE}Nie można kupić praw budowy...
 STR_ERROR_CAN_T_CHANGE_SECTOR                                   :{WHITE}Nie można zmienić sektora...
 

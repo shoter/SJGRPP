@@ -22,6 +22,7 @@ static const NamedSaveLoad _sector_desc[] = {
 	NSL("name",          SLE_SSTR(Sector, name,          SLE_STR | SLF_ALLOW_CONTROL)),
 	NSL("custom_price",  SLE_VAR(Sector, custom_price,   SLE_INT64)),
 	NSL("no_first_pick", SLE_VAR(Sector, no_first_pick,  SLE_BOOL)),
+	NSL("locked",        SLE_VAR(Sector, locked,         SLE_BOOL)),
 	NSL("rights",        SLE_VAR(Sector, rights,         SLE_UINT32)),
 	NSL("town",          SLE_VAR(Sector, town,           SLE_UINT16)),
 };

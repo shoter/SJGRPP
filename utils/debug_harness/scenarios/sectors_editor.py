@@ -5,6 +5,7 @@ marked as not available as free first sector and merged; a game started from the
 
 import re
 import shutil
+import struct
 
 CONFIG = {
     "game_creation": {"map_x": 7, "map_y": 7, "starting_year": 1990, "landscape": "temperate"},
@@ -61,6 +62,26 @@ def run(ctx):
     ctx.check(b.docmd("SectorMerge", 0, victim, new)["success"], "merge")
     after = sectors(b)
     ctx.check(victim not in after and after[new]["tiles"] == tiles_before, "merged sector removed, tiles moved")
+
+    # Lasso: the inside of a triangle, brush: single tiles.
+    def paint_tiles(sector: int, polygon: bool, tiles: list[int]) -> dict:
+        payload = struct.pack("<BBI", sector, polygon, len(tiles)) + b"".join(struct.pack("<I", t) for t in tiles)
+        return b.docmd_hex("SectorPaintTiles", 0, payload)
+
+    before = sectors(b)[new]["tiles"]
+    res = paint_tiles(new, True, [20 * mx + 20, 20 * mx + 40, 40 * mx + 20])
+    ctx.check(res["success"], f"lasso: {res.get('error')}")
+    ctx.check(sector_of(b, 25 * mx + 25) == new and sector_of(b, 38 * mx + 38) != new, "lasso fills the inside of the outline only")
+    ctx.check(sectors(b)[new]["tiles"] - before >= 200, f"lasso painted about 231 tiles ({sectors(b)[new]['tiles'] - before})")
+    res = paint_tiles(new, False, [50 * mx + 50, 50 * mx + 51])
+    ctx.check(res["success"] and sector_of(b, 50 * mx + 51) == new, f"brush: {res.get('error')}")
+    other = next(i for i in sectors(b) if i != new)
+    ctx.check(b.docmd("SectorSetLocked", 0, new, True)["success"], "lock")
+    paint_tiles(other, False, [50 * mx + 50])
+    ctx.check(sector_of(b, 50 * mx + 50) == new, "painting does not take tiles of a locked sector")
+    ctx.check(b.docmd("SectorSetLocked", 0, new, False)["success"], "unlock")
+    count = len(sectors(b))
+    ctx.check(b.docmd("SectorRemoveEmpty", 0)["success"] and len(sectors(b)) == count, "remove empty keeps sectors with tiles")
 
     # A scenario needs a town to be playable.
     res = b.docmd("FoundTown", 0, 1, False, 0, True, 0, "")

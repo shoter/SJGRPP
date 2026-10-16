@@ -22,6 +22,7 @@ extern std::vector<uint8_t> _sector_map;
 extern bool _show_sector_overlay;
 extern SectorID _highlighted_sector;
 extern bool _sector_checks_suspended;
+extern std::vector<bool> _sector_lasso_mask;
 
 /**
  * Get the sector of a tile.

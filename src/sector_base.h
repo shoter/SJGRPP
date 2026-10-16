@@ -26,6 +26,7 @@ struct Sector : SectorPool::PoolItem<&_sector_pool> {
 	std::string name{};            ///< Custom name of the sector, empty for an automatic name.
 	Money custom_price = 0;        ///< Custom base price of the building rights (before inflation), 0 for a price based on the number of tiles.
 	bool no_first_pick = false;    ///< The sector cannot be chosen as the free first sector of a company.
+	bool locked = false;           ///< Tiles of the sector cannot be painted into other sectors (scenario editor).
 	CompanyMask rights{};          ///< Companies which own building rights in this sector.
 	TownID town = TownID::Invalid(); ///< Town the automatic name is taken from.
 

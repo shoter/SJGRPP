@@ -484,7 +484,7 @@ static CallBackFunction ToolbarMapClick(Window *w)
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_LINGRAPH_LEGEND,         MapMenuEntries::ShowLinkGraph,         false));
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SIGN_LIST,               MapMenuEntries::ShowSignList,          false));
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_PLAN_LIST,               MapMenuEntries::ShowPlans,             false));
-	if (_game_mode == GameMode::Editor || MapHasSectors()) list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SECTOR_MAP, MapMenuEntries::ShowSectors, false));
+	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SECTOR_MAP, MapMenuEntries::ShowSectors, false));
 	PopupMainToolbarMenu(w, WID_TN_SMALL_MAP, std::move(list), 0);
 	return CallBackFunction::None;
 }
@@ -496,7 +496,7 @@ static CallBackFunction ToolbarScenMapTownDir(Window *w)
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_EXTRA_VIEWPORT,          MapMenuEntries::ShowExtraViewport,     false));
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SIGN_LIST,               MapMenuEntries::ShowSignList,          false));
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_PLAN_LIST,               MapMenuEntries::ShowPlans,             false));
-	if (_game_mode == GameMode::Editor || MapHasSectors()) list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SECTOR_MAP, MapMenuEntries::ShowSectors, false));
+	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SECTOR_MAP, MapMenuEntries::ShowSectors, false));
 	list.push_back(MakeDropDownListStringItem(STR_TOWN_MENU_TOWN_DIRECTORY,         MapMenuEntries::ShowTownDirectory,     false));
 	list.push_back(MakeDropDownListStringItem(STR_INDUSTRY_MENU_INDUSTRY_DIRECTORY, MapMenuEntries::ShowIndustryDirectory, false));
 	PopupMainToolbarMenu(w, WID_TE_SMALL_MAP, std::move(list), 0);
