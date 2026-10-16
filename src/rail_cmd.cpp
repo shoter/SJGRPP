@@ -47,6 +47,7 @@
 #include "object_base.h"
 #include "tile_cmd.h"
 #include "tile_track_func.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 #include "table/railtypes.h"
@@ -720,6 +721,9 @@ static void ReReserveTrainPath(Train *v)
  */
 CommandCost CmdBuildSingleRail(DoCommandFlags flags, TileIndex tile, RailType railtype, Track track, BuildRailTrackFlags build_flags)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	CommandCost cost(ExpensesType::Construction);
 
 	_rail_track_endtile = INVALID_TILE;
@@ -986,6 +990,9 @@ CommandCost CmdBuildSingleRail(DoCommandFlags flags, TileIndex tile, RailType ra
  */
 CommandCost CmdRemoveSingleRail(DoCommandFlags flags, TileIndex tile, Track track)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	CommandCost cost(ExpensesType::Construction);
 	bool crossing = false;
 
@@ -1429,6 +1436,9 @@ CommandCost CmdRemoveRailroadTrack(DoCommandFlags flags, TileIndex end_tile, Til
  */
 CommandCost CmdBuildTrainDepot(DoCommandFlags flags, TileIndex tile, RailType railtype, DiagDirection dir)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	/* check railtype and valid direction for depot (0 through 3), 4 in total */
 	if (!ValParamRailType(railtype) || !IsValidDiagDirection(dir)) return CMD_ERROR;
 
@@ -1558,6 +1568,9 @@ static void SetupBridgeTunnelSignalSimulation(TileIndex entrance, TileIndex exit
 CommandCost CmdBuildSingleSignal(DoCommandFlags flags, TileIndex tile, Track track, SignalType sigtype, SignalVariant sigvar, uint8_t signal_style,
 		uint8_t signal_spacing, BuildSignalFlags build_flags, SignalCycleGroups which_signals, uint8_t num_dir_cycle, uint8_t signals_copy)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	const bool ctrl_pressed = HasFlag(build_flags, BuildSignalFlags::CtrlPressed); // was the CTRL button pressed
 	const bool convert_signal = HasFlag(build_flags, BuildSignalFlags::Convert); // convert button pressed
 
@@ -2395,6 +2408,9 @@ CommandCost CmdBuildSignalTrack(DoCommandFlags flags, TileIndex tile, TileIndex 
  */
 CommandCost CmdRemoveSingleSignal(DoCommandFlags flags, TileIndex tile, Track track, RemoveSignalFlags remove_flags)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	Money cost = _price[Price::ClearSignals];
 
 	if (IsTileType(tile, TileType::TunnelBridge)) {
@@ -2624,6 +2640,7 @@ CommandCost CmdConvertRail(DoCommandFlags flags, TileIndex tile, TileIndex area_
 
 		/* Trying to convert other's rail */
 		CommandCost ret = CheckTileOwnership(tile);
+		if (ret.Succeeded()) ret = CheckSectorBuildingRights(tile);
 		if (ret.Failed()) {
 			error = std::move(ret);
 			continue;
@@ -2922,6 +2939,7 @@ CommandCost CmdConvertRailTrack(DoCommandFlags flags, TileIndex end_tile, TileIn
 
 		/* Trying to convert other's rail */
 		CommandCost ret = CheckTileOwnership(tile);
+		if (ret.Succeeded()) ret = CheckSectorBuildingRights(tile);
 		if (ret.Failed()) {
 			error = ret;
 			continue;

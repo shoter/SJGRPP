@@ -34,6 +34,7 @@ add_files(
     oldloader_sl.cpp
     order_sl.cpp
     plans_sl.cpp
+    sector_sl.cpp
     saveload.cpp
     saveload.h
     saveload_buffer.h
@@ -57,6 +58,7 @@ add_files(
     tracerestrict_sl.cpp
     train_speed_adaptation.cpp
     tunnel_sl.cpp
+    used_vehicle_sl.cpp
     vehicle_sl.cpp
     vehicle_sl.h
     waypoint_sl.cpp

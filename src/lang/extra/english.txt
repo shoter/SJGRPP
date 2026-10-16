@@ -2622,3 +2622,69 @@ STR_STATION_CARGO_OVERFLOW                                      :{WHITE}{CARGO_L
 
 STR_SHOW_UNAVAILABLE_ENGINES                                    :{BLACK}Show unavailable
 STR_SHOW_UNAVAILABLE_ENGINES_TOOLTIP                            :{BLACK}By enabling this button, vehicles which are not yet introduced or are no longer available are also displayed (greyed out). They cannot be bought
+
+STR_CONFIG_SETTING_SECTORS                                      :Divide the map into sectors with building rights: {STRING2}
+STR_CONFIG_SETTING_SECTORS_HELPTEXT                             :When enabled, the map is divided into sectors and companies can only build, demolish and terraform in sectors in which they bought building rights. A bridge or tunnel needs building rights for every tile it spans. The first sector of a company is free, unless the scenario forbids it for that sector. Random maps are divided randomly; in the scenario editor sectors can be edited
+STR_CONFIG_SETTING_SECTOR_SIZE                                  :Average size of random sectors: {STRING2} tiles
+STR_CONFIG_SETTING_SECTOR_SIZE_HELPTEXT                         :Average number of tiles of a sector when the map is divided randomly into sectors. At most 255 sectors are created
+STR_CONFIG_SETTING_SECTOR_PRICE_PER_TILE                        :Price of building rights per sector tile: {STRING2}
+STR_CONFIG_SETTING_SECTOR_PRICE_PER_TILE_HELPTEXT               :The price of building rights in a sector is this amount times the number of tiles of the sector, unless the scenario sets a price for the sector. Prices rise with inflation
+
+STR_MAP_MENU_SECTOR_MAP                                         :Sector map
+STR_ABOUT_MENU_TOGGLE_SECTOR_OVERLAY                            :Show sector borders
+
+STR_SECTOR_NAME_NONE                                            :(no sector)
+STR_SECTOR_NAME_TOWN                                            :{TOWN}
+STR_SECTOR_NAME_NUMBER                                          :Sector {COMMA}
+
+STR_SECTOR_CAPTION                                              :{WHITE}Sectors
+STR_SECTOR_MAP_TOOLTIP                                          :{BLACK}Click on a sector to select it. Double click to scroll the main view to it
+STR_SECTOR_INFO_NAME                                            :{WHITE}{RAW_STRING}
+STR_SECTOR_INFO_NONE_SELECTED                                   :{BLACK}Click on a sector in the map to select it
+STR_SECTOR_INFO_SIZE                                            :{BLACK}Size: {LTBLUE}{COMMA} tile{P "" s}
+STR_SECTOR_INFO_PRICE                                           :{BLACK}Price of building rights: {LTBLUE}{CURRENCY_LONG}
+STR_SECTOR_INFO_PRICE_FREE                                      :{BLACK}Price of building rights: {GREEN}free (first sector)
+STR_SECTOR_INFO_PRICE_CUSTOM                                    :{BLACK}Price of building rights: {LTBLUE}{CURRENCY_LONG} (custom)
+STR_SECTOR_INFO_PRICE_AUTOMATIC                                 :{BLACK}Price of building rights: {LTBLUE}{CURRENCY_LONG} (from size)
+STR_SECTOR_INFO_HAVE_RIGHTS                                     :{GREEN}You own building rights in this sector
+STR_SECTOR_INFO_NO_RIGHTS                                       :{RED}You have no building rights in this sector
+STR_SECTOR_INFO_RIGHTS_HEADER                                   :{BLACK}Companies with building rights:
+STR_SECTOR_INFO_RIGHTS_COMPANY                                  :{BLACK}  {COMPANY}
+STR_SECTOR_INFO_RIGHTS_NONE                                     :{BLACK}  none
+STR_SECTOR_INFO_FIRST_PICK_ALLOWED                              :{BLACK}Can be a company's free first sector: {LTBLUE}yes
+STR_SECTOR_INFO_FIRST_PICK_FORBIDDEN                            :{BLACK}Can be a company's free first sector: {ORANGE}no
+STR_SECTOR_INFO_OWNED_COUNT                                     :{BLACK}Sectors with your building rights: {LTBLUE}{COMMA} of {COMMA}
+STR_SECTOR_INFO_DISABLED                                        :{ORANGE}Sectors are disabled in this game, building is not restricted
+
+STR_SECTOR_BUY                                                  :{BLACK}Buy building rights
+STR_SECTOR_BUY_TOOLTIP                                          :{BLACK}Buy building rights in the selected sector, so your company can build there
+STR_SECTOR_GOTO                                                 :{BLACK}Go to
+STR_SECTOR_GOTO_TOOLTIP                                         :{BLACK}Scroll the main view to the centre of the selected sector
+STR_SECTOR_OVERLAY                                              :{BLACK}Borders
+STR_SECTOR_OVERLAY_TOOLTIP                                      :{BLACK}Show the sector borders in the main view: green where you own building rights, red where you do not
+STR_SECTOR_RENAME                                               :{BLACK}Rename
+STR_SECTOR_RENAME_TOOLTIP                                       :{BLACK}Rename the selected sector. An empty name names it after its biggest town
+STR_SECTOR_RENAME_QUERY                                         :{WHITE}Rename sector
+STR_SECTOR_PRICE                                                :{BLACK}Price
+STR_SECTOR_PRICE_TOOLTIP                                        :{BLACK}Set the price of the building rights of the selected sector. 0 uses the price per tile setting
+STR_SECTOR_PRICE_QUERY                                          :{WHITE}Price of building rights (0 = from size)
+STR_SECTOR_FIRST_PICK                                           :{BLACK}Free first
+STR_SECTOR_FIRST_PICK_TOOLTIP                                   :{BLACK}Toggle whether the selected sector can be the free first sector of a company
+STR_SECTOR_PAINT                                                :{BLACK}Paint
+STR_SECTOR_PAINT_TOOLTIP                                        :{BLACK}Assign an area of the map to the selected sector by dragging in the main view. Ctrl selects a diagonal area
+STR_SECTOR_NEW                                                  :{BLACK}New
+STR_SECTOR_NEW_TOOLTIP                                          :{BLACK}Create a new sector by clicking on a tile in the main view, then enlarge it with Paint
+STR_SECTOR_MERGE                                                :{BLACK}Merge into
+STR_SECTOR_MERGE_TOOLTIP                                        :{BLACK}Remove the selected sector and give its tiles to another sector
+STR_SECTOR_GENERATE                                             :{BLACK}Generate
+STR_SECTOR_GENERATE_TOOLTIP                                     :{BLACK}Replace all sectors with a random division of the map
+STR_SECTOR_GENERATE_QUERY                                       :{WHITE}Average number of tiles per sector
+
+STR_ERROR_SECTOR_NO_BUILDING_RIGHTS                             :{WHITE}... no building rights in this sector
+STR_ERROR_SECTOR_NO_BUILDING_RIGHTS_IN                          :{WHITE}... no building rights in sector {RAW_STRING}
+STR_ERROR_SECTOR_ALREADY_HAVE_RIGHTS                            :{WHITE}... building rights already owned
+STR_ERROR_SECTOR_TOO_MANY                                       :{WHITE}... too many sectors
+STR_ERROR_CAN_T_BUY_SECTOR_RIGHTS                               :{WHITE}Can't buy building rights...
+STR_ERROR_CAN_T_CHANGE_SECTOR                                   :{WHITE}Can't change sector...
+
+STR_LAI_SECTOR                                                  :{BLACK}Sector: {GOLD}{RAW_STRING}

@@ -42,6 +42,7 @@
 #include "pathfinder/water_regions.h"
 
 #include "widgets/misc_widget.h"
+#include "sector_func.h"
 
 #include "table/control_codes.h"
 #include "table/strings.h"
@@ -213,6 +214,11 @@ public:
 			this->landinfo_data.push_back(GetString(STR_LAND_AREA_INFORMATION_LOCAL_AUTHORITY, STR_LAND_AREA_INFORMATION_LOCAL_AUTHORITY_NONE, std::monostate{}));
 		} else {
 			this->landinfo_data.push_back(GetString(STR_LAND_AREA_INFORMATION_LOCAL_AUTHORITY, STR_TOWN_NAME, t->index));
+		}
+
+		/* Sector */
+		if (MapHasSectors()) {
+			this->landinfo_data.push_back(GetString(STR_LAI_SECTOR, GetSectorName(GetTileSector(this->tile))));
 		}
 
 		/* Build date */

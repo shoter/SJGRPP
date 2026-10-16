@@ -950,6 +950,9 @@ SettingsContainer &GetSettingsTree()
 		{
 			accounting->Add(new SettingEntry("difficulty.infinite_money"));
 			accounting->Add(new SettingEntry("economy.inflation"));
+			accounting->Add(new SettingEntry("economy.sectors"));
+			accounting->Add(new ConditionallyHiddenSettingEntry("economy.sector_size", []() -> bool { return !GetGameSettings().economy.sectors; }));
+			accounting->Add(new ConditionallyHiddenSettingEntry("economy.sector_price_per_tile", []() -> bool { return !GetGameSettings().economy.sectors; }));
 			accounting->Add(new SettingEntry("economy.inflation_fixed_dates"));
 			accounting->Add(new SettingEntry("difficulty.initial_interest"));
 			accounting->Add(new SettingEntry("difficulty.max_loan"));
@@ -1013,6 +1016,8 @@ SettingsContainer &GetSettingsTree()
 			vehicles->Add(new SettingEntry("vehicle.adjacent_crossings"));
 			vehicles->Add(new SettingEntry("vehicle.safer_crossings"));
 			vehicles->Add(new SettingEntry("vehicle.non_leading_engines_keep_name"));
+			vehicles->Add(new SettingEntry("vehicle.used_vehicle_market"));
+			vehicles->Add(new SettingEntry("vehicle.used_vehicle_yearly_chance"));
 		}
 
 		SettingsPage *limitations = main->Add(new SettingsPage(STR_CONFIG_SETTING_LIMITATIONS));

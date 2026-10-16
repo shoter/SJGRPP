@@ -45,6 +45,7 @@
 #include "3rdparty/cpp-ring-buffer/ring_buffer.hpp"
 #include "3rdparty/robin_hood/robin_hood.h"
 #include <array>
+#include "sector_func.h"
 
 #include "table/strings.h"
 #include "table/sprites.h"
@@ -612,6 +613,11 @@ void ClearSnowLine()
  */
 CommandCost CmdLandscapeClear(DoCommandFlags flags, TileIndex tile)
 {
+	if (!flags.Test(DoCommandFlag::Bankrupt)) {
+		CommandCost sector_ret = CheckSectorBuildingRights(tile);
+		if (sector_ret.Failed()) return sector_ret;
+	}
+
 	CommandCost cost(ExpensesType::Construction);
 	bool do_clear = false;
 	/* Test for stuff which results in water when cleared. Then add the cost to also clear the water. */

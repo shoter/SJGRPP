@@ -40,6 +40,7 @@
 #include "ship.h"
 #include "console_func.h"
 #include "screenshot.h"
+#include "sector_func.h"
 #include "network/network.h"
 #include "network/network_func.h"
 #include "ai/ai.hpp"
@@ -1105,6 +1106,9 @@ static void OnStartScenario()
 	for (Industry *i : Industry::Iterate()) {
 		i->last_prod_year = EconTime::CurYear();
 	}
+
+	/* Divide the map into sectors if the scenario has none, or name the sectors it has. */
+	GenerateSectorsIfMissing();
 }
 
 /**

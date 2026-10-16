@@ -249,14 +249,14 @@ class StressTest:
 
     # ---- state comparison ----
 
-    def pause_synced(self, timeout: float = 60.0) -> int:
-        """Pause the server and wait until every client has caught up to the same game tick. Returns that tick."""
+    def pause_synced(self, timeout: float = 60.0, extra: list[Instance] | None = None) -> int:
+        """Pause the server and wait until every client (and extra instances) reached the same game tick. Returns it."""
         assert self.cluster is not None
         server = self.mon(self.cluster.server)
         server.console("pause")
         server.wait_until(lambda b: b.info()["paused"], timeout=timeout, what="server pause")
         tick = server.info()["tick_counter"]
-        for c in self.cluster.clients:
+        for c in self.cluster.clients + (extra or []):
             self.mon(c).wait_until(lambda b: (i := b.info())["paused"] and i["tick_counter"] == tick, timeout=timeout,
                                 what=f"{c.name} to reach paused tick {tick}")
         return tick
@@ -301,6 +301,24 @@ class StressTest:
                     if len(diffs) >= limit:
                         return diffs
         return diffs
+
+    def sample_vehicle_positions(self) -> None:
+        """
+        Record where the route vehicles are, for the "vehicles move" checks. Read-only, so unlike sync_check it
+        also runs while routes are being built (always the case in max-28).
+        """
+        vids = [v for rs in list(self.routes.values()) for r in list(rs) for v in list(r.vehicles)]
+        if not vids:
+            return
+        try:
+            resp = self.mon(self.cluster.server).batch([f"obj vehicle {v} tile x_pos y_pos" for v in vids])
+        except Exception as e:  # noqa: BLE001
+            self.log(f"vehicle position sample failed: {type(e).__name__}: {e}")
+            return
+        for v, r in zip(vids, resp):
+            if r.get("ok"):
+                val = r["result"]
+                self.vehicle_history.setdefault(v, set()).add((val["tile"], val["x_pos"], val["y_pos"]))
 
     def sync_check(self, label: str) -> None:
         assert self.cluster is not None
@@ -656,12 +674,16 @@ class StressTest:
             spec.bridge.wait_ticks(500, timeout_ms=120000)
             problems = [p for p in self.health_problems() if "desync" in p.lower() or spec.name in p]
             self.check(not problems and spec.alive(), f"{spec.name} stays in sync after joining", "; ".join(problems[:6]))
-            ref = self.state_snapshot(self.mon(c.server))
-            got = self.state_snapshot(spec.bridge)
-            # Not paused: only compare things that do not change every tick.
-            self.check(set(ref["vehicles"]) == set(got["vehicles"]) and set(ref["stations"]) == set(got["stations"]),
-                       f"{spec.name} sees the same stations and vehicles",
-                       f"joined in {self.join_seconds[spec.name]}s, {len(got['vehicles'])} vehicles")
+            # Compare at the same paused tick, like the regular state comparison.
+            try:
+                tick = self.pause_synced(extra=[spec])
+                diffs = self.diff_snapshots(self.state_snapshot(self.mon(c.server)), self.state_snapshot(spec.bridge))
+                self.check(not diffs, f"{spec.name} sees the same game state",
+                           f"joined in {self.join_seconds[spec.name]}s, tick {tick}" + (" | " + "; ".join(diffs) if diffs else ""))
+            except TimeoutError as e:
+                self.check(False, f"{spec.name} sees the same game state", f"did not reach the paused server tick: {e}")
+            finally:
+                self.unpause()
             self.drop_mon(spec)
             spec.stop()
         elif event == "save":
@@ -742,6 +764,7 @@ class StressTest:
                 self.aborted = True
                 return
             prev = self.sample_perf(prev)
+            self.sample_vehicle_positions()
             date = prev["date"]
             done = months_between(start_date, date)
             self.log(f"{date} ({done:.1f}/{months} months): speed {prev.get('speed_ratio', '-')}, game loop "
@@ -817,15 +840,22 @@ class StressTest:
             if not vids:
                 continue
             resp = server.batch([f"obj vehicle {v} tile x_pos y_pos cur_speed profit_this_year profit_last_year profit_lifetime" for v in vids])
-            vals = {v: r["result"] for v, r in zip(vids, resp) if r.get("ok")}
+            # A route's vehicle may be gone (e.g. a bus destroyed by a train at a level crossing) and its id reused
+            # by another kind of vehicle that has no profit fields: only count the route's own vehicles.
+            vals = {v: r["result"] for v, r in zip(vids, resp)
+                    if r.get("ok") and all(str(r["result"].get(f, "")).lstrip("-").isdigit()
+                                           for f in ("profit_this_year", "profit_last_year", "profit_lifetime"))}
             for v, val in vals.items():
                 self.vehicle_history.setdefault(v, set()).add((val["tile"], val["x_pos"], val["y_pos"]))
-            moved = [v for v in vids if len(self.vehicle_history.get(v, ())) > 1]
             # profit_lifetime is only updated at the end of a year.
             earning = [v for v, val in vals.items()
                        if max(int(val["profit_this_year"]), int(val["profit_last_year"]), int(val["profit_lifetime"])) > 0]
-            self.check(len(vals) == len(vids), f"{kind} vehicles still exist", f"{len(vals)}/{len(vids)}")
-            self.check(len(moved) >= max(1, len(vids) // 2), f"{kind} vehicles move", f"{len(moved)}/{len(vids)} changed position")
+            # Positions are only sampled at sync checks: a vehicle loading or queueing at a station at each sample looks
+            # parked, but one that earned money has delivered cargo, so it moved.
+            moved = [v for v in vids if len(self.vehicle_history.get(v, ())) > 1 or v in earning]
+            self.check(len(vals) == len(vids), f"{kind} vehicles still exist", f"{len(vals)}/{len(vids)}",
+                       severity="warn")  # crashes at level crossings are normal gameplay
+            self.check(len(moved) >= max(1, len(vids) // 2), f"{kind} vehicles move", f"{len(moved)}/{len(vids)} changed position or earned money")
             self.check(len(earning) > 0, f"{kind} vehicles earn money",
                        f"{len(earning)}/{len(vids)} with positive profit",
                        severity="warn" if kind == "ship" or self.profile["months"] < 2 else "fail")

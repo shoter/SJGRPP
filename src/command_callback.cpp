@@ -171,6 +171,7 @@ DEF_CB_RES_TUPLE(AdjustSchDispatchSlot, Commands::SchDispatchAdjustSlot)
 DEF_CB_RES(CreateTraceRestrictSlot)
 DEF_CB_RES(CreateTraceRestrictCounter)
 DEF_CB_GENERAL(DebugBridge)
+DEF_CB_RES(SectorCreate)
 
 template <size_t... i>
 inline constexpr auto MakeCommandCallbackTable(std::index_sequence<i...>) noexcept {

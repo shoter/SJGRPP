@@ -10,48 +10,31 @@
 #include "stdafx.h"
 #include "company_base.h"
 #include "company_func.h"
+#include "company_gui.h"
+#include "framerate_type.h"
+#include "goal_gui.h"
+#include "graph_gui.h"
+#include "gui.h"
+#include "league_gui.h"
+#include "news_gui.h"
+#include "plans_func.h"
+#include "sector_func.h"
+#include "smallmap_gui.h"
 #include "station_base.h"
 #include "station_func.h"
+#include "timetable.h"
 #include "town.h"
 #include "vehicle_base.h"
 #include "vehicle_gui.h"
+#include "linkgraph/linkgraph_gui.h"
+#include "network/network_gui.h"
 
 #include <functional>
 #include <map>
 
 #include "safeguards.h"
 
-/* Window openers without a convenient header. */
-void ShowSmallMap();
-void ShowTownDirectory();
-void ShowIndustryDirectory();
-void ShowIndustryCargoesWindow();
-void ShowSubsidiesList();
-void ShowMessageHistory();
-void ShowLastNewsMessage();
-void ShowClientList();
-void ShowFramerateWindow();
-void ShowLinkGraphLegend();
-void ShowCargoPaymentRates();
-void ShowCompanyValueGraph();
-void ShowIncomeGraph();
-void ShowOperatingProfitGraph();
-void ShowDeliveredCargoGraph();
-void ShowPerformanceHistoryGraph();
-void ShowPerformanceRatingDetail();
-void ShowPerformanceLeagueTable();
-void ShowFirstLeagueTable();
-void ShowPlansWindow();
-void ShowCompany(CompanyID company);
-void ShowCompanyFinances(CompanyID company);
-void ShowCompanyStations(CompanyID company);
-void ShowGoalsList(CompanyID company);
-void ShowOrdersWindow(const Vehicle *v);
-void ShowTimetableWindow(const Vehicle *v);
-void ShowDeparturesWindow(StationID station);
-void ShowStationCargo(StationID station);
-void ShowExtraViewportWindow(TileIndex tile);
-void ShowLandInfo(TileIndex tile);
+void ShowDeparturesWindow(StationID station); // departures_gui.h is not self-contained
 
 namespace {
 
@@ -122,6 +105,7 @@ const std::map<std::string, Opener, std::less<>> &Openers()
 		{ "performance_league", plain(ShowPerformanceLeagueTable) },
 		{ "league", plain(ShowFirstLeagueTable) },
 		{ "plans", plain(ShowPlansWindow) },
+		{ "sectors", plain(ShowSectorWindow) },
 		{ "company", company(ShowCompany) },
 		{ "finances", company(ShowCompanyFinances) },
 		{ "company_stations", company(ShowCompanyStations) },
@@ -165,7 +149,7 @@ std::vector<std::string> DebugBridgeWindowNames()
  */
 std::string DebugBridgeShowWindow(std::string_view name, int64_t arg)
 {
-	if (_game_mode != GameMode::Normal) return "no game running";
+	if (_game_mode != GameMode::Normal && !(_game_mode == GameMode::Editor && name == "sectors")) return "no game running";
 	auto it = Openers().find(name);
 	if (it == Openers().end()) return fmt::format("unknown window '{}', see 'show' without arguments", name);
 	if (!it->second(arg)) return fmt::format("nothing to show for '{}'", name);

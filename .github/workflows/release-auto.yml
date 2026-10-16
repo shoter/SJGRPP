@@ -1,0 +1,282 @@
+name: Release (Automatic)
+
+# Publishes a GitHub Release for every push to main, once the quick game test
+# (the only game test run on push) has passed.
+# Ships Windows x86/x64 and Linux x64, each bundled with OpenGFX/OpenSFX/OpenMSX,
+# plus a source tarball, with the commits since the previous release as notes.
+
+on:
+  workflow_run:
+    workflows:
+    - Game tests
+    types:
+    - completed
+    branches:
+    - main
+  workflow_dispatch:
+
+concurrency:
+  group: release-auto
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  source:
+    name: Source
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      sha: ${{ steps.metadata.outputs.sha }}
+      tag: ${{ steps.metadata.outputs.tag }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+        # Full history for the version and the release notes.
+        fetch-depth: 0
+
+    - name: Generate metadata
+      id: metadata
+      shell: bash
+      run: |
+        SHA=$(git rev-parse HEAD)
+        # Name the branch so FindVersion doesn't see a detached HEAD.
+        git checkout -B main
+
+        mkdir -p build/bundles
+        cmake -DGENERATE_OTTDREV=.ottdrev -P cmake/scripts/FindVersion.cmake
+        VERSION=$(head -1 .ottdrev | cut -f 1 -d$'\t')
+        TAG="build-$(TZ=UTC date +%Y%m%d)-$(git rev-parse --short=9 HEAD)"
+
+        PREV=$(git describe --tags --match 'build-*' --abbrev=0 HEAD 2>/dev/null || true)
+        {
+          echo "Version: \`${VERSION}\`"
+          echo ""
+          if [ -n "${PREV}" ]; then
+            echo "## Changes since ${PREV}"
+            echo ""
+            git log --no-merges --pretty=format:'- %s (%h)' "${PREV}..HEAD"
+          else
+            echo "## Recent changes"
+            echo ""
+            git log --no-merges --pretty=format:'- %s (%h)' -50
+          fi
+          echo ""
+        } > build/bundles/release-notes.md
+
+        echo "Version: ${VERSION}, tag: ${TAG}, previous: ${PREV:-none}"
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "sha=${SHA}" >> $GITHUB_OUTPUT
+        echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+    - name: Remove VCS information
+      run: |
+        rm -rf .git
+
+    - name: Create bundles
+      run: |
+        FOLDER_NAME=openttd-${{ steps.metadata.outputs.version }}
+
+        mkdir ${FOLDER_NAME}
+        find . -maxdepth 1 -not -name . -not -name build -not -name ${FOLDER_NAME} -exec mv {} ${FOLDER_NAME}/ \;
+
+        tar --xz -cf build/bundles/${FOLDER_NAME}-source.tar.xz ${FOLDER_NAME}
+        # Only for the build jobs below.
+        tar --gzip -cf source.tar.gz ${FOLDER_NAME}
+
+    - name: Store bundles
+      uses: actions/upload-artifact@v7
+      with:
+        name: openttd-source
+        path: build/bundles/*
+        retention-days: 5
+
+    - name: Store source (for other jobs)
+      uses: actions/upload-artifact@v7
+      with:
+        name: internal-source
+        path: source.tar.gz
+        retention-days: 1
+
+  linux:
+    name: Linux (Generic)
+    needs: source
+
+    uses: ./.github/workflows/release-linux.yml
+    secrets: inherit
+
+  windows:
+    name: Windows (${{ matrix.arch }})
+    needs: source
+
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+        - x86
+        - x64
+
+    runs-on: windows-latest
+
+    steps:
+    - name: Download source
+      uses: actions/download-artifact@v8
+      with:
+        name: internal-source
+
+    - name: Unpack source
+      shell: bash
+      run: |
+        tar -xf source.tar.gz --strip-components=1
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Enable Rust cache
+      uses: Swatinem/rust-cache@v2
+
+    - name: Setup vcpkg
+      id: vcpkg
+      uses: OpenTTD/actions/setup-vcpkg@v6
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        choco install pandoc
+
+    - name: Install MSVC problem matcher
+      uses: ammaraskar/msvc-problem-matcher@master
+
+    - name: Configure developer command prompt for tools
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Build tools
+      shell: bash
+      run: |
+        mkdir build-host
+        cd build-host
+        cmake ${GITHUB_WORKSPACE} \
+          -GNinja \
+          -DOPTION_TOOLS_ONLY=ON \
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          # EOF
+        cmake --build . --target tools
+
+    - name: Configure developer command prompt for ${{ matrix.arch }}
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: ${{ matrix.arch }}
+
+    - name: Build
+      shell: bash
+      run: |
+        mkdir build
+        cd build
+        cmake ${GITHUB_WORKSPACE} \
+          -GNinja \
+          -DVCPKG_TARGET_TRIPLET=${{ matrix.arch }}-windows-static \
+          -DCMAKE_TOOLCHAIN_FILE="${{ steps.vcpkg.outputs.vcpkg-cmake }}" \
+          -DHOST_BINARY_DIR=${GITHUB_WORKSPACE}/build-host \
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          # EOF
+        cmake --build . --target openttd
+
+    - name: Create bundles
+      shell: bash
+      run: |
+        cd ${GITHUB_WORKSPACE}/build
+        cpack
+
+        PDB=$(ls bundles/*.zip | cut -d/ -f2 | sed 's/.zip$/.pdb/')
+        cp openttd.pdb bundles/${PDB}
+        xz -9 bundles/${PDB}
+
+        rm -f bundles/*.sha256
+
+    - name: Store bundles
+      uses: actions/upload-artifact@v7
+      with:
+        name: openttd-windows-${{ matrix.arch }}
+        path: build/bundles
+        retention-days: 5
+
+  publish:
+    name: Publish
+    needs:
+    - source
+    - linux
+    - windows
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download bundles
+      uses: actions/download-artifact@v8
+      with:
+        pattern: openttd-*
+        path: artifacts
+        merge-multiple: true
+
+    - name: Download base sets
+      run: |
+        mkdir -p baseset
+        cd baseset
+        for url in \
+          https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip \
+          https://cdn.openttd.org/opensfx-releases/1.0.3/opensfx-1.0.3-all.zip \
+          https://cdn.openttd.org/openmsx-releases/0.4.2/openmsx-0.4.2-all.zip \
+          ; do
+          curl -fsSL "$url" -o set.zip
+          unzip -o set.zip
+          rm set.zip
+        done
+        ls -l
+
+    - name: Add base sets to bundles
+      run: |
+        mkdir -p release
+        cp artifacts/*-source.tar.xz release/
+        cp artifacts/*.pdb.xz release/ 2>/dev/null || true
+
+        # Unpack each game bundle, drop the base sets into its baseset folder and repack.
+        for f in artifacts/*-windows-*.zip artifacts/*-linux-*.tar.xz; do
+          [ -e "$f" ] || continue
+          name=$(basename "$f")
+          work=$(mktemp -d)
+          case "$name" in
+            *.zip)    unzip -q "$f" -d "$work" ;;
+            *.tar.xz) tar -xf "$f" -C "$work" ;;
+          esac
+          top=$(ls "$work")
+          mkdir -p "$work/$top/baseset"
+          cp baseset/*.tar "$work/$top/baseset/"
+          case "$name" in
+            *.zip)    (cd "$work" && zip -9 -qr "${GITHUB_WORKSPACE}/release/$name" "$top") ;;
+            *.tar.xz) tar -cJf "release/$name" -C "$work" "$top" ;;
+          esac
+          rm -rf "$work"
+        done
+
+        (cd release && sha256sum * > SHA256SUMS)
+        ls -l release
+
+    - name: Create release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "${{ needs.source.outputs.tag }}" release/* \
+          --repo "${{ github.repository }}" \
+          --target "${{ needs.source.outputs.sha }}" \
+          --title "${{ needs.source.outputs.version }}" \
+          --notes-file artifacts/release-notes.md

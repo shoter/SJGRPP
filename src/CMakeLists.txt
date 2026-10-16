@@ -504,6 +504,13 @@ add_files(
     signal_type.h
     signature.cpp
     signature.h
+    sector.cpp
+    sector_base.h
+    sector_cmd.cpp
+    sector_cmd.h
+    sector_func.h
+    sector_gui.cpp
+    sector_type.h
     signs.cpp
     signs_base.h
     signs_cmd.cpp
@@ -662,6 +669,9 @@ add_files(
     tunnelbridge_cmd.h
     tunnelbridge_map.h
     unit_conversion.h
+    used_vehicle.cpp
+    used_vehicle.h
+    used_vehicle_gui.cpp
     vehicle.cpp
     vehicle_base.h
     vehicle_cmd.cpp

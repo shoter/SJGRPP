@@ -56,6 +56,7 @@
 #include "sound_func.h"
 #include "fios.h"
 #include "core/string_consumer.hpp"
+#include "used_vehicle.h"
 
 #include <vector>
 #include <algorithm>
@@ -1905,6 +1906,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_vehicle_list = {
 			NWidget(NWID_HORIZONTAL),
 				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_VL_AVAILABLE_VEHICLES), SetMinimalSize(106, 12), SetFill(0, 1),
 								SetToolTip(STR_VEHICLE_LIST_AVAILABLE_ENGINES_TOOLTIP),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_VL_USED_VEHICLES), SetMinimalSize(80, 12), SetFill(0, 1),
+								SetStringTip(STR_VEHICLE_LIST_USED_VEHICLES, STR_VEHICLE_LIST_USED_VEHICLES_TOOLTIP),
 				NWidget(WWT_PANEL, Colours::Grey), SetMinimalSize(0, 12), SetResize(1, 0), SetFill(1, 1), EndContainer(),
 				NWidget(WWT_DROPDOWN, Colours::Grey, WID_VL_MANAGE_VEHICLES_DROPDOWN), SetMinimalSize(118, 12), SetFill(0, 1),
 								SetStringTip(STR_VEHICLE_LIST_MANAGE_LIST, STR_VEHICLE_LIST_MANAGE_LIST_TOOLTIP),
@@ -2579,6 +2582,7 @@ public:
 		}
 		if (show_buttons) {
 			this->SetWidgetDisabledState(WID_VL_AVAILABLE_VEHICLES, this->owner != _local_company || this->vli.type != VehicleListType::Company);
+			this->SetWidgetDisabledState(WID_VL_USED_VEHICLES, !IsUsedVehicleMarketEnabled());
 			this->SetWidgetDisabledState(WID_VL_MANAGE_VEHICLES_DROPDOWN, !this->ShouldShowActionDropdownList());
 			this->SetWidgetsDisabledState(this->owner != _local_company || this->vehicles.empty() || (this->vli.type == VehicleListType::Company && _settings_client.gui.disable_top_veh_list_mass_actions),
 				WID_VL_STOP_ALL,
@@ -2670,6 +2674,10 @@ public:
 
 			case WID_VL_AVAILABLE_VEHICLES:
 				ShowBuildVehicleWindow(INVALID_TILE, this->vli.vtype);
+				break;
+
+			case WID_VL_USED_VEHICLES:
+				ShowBuyUsedVehicleWindow(INVALID_TILE, this->vli.vtype);
 				break;
 
 			case WID_VL_MANAGE_VEHICLES_DROPDOWN: {
@@ -3065,6 +3073,36 @@ std::span<const StringID> GetServiceIntervalDropDownTexts()
 }
 
 /** Class for managing the vehicle details window. */
+static constexpr size_t VEHICLE_DETAILS_MAX_OWNER_HISTORY = 4; ///< Maximum number of previous owners shown in the vehicle details.
+
+/**
+ * Get the owner history lines shown in the vehicle details.
+ * @param v Vehicle.
+ * @return Lines, the first one is the header; empty when nothing is shown.
+ */
+static std::vector<std::string> GetVehicleOwnerHistoryLines(const Vehicle *v)
+{
+	std::vector<std::string> lines;
+	const VehicleOwnerInfo *info = GetVehicleOwnerInfo(v->index);
+	if (info == nullptr && !IsUsedVehicleMarketEnabled()) return lines;
+
+	lines.push_back(GetString(STR_VEHICLE_INFO_OWNER_HISTORY));
+	if (info != nullptr) {
+		const size_t shown = std::min(info->history.size(), VEHICLE_DETAILS_MAX_OWNER_HISTORY);
+		if (info->history.empty()) {
+			lines.push_back(GetString(STR_VEHICLE_INFO_OWNER_HISTORY_UNKNOWN));
+		} else if (info->history.size() > shown) {
+			lines.push_back(GetString(STR_VEHICLE_INFO_OWNER_HISTORY_MORE, info->history.size() - shown));
+		}
+		for (size_t i = info->history.size() - shown; i < info->history.size(); i++) {
+			const VehicleOwnerRecord &rec = info->history[i];
+			lines.push_back(GetString(STR_VEHICLE_INFO_OWNER_HISTORY_ENTRY, rec.GetCompanyName(), rec.start, rec.end));
+		}
+	}
+	lines.push_back(GetString(STR_VEHICLE_INFO_OWNER_HISTORY_CURRENT, v->owner, GetVehicleAcquiredDate(v)));
+	return lines;
+}
+
 struct VehicleDetailsWindow : Window {
 	TrainDetailsWindowTabs tab = TDW_TAB_CARGO; ///< For train vehicles: which tab is displayed.
 	Scrollbar *vscroll = nullptr;
@@ -3073,6 +3111,7 @@ struct VehicleDetailsWindow : Window {
 	bool vehicle_slots_line_shown = false;
 	bool vehicle_speed_restriction_line_shown = false;
 	bool vehicle_speed_adaptation_line_shown = false;
+	uint owner_history_lines_shown = 0;
 
 	enum DropDownAction {
 		VDWDDA_CLEAR_SPEED_RESTRICTION,
@@ -3208,7 +3247,9 @@ struct VehicleDetailsWindow : Window {
 				this->vehicle_slots_line_shown = ShouldShowSlotsLine(v);
 				this->vehicle_speed_restriction_line_shown = ShouldShowSpeedRestrictionLine(v);
 				this->vehicle_speed_adaptation_line_shown = ShouldShowSpeedAdaptationLine(v);
-				int lines = 4;
+				const std::vector<std::string> owner_history = GetVehicleOwnerHistoryLines(v);
+				this->owner_history_lines_shown = static_cast<uint>(owner_history.size());
+				int lines = 4 + static_cast<int>(owner_history.size());
 				if (this->vehicle_group_line_shown) lines++;
 				if (this->vehicle_weight_ratio_line_shown) lines++;
 				if (this->vehicle_slots_line_shown) lines++;
@@ -3255,7 +3296,10 @@ struct VehicleDetailsWindow : Window {
 							(v->type != VehicleType::Train || Train::From(v)->GetAccelerationType() == VehicleAccelerationModel::Maglev) ? STR_EMPTY : STR_VEHICLE_INFO_TE_WEIGHT_RATIO,
 							max_value_16);
 				}
-				size.width = dim.width + padding.width;
+				for (const std::string &line : owner_history) {
+					dim = maxdim(dim, GetStringBoundingBox(line));
+				}
+				size.width = dim.width + padding.width + WidgetDimensions::scaled.hsep_indent;
 				break;
 			}
 
@@ -3513,7 +3557,14 @@ struct VehicleDetailsWindow : Window {
 					tr.top += GetCharacterHeight(FontSize::Normal);
 				}
 
-				if (this->vehicle_weight_ratio_line_shown != should_show_weight_ratio ||
+				const std::vector<std::string> owner_history = GetVehicleOwnerHistoryLines(v);
+				for (size_t i = 0; i < owner_history.size(); i++) {
+					DrawString(i == 0 ? tr : tr.Indent(WidgetDimensions::scaled.hsep_indent, _current_text_dir == TD_RTL), owner_history[i]);
+					tr.top += GetCharacterHeight(FontSize::Normal);
+				}
+
+				if (this->owner_history_lines_shown != owner_history.size() ||
+						this->vehicle_weight_ratio_line_shown != should_show_weight_ratio ||
 						this->vehicle_weight_ratio_line_shown != should_show_weight_ratio ||
 						this->vehicle_slots_line_shown != should_show_slots ||
 						this->vehicle_speed_restriction_line_shown != should_show_speed_restriction ||

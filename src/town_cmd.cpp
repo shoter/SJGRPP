@@ -63,6 +63,7 @@
 #include "scope.h"
 #include "script/api/script_event_types.hpp"
 #include "3rdparty/robin_hood/robin_hood.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 #include "table/town_land.h"
@@ -2411,7 +2412,10 @@ CommandCost CmdFoundTown(DoCommandFlags flags, TileIndex tile, TownSize size, bo
 	if (!Town::CanAllocateItem()) return CommandCost(STR_ERROR_TOO_MANY_TOWNS);
 
 	if (!random_location) {
-		CommandCost ret = TownCanBePlacedHere(tile, city, false);
+		CommandCost ret = CheckSectorBuildingRights(tile);
+		if (ret.Failed()) return ret;
+
+		ret = TownCanBePlacedHere(tile, city, false);
 		if (ret.Failed()) return ret;
 	}
 
@@ -3249,6 +3253,9 @@ static bool TryBuildTownHouse(Town *t, TileIndex tile, TownExpandModes modes)
 CommandCost CmdPlaceHouse(DoCommandFlags flags, TileIndex tile, HouseID house, bool is_protected, TownID town_id, bool replace)
 {
 	if (_game_mode != GameMode::Editor && _settings_game.economy.place_houses == PlaceHouses::Forbidden) return CMD_ERROR;
+
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
 
 	if (Town::GetNumItems() == 0) return CommandCost(STR_ERROR_MUST_FOUND_TOWN_FIRST);
 

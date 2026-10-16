@@ -41,6 +41,7 @@
 #include "station_base.h"
 #include "waypoint_base.h"
 #include "economy_base.h"
+#include "used_vehicle.h"
 #include "core/pool_func.hpp"
 #include "core/backup_type.hpp"
 #include "core/container_func.hpp"
@@ -71,6 +72,7 @@
 
 #include <ranges>
 
+#include "sector_func.h"
 #include "safeguards.h"
 
 
@@ -357,6 +359,12 @@ void ChangeOwnershipOfCompanyItems(Owner old_owner, Owner new_owner)
 	 * the client. This is needed as it needs to know whether "you" really
 	 * are the current local company. */
 	AutoRestoreBackup cur_company(_current_company, old_owner);
+
+	/* Building rights are never transferred, not even to a company buying this one.
+	 * Removing the items of the company must not depend on building rights. */
+	ClearSectorRightsOfCompany(old_owner);
+	AutoRestoreBackup suspend_sector_checks(_sector_checks_suspended, true);
+
 	/* In all cases, make spectators of clients connected to that company */
 	if (_networking) NetworkClientsToSpectators(old_owner);
 	if (old_owner == _local_company) {
@@ -529,6 +537,7 @@ void ChangeOwnershipOfCompanyItems(Owner old_owner, Owner new_owner)
 					Command<Commands::ChangeServiceInterval>::Do({DoCommandFlag::Execute, DoCommandFlag::Bankrupt}, v->index, interval, false, new_company->settings.vehicle.servint_ispercent);
 				}
 
+				RecordVehicleOwnerChange(v, new_owner);
 				v->owner = new_owner;
 
 				/* Owner changes, clear cache */

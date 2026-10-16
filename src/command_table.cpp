@@ -31,6 +31,7 @@
 #include "programmable_signals_cmd.h"
 #include "rail_cmd.h"
 #include "road_cmd.h"
+#include "sector_cmd.h"
 #include "settings_cmd.h"
 #include "signs_cmd.h"
 #include "station_cmd.h"

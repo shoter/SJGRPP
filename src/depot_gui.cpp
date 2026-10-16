@@ -37,6 +37,7 @@
 #include "vehicle_gui_base.h"
 #include "train_cmd.h"
 #include "vehicle_cmd.h"
+#include "used_vehicle.h"
 #include "tbtr_template_vehicle_cmd.h"
 
 #include "widgets/depot_widget.h"
@@ -83,6 +84,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_train_depot_widgets 
 	EndContainer(),
 	NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
 		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_D_BUILD), SetFill(1, 1), SetResize(1, 0),
+		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_D_BUILD_USED), SetFill(1, 1), SetResize(1, 0), SetStringTip(STR_DEPOT_USED_VEHICLES_BUTTON, STR_DEPOT_USED_VEHICLES_TOOLTIP),
 		NWidget(WWT_TEXTBTN, Colours::Grey, WID_D_CLONE), SetFill(1, 1), SetResize(1, 0),
 		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_D_DEPARTURES), SetFill(0, 1), SetStringTip(STR_STATION_VIEW_DEPARTURES_BUTTON, STR_STATION_VIEW_DEPARTURES_TOOLTIP),
 		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_D_VEHICLE_LIST), SetAspect(WidgetDimensions::ASPECT_VEHICLE_ICON), SetFill(0, 1),
@@ -318,6 +320,7 @@ struct DepotWindow : Window {
 	void Close([[maybe_unused]] int data = 0) override
 	{
 		CloseWindowById(WindowClass::BuildVehicle, this->window_number);
+		CloseWindowById(WindowClass::BuyUsedVehicle, this->window_number);
 		CloseWindowById(GetWindowClassForVehicleType(this->type), VehicleListIdentifier(VehicleListType::Depot, this->type, this->owner, this->GetDestinationIndex()).ToWindowNumber(), false);
 		OrderBackup::Reset(TileIndex(this->window_number));
 		this->Window::Close();
@@ -805,9 +808,11 @@ struct DepotWindow : Window {
 			WID_D_SELL_CHAIN,
 			WID_D_SELL_ALL,
 			WID_D_BUILD,
+			WID_D_BUILD_USED,
 			WID_D_CLONE,
 			WID_D_RENAME,
 			WID_D_AUTOREPLACE);
+		if (!IsUsedVehicleMarketEnabled()) this->DisableWidget(WID_D_BUILD_USED);
 
 		this->DrawWidgets();
 	}
@@ -822,6 +827,11 @@ struct DepotWindow : Window {
 			case WID_D_BUILD: // Build vehicle
 				ResetObjectToPlace();
 				ShowBuildVehicleWindow(TileIndex(this->window_number), this->type);
+				break;
+
+			case WID_D_BUILD_USED: // Buy used vehicle
+				ResetObjectToPlace();
+				ShowBuyUsedVehicleWindow(TileIndex(this->window_number), this->type);
 				break;
 
 			case WID_D_CLONE: // Clone button
@@ -1145,7 +1155,7 @@ struct DepotWindow : Window {
 
 				SellVehicleFlags sell_flags = SellVehicleFlags::BackupOrder;
 				if (v->type == VehicleType::Train && (widget == WID_D_SELL_CHAIN || _ctrl_pressed)) sell_flags |= SellVehicleFlags::SellChain;
-				Command<Commands::SellVehicle>::Post(GetCmdSellVehMsg(v->type), v->tile, v->index, sell_flags, ClientID::Invalid);
+				Command<Commands::SellVehicle>::Post(GetCmdSellVehMsg(v->type), v->tile, v->index, sell_flags | SellVehicleFlags::ToUsedMarket, ClientID::Invalid);
 				break;
 			}
 

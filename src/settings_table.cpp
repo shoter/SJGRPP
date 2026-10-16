@@ -51,6 +51,7 @@
 #include "void_map.h"
 #include "widget_type.h"
 #include "window_func.h"
+#include "used_vehicle.h"
 #include "window_type.h"
 #include "zoning.h"
 #include "ai/ai.hpp"
@@ -1256,6 +1257,12 @@ static void TownZoneModeChanged(int32_t new_value)
 static void TownZoneCustomValueChanged(int32_t new_value)
 {
 	if (_settings_game.economy.town_zone_calc_mode) UpdateTownRadii();
+}
+
+static void SectorSettingsChanged(int32_t new_value)
+{
+	InvalidateWindowClassesData(WindowClass::Sectors);
+	MarkWholeScreenDirty();
 }
 
 static bool CheckTTDPatchSettingFlag(uint flag)
