@@ -865,6 +865,9 @@ enum class CommandCallback : uint8_t {
 	CreateTraceRestrictSlot,
 	CreateTraceRestrictCounter,
 
+	/* debug_bridge_cmd.cpp */
+	DebugBridge,
+
 	End, ///< Must ALWAYS be on the end of this list
 };
 

@@ -115,3 +115,24 @@ DebugBridge::Probe("yapf.last_cost", cost);
 - Desync investigation: start the cluster with `--debug desync=2` (writes `commands-out.log` in the instance
   dirs), `mp.py health` reports desync/disconnect lines, and `collect.py` bundles everything including
   `dump_desync_msgs` output from still-running instances.
+
+## Game commands from Python
+
+`docmd [test] [as <company>] <command> <tile> <field>...` issues any game command whose payload is a simple tuple
+(`cmds [filter]` lists commands and their field types) as the local company, through the same network-safe path as the
+GUI; it replies once the command was executed (in multiplayer after the server round trip) with success, cost, error,
+result data (e.g. the new vehicle id) and the station on the command tile. `test` only runs the command's test.
+`as <company>` is server-only (e.g. `MoneyCheatAdmin` to give a company money). `docmd_hex` takes a raw serialised
+payload, `order <vehicle> station|waypoint|depot <dest> [options]` appends orders. `engines [type]` and
+`tiles [x y w h]` provide what route planning needs. `utils/debug_harness/transport.py` builds road, rail, air and
+ship routes with these (A* over the tile dump, every piece test-run before building).
+
+## Stress test
+
+`python utils/debug_harness/stress_test.py --profile quick|normal|max-28 [--clients N]`: dedicated server + N headless
+clients, each building all transport types, then the game runs (quick: 3 game months, normal: 2 years, max-28: 28
+companies on 1024x1024 for 2 years, each adding a route every month). The server tops up company money monthly.
+Checks: crashes/desyncs/disconnects, paused server/client state comparison, game speed and tick times (`fps`),
+memory, command latency, join times, vehicles moving and earning, rejoin/spectator/save churn, save reload. Results in
+`build/harness_runs/stress/<run>/` (summary.txt, report.json, perf.csv); `--save-baseline` / `--baseline` compare
+performance between runs. Exit code 1 on any failed check.

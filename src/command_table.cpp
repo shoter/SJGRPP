@@ -832,3 +832,36 @@ const CommandPayloadBase::Operations TupleCmdData<Parent, T...>::operations = Pa
 /* This isn't directly referenced in the command table, so ensure it is instantiated here. */
 template <>
 const CommandPayloadBase::Operations CommandPayloadSerialisable<TraceRestrictFollowUpCmdData>::operations = PayloadOpsBuilder::Build<TraceRestrictFollowUpCmdData>();
+
+/**
+ * Get the wire field types of a command whose payload uses the simple (descriptor-based) path.
+ * Used to build command payloads from text, e.g. by the debug bridge.
+ * @param cmd The command.
+ * @param[out] types Field type names, in serialisation order: u8, i8, u16, i16, u32, i32, u64, i64, bool, string, encoded_string.
+ * @return false if the payload of this command is not a simple tuple.
+ */
+bool GetSimpleCommandPayloadFieldTypes(Commands cmd, std::vector<std::string_view> &types)
+{
+	types.clear();
+	const uint16_t *descriptor = _command_proc_table[cmd].operations.descriptor;
+	if (descriptor == nullptr) return false;
+
+	SimpleDescriptorHelper helper(descriptor);
+	for (size_t i = 0; i < helper.GetFieldCount(); i++) {
+		switch (helper.GetField(i).first) {
+			case CmdTypeID::Uint8: types.push_back("u8"); break;
+			case CmdTypeID::Int8: types.push_back("i8"); break;
+			case CmdTypeID::Uint16: types.push_back("u16"); break;
+			case CmdTypeID::Int16: types.push_back("i16"); break;
+			case CmdTypeID::Uint32: types.push_back("u32"); break;
+			case CmdTypeID::Int32: types.push_back("i32"); break;
+			case CmdTypeID::Uint64: types.push_back("u64"); break;
+			case CmdTypeID::Int64: types.push_back("i64"); break;
+			case CmdTypeID::Bool: types.push_back("bool"); break;
+			case CmdTypeID::String: types.push_back("string"); break;
+			case CmdTypeID::EncodedString: types.push_back("encoded_string"); break;
+			default: NOT_REACHED();
+		}
+	}
+	return true;
+}

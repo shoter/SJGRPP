@@ -10,6 +10,7 @@
 #include "stdafx.h"
 #include "debug_bridge.h"
 #include "blitter/factory.hpp"
+#include "command_type.h"
 #include "company_func.h"
 #include "console_func.h"
 #include "date_func.h"
@@ -49,6 +50,18 @@ using json = nlohmann::json;
 json DebugBridgeReflectTypes();
 json DebugBridgeReflectObject(std::string_view type, size_t id, const std::vector<std::string> &fields, bool schema, std::string &error);
 json DebugBridgeReflectList(std::string_view type, bool all, std::string &error);
+json DebugBridgeCommandList(std::string_view filter);
+bool DebugBridgeBuildCommand(const std::vector<std::string> &args, size_t first, DynBaseCommandContainer &out, std::string &error);
+bool DebugBridgeBuildRawCommand(const std::vector<std::string> &args, size_t first, DynBaseCommandContainer &out, std::string &error);
+bool DebugBridgeBuildOrder(const std::vector<std::string> &args, size_t first, DynBaseCommandContainer &out, std::string &error);
+std::optional<json> DebugBridgeSubmitCommand(const DynBaseCommandContainer &container, uint32_t seq, CompanyID company);
+json DebugBridgeTestCommand(const DynBaseCommandContainer &container, CompanyID company);
+json DebugBridgeEngineList(std::string_view type);
+json DebugBridgeTiles(uint x, uint y, uint w, uint h);
+std::vector<std::string> DebugBridgeWindowNames();
+std::string DebugBridgeShowWindow(std::string_view name, int64_t arg);
+std::optional<json> DebugBridgeTakeCommandResult(uint32_t seq);
+void DebugBridgeForgetCommandResult(uint32_t seq);
 
 extern std::atomic<bool> _exit_game;
 extern std::string _full_screenshot_path;
@@ -478,7 +491,15 @@ static const char HELP_TEXT[] =
 	"drag <x1> <y1> <x2> <y2> [steps] | wheel <x> <y> <delta> | key <name|char> [ctrl] [shift] [alt] | text <string>\n"
 	"tile_screen <tx> <ty> | screen_tile <x> <y>\n"
 	"resize <w> <h>\n"
-	"lockstep on|off | step <ticks> | wait_ticks <ticks> [timeout_ms] | wait_frames <frames>";
+	"lockstep on|off | step <ticks> | wait_ticks <ticks> [timeout_ms] | wait_frames <frames>\n"
+	"cmds [filter]                     game commands with their payload field types\n"
+	"docmd [test] [as <company>] <command> <tile> <field>...   issue a game command as the local company (like the GUI does); replies once\n"
+	"                                  executed; 'test' only runs the command's test (cost/error), nothing is built or sent\n"
+	"docmd_hex [test] <command> <tile> <hex>    same, payload given in its network serialisation\n"
+	"order [test] <vehicle> station|waypoint|depot <dest> [nonstop|stop_everywhere] [full_load|full_load_any|no_load] [unload|transfer|no_unload]\n"
+	"engines [rail|road|ship|aircraft] buildable engines for the local company\n"
+	"show [<window> [id]]                open a game window by name (no arguments: list names); id picks the n-th station/town/vehicle/company\n"
+	"tiles [x y w h]                   per-tile type/height/slope/owner/subtype/road owner arrays (row-major) for route planning";
 
 static json HandleCommand(Connection &conn, const std::vector<std::string> &args, std::string_view line)
 {
@@ -800,6 +821,78 @@ static json HandleCommand(Connection &conn, const std::vector<std::string> &args
 		conn.pending = [remaining]() -> std::optional<json> {
 			if ((*remaining)-- > 0) return std::nullopt;
 			return json("ok");
+		};
+		return nullptr;
+	}
+
+	if (cmd == "show") {
+		if (args.size() < 2) return DebugBridgeWindowNames();
+		std::string error = DebugBridgeShowWindow(args[1], args.size() > 2 ? ParseInt(args[2], "id") : -1);
+		if (!error.empty()) throw BridgeError{ error };
+		return "ok";
+	}
+
+	if (cmd == "engines") return DebugBridgeEngineList(args.size() > 1 ? args[1] : std::string_view{});
+
+	if (cmd == "tiles") {
+		if (_game_mode == GameMode::Menu || Map::SizeX() == 0) throw BridgeError{ "no map loaded" };
+		uint x = args.size() > 1 ? ParseInt(args[1], "x") : 0;
+		uint y = args.size() > 2 ? ParseInt(args[2], "y") : 0;
+		uint w = args.size() > 3 ? ParseInt(args[3], "w") : Map::SizeX();
+		uint h = args.size() > 4 ? ParseInt(args[4], "h") : Map::SizeY();
+		if (x >= Map::SizeX() || y >= Map::SizeY()) throw BridgeError{ "tile outside map" };
+		return DebugBridgeTiles(x, y, std::min<uint>(w, Map::SizeX() - x), std::min<uint>(h, Map::SizeY() - y));
+	}
+
+	if (cmd == "cmds") return DebugBridgeCommandList(args.size() > 1 ? args[1] : std::string_view{});
+
+	if (cmd == "docmd" || cmd == "docmd_hex" || cmd == "order") {
+		auto container = std::make_shared<DynBaseCommandContainer>();
+		size_t first = 1;
+		const bool test_only = args.size() > first && args[first] == "test";
+		if (test_only) first++;
+		/* "as <company>": act for another company; only on the server (e.g. server-only commands like MoneyCheatAdmin). */
+		CompanyID company = _local_company;
+		if (args.size() > first + 1 && args[first] == "as") {
+			if (_networking && !_network_server) throw BridgeError{ "'as <company>' is only available on the server" };
+			company = static_cast<CompanyID>(ParseInt(args[first + 1], "company"));
+			first += 2;
+		}
+		std::string error;
+		bool built;
+		if (cmd == "docmd") {
+			built = DebugBridgeBuildCommand(args, first, *container, error);
+		} else if (cmd == "docmd_hex") {
+			built = DebugBridgeBuildRawCommand(args, first, *container, error);
+		} else {
+			built = DebugBridgeBuildOrder(args, first, *container, error);
+		}
+		if (!built) throw BridgeError{ error };
+		if (test_only) return DebugBridgeTestCommand(*container, company);
+
+		/* Reply once the command was executed (in multiplayer: after the server distributed it back to us).
+		 * This also keeps clients within the per-frame command limits. */
+		static uint32_t next_seq = 0;
+		const uint32_t seq = ++next_seq;
+		auto submitted = std::make_shared<bool>(false);
+		auto deadline = Clock::now() + std::chrono::seconds(60);
+		conn.pending = [container, seq, submitted, deadline, company]() -> std::optional<json> {
+			if (!*submitted) {
+				if (_networking && _network_client_commands_sent >= 2) {
+					if (Clock::now() > deadline) throw BridgeError{ "timeout waiting to send the command" };
+					return std::nullopt;
+				}
+				*submitted = true;
+				if (auto result = DebugBridgeSubmitCommand(*container, seq, company)) return result;
+				return std::nullopt;
+			}
+			if (auto result = DebugBridgeTakeCommandResult(seq)) return result;
+			if (!_networking) throw BridgeError{ "disconnected before the command was executed" };
+			if (Clock::now() > deadline) {
+				DebugBridgeForgetCommandResult(seq);
+				throw BridgeError{ "timeout waiting for the command to be executed" };
+			}
+			return std::nullopt;
 		};
 		return nullptr;
 	}

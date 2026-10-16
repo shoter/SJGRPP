@@ -154,6 +154,8 @@ add_files(
     debug.h
     debug_bridge.cpp
     debug_bridge.h
+    debug_bridge_cmd.cpp
+    debug_bridge_gui.cpp
     debug_bridge_reflect.cpp
     debug_dbg_assert.h
     debug_desync.h

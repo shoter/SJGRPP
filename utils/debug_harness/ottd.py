@@ -178,6 +178,26 @@ class Bridge:
             raise BridgeError(resp.get("error"))
         return resp.get("result")
 
+    def batch(self, lines: list[str], timeout: float | None = None) -> list[dict]:
+        """Send several command lines at once and return their raw responses, in order (one round trip)."""
+        if not lines:
+            return []
+        if self.sock is None:
+            self.connect()
+        assert self.sock is not None
+        self.sock.settimeout(timeout if timeout is not None else self.timeout)
+        self.sock.sendall(("\n".join(lines) + "\n").encode("utf-8"))
+        responses = []
+        while len(responses) < len(lines):
+            while b"\n" not in self.buf:
+                chunk = self.sock.recv(1 << 20)
+                if not chunk:
+                    raise ConnectionError("debug bridge closed the connection")
+                self.buf += chunk
+            resp, self.buf = self.buf.split(b"\n", 1)
+            responses.append(json.loads(resp.decode("utf-8")))
+        return responses
+
     # ---- general ----
 
     def ping(self) -> bool:
@@ -229,6 +249,42 @@ class Bridge:
 
     def objs(self, type_: str, all_: bool = False) -> list[int]:
         return self.call("objs", type_, "all") if all_ else self.call("objs", type_)
+
+    # ---- game commands ----
+
+    def cmds(self, filter_: str = "") -> list[dict]:
+        """Game commands with their payload field types (fields is None for custom payloads)."""
+        return self.call("cmds", filter_) if filter_ else self.call("cmds")
+
+    def docmd(self, command: str, tile: int, *fields: Any, test: bool = False, as_company: int | None = None,
+              timeout: float = 70.0) -> dict:
+        """
+        Issue a game command as the local company, like the GUI does. Returns once it was executed (in multiplayer:
+        after the round trip through the server) with {"success", "executed", "cost", "error", "result_data", "station"}.
+        test=True only runs the command's test: nothing is built or sent.
+        """
+        args = (["test"] if test else []) + (["as", as_company] if as_company is not None else [])
+        args += [command, tile, *(int(f) if isinstance(f, bool) else f for f in fields)]
+        return self.call("docmd", *args, timeout=timeout)
+
+    def docmd_hex(self, command: str, tile: int, payload: bytes, test: bool = False, timeout: float = 70.0) -> dict:
+        args = (["test"] if test else []) + [command, tile, payload.hex()]
+        return self.call("docmd_hex", *args, timeout=timeout)
+
+    def order(self, vehicle: int, kind: str, dest: int, *options: str, test: bool = False, timeout: float = 70.0) -> dict:
+        """Append an order: kind is station|waypoint|depot; options: nonstop, stop_everywhere, full_load, full_load_any, no_load, unload, transfer, no_unload."""
+        args = (["test"] if test else []) + [vehicle, kind, dest, *options]
+        return self.call("order", *args, timeout=timeout)
+
+    def engines(self, type_: str = "") -> list[dict]:
+        """Engines the local company can build; type_ is rail|road|ship|aircraft or empty for all."""
+        return self.call("engines", type_) if type_ else self.call("engines")
+
+    def tiles(self, x: int = 0, y: int = 0, w: int | None = None, h: int | None = None) -> dict:
+        """Row-major per-tile arrays (type, height, slope, owner, sub, bits) of a map area (default: whole map)."""
+        if w is None or h is None:
+            return self.call("tiles", timeout=120)
+        return self.call("tiles", x, y, w, h, timeout=120)
 
     # ---- GUI ----
 
@@ -337,7 +393,7 @@ class Instance:
                  extra_args: Iterable[str] = (), clean: bool = True):
         self.name = name
         self.mode = mode
-        self.root = Path(root) if root else DEFAULT_RUN_ROOT
+        self.root = (Path(root) if root else DEFAULT_RUN_ROOT).resolve()
         self.dir = self.root / name
         self.exe = Path(exe) if exe else DEFAULT_EXE
         self.port = port or free_port()
