@@ -264,7 +264,7 @@ static constexpr std::initializer_list<NWidgetPart> _nested_custom_colour_picker
 };
 
 static WindowDesc _custom_colour_picker_desc(__FILE__, __LINE__,
-	WindowPosition::Center, "custom_colour_picker", 0, 0,
+	WindowPosition::Center, nullptr, 0, 0,
 	WindowClass::CustomColourPicker, WindowClass::None,
 	WindowDefaultFlag::Construction,
 	_nested_custom_colour_picker_widgets
