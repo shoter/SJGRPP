@@ -18,6 +18,7 @@ macro(copy_bin_dir dir)
 endmacro()
 
 copy_bin_dir(ai)
+copy_bin_dir(faces)
 copy_bin_dir(game)
 copy_bin_dir(scripts)
 
