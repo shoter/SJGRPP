@@ -1475,8 +1475,8 @@ NetworkRecvStatus ClientNetworkGameSocketHandler::ReceiveServerCompanyUpdate(Pac
 {
 	if (this->status < ServerStatus::Active) return NetworkRecvStatus::MalformedPacket;
 
-	static_assert(sizeof(_network_company_passworded) <= sizeof(uint16_t));
-	_network_company_passworded.edit_base() = p.Recv_uint16();
+	static_assert(sizeof(_network_company_passworded) <= sizeof(uint32_t));
+	_network_company_passworded.edit_base() = p.Recv_uint32();
 	SetWindowClassesDirty(WindowClass::Company);
 
 	return NetworkRecvStatus::Okay;

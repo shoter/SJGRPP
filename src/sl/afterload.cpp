@@ -79,6 +79,13 @@
 #include "../picker_func.h"
 #include "../pathfinder/water_regions.h"
 #include "../tile_cmd.h"
+#include "../goal_base.h"
+#include "../story_base.h"
+#include "../league_base.h"
+#include "../plans_base.h"
+#include "../group.h"
+#include "../engine_base.h"
+#include "../tbtr_template_vehicle.h"
 
 #include "saveload_internal.h"
 #include "saveload_func.h"
@@ -179,7 +186,7 @@ static void ConvertTownOwner()
 		switch (GetTileType(tile)) {
 			case TileType::Road:
 				if (GB(_m[tile].m5, 4, 2) == to_underlying(RoadTileType::Crossing) && HasBit(_m[tile].m3, 7)) {
-					_m[tile].m3 = OWNER_TOWN.base();
+					_m[tile].m3 = EncodeLegacyOwner(OWNER_TOWN);
 				}
 				[[fallthrough]];
 
@@ -653,11 +660,63 @@ void IterateVehicleAndOrderListOrders(F func)
  * load older savegames and to fill the caches for various purposes.
  * @return True iff conversion went without a problem.
  */
+/**
+ * Savegames from before the company limit was raised used different values for the special owners
+ * (OWNER_TOWN, OWNER_NONE, OWNER_WATER, OWNER_DEITY). Convert all owners stored outside the map array.
+ * The map array itself uses the legacy encoding (see #EncodeLegacyOwner) and does not need converting.
+ */
+static void ConvertPreMoreCompaniesOwners()
+{
+	auto convert = [](Owner &o) { o = ConvertPreMoreCompaniesOwner(o); };
+
+	for (Vehicle *v : Vehicle::Iterate()) convert(v->owner);
+	for (BaseStation *st : BaseStation::Iterate()) convert(st->owner);
+	for (Industry *ind : Industry::Iterate()) {
+		convert(ind->owner);
+		convert(ind->founder);
+		convert(ind->exclusive_supplier);
+		convert(ind->exclusive_consumer);
+	}
+	for (Sign *si : Sign::Iterate()) convert(si->owner);
+	for (Group *g : Group::Iterate()) convert(g->owner);
+	for (Town *t : Town::Iterate()) {
+		convert(t->exclusivity);
+		for (uint i = LEGACY_MAX_COMPANIES; i < MAX_COMPANIES; i++) t->ratings[i] = RATING_INITIAL;
+	}
+	for (Goal *g : Goal::Iterate()) convert(g->company);
+	for (StoryPage *sp : StoryPage::Iterate()) convert(sp->company);
+	for (LeagueTableElement *lte : LeagueTableElement::Iterate()) convert(lte->company);
+	for (Subsidy *s : Subsidy::Iterate()) convert(s->awarded);
+	for (Engine *e : Engine::Iterate()) convert(e->preview_company);
+	for (Plan *p : Plan::Iterate()) convert(p->owner);
+	for (TemplateVehicle *tv : TemplateVehicle::Iterate()) convert(tv->owner);
+	for (TraceRestrictSlot *slot : TraceRestrictSlot::Iterate()) convert(slot->owner);
+	for (TraceRestrictSlotGroup *sg : TraceRestrictSlotGroup::Iterate()) convert(sg->owner);
+	for (TraceRestrictCounter *ctr : TraceRestrictCounter::Iterate()) convert(ctr->owner);
+	for (Company *c : Company::Iterate()) {
+		for (Owner &o : c->share_owners) convert(o);
+		convert(c->bankrupt_last_asked);
+	}
+}
+
+/**
+ * Savegames from before the company limit was raised stored the tram owner in 4 bits,
+ * clear the bit which is now used as the 5th bit of the tram owner.
+ */
+static void ClearPreMoreCompaniesTramOwnerHighBit()
+{
+	for (TileIndex t(0); t < Map::Size(); t++) {
+		if (MayHaveRoad(t)) SetTramOwnerHighBit(t, false);
+	}
+}
+
 bool AfterLoadGame()
 {
 	SetSignalHandlers();
 
 	const uint32_t map_size = Map::Size();
+
+	if (SlXvIsFeatureMissing(XSLFI_MORE_COMPANIES)) ConvertPreMoreCompaniesOwners();
 
 	/* Only new games can use wallclock units. */
 	if (SlXvIsFeatureMissing(XSLFI_VARIABLE_DAY_LENGTH, 5) && IsSavegameVersionBefore(SLV_ECONOMY_MODE_TIMEKEEPING_UNITS)) {
@@ -1238,7 +1297,7 @@ bool AfterLoadGame()
 				case TileType::Road:
 					_m[t].m4 |= (_m[t].m2 << 4);
 					if (GB(_m[t].m5, 4, 2) == to_underlying(RoadTileType::Depot)) break;
-					if ((GB(_m[t].m5, 4, 2) == to_underlying(RoadTileType::Crossing) ? (Owner)_m[t].m3 : GetTileOwner(t)) == OWNER_TOWN) {
+					if ((GB(_m[t].m5, 4, 2) == to_underlying(RoadTileType::Crossing) ? DecodeLegacyOwner(_m[t].m3) : GetTileOwner(t)) == OWNER_TOWN) {
 						SetTownIndex(t, CalcClosestTownFromTile(t)->index);
 					} else {
 						SetTownIndex(t, TownID::Begin());
@@ -1394,7 +1453,7 @@ bool AfterLoadGame()
 					if (!IsStationRoadStop(t)) break;
 
 					if (fix_roadtypes) SB(_me[t].m7, 6, 2, GB(_m[t].m3, 0, 3));
-					SB(_me[t].m7, 0, 5, (HasBit(_me[t].m6, 2) ? OWNER_TOWN : GetTileOwner(t)).base());
+					SB(_me[t].m7, 0, 5, EncodeLegacyOwner(HasBit(_me[t].m6, 2) ? OWNER_TOWN : GetTileOwner(t)));
 					SB(_m[t].m3, 4, 4, _m[t].m1);
 					_m[t].m4 = 0;
 					break;
@@ -1405,8 +1464,8 @@ bool AfterLoadGame()
 						if (fix_roadtypes) SB(_me[t].m7, 6, 2, GB(_m[t].m3, 0, 3));
 
 						Owner o = GetTileOwner(t);
-						SB(_me[t].m7, 0, 5, o.base()); // road owner
-						SB(_m[t].m3, 4, 4, (o == OWNER_NONE ? OWNER_TOWN : o).base()); // tram owner
+						SB(_me[t].m7, 0, 5, EncodeLegacyOwner(o)); // road owner
+						SB(_m[t].m3, 4, 4, EncodeLegacyOwner(o == OWNER_NONE ? OWNER_TOWN : o)); // tram owner
 					}
 					SB(_me[t].m6, 2, 4, GB(_m[t].m2, 4, 4)); // bridge type
 					SB(_me[t].m7, 5, 1, GB(_m[t].m4, 7, 1)); // snow/desert
@@ -1618,6 +1677,8 @@ bool AfterLoadGame()
 			}
 		}
 	}
+
+	if (SlXvIsFeatureMissing(XSLFI_MORE_COMPANIES)) ClearPreMoreCompaniesTramOwnerHighBit();
 
 	if (SlXvIsFeatureMissing(XSLFI_DUAL_RAIL_TYPES)) {
 		/* Introduced dual rail types. */
@@ -2152,7 +2213,7 @@ bool AfterLoadGame()
 	if (IsSavegameVersionBefore(SLV_83)) {
 		for (TileIndex t(0); t < map_size; t++) {
 			if (IsShipDepotTile(t)) {
-				_m[t].m4 = (TileHeight(t) == 0 ? OWNER_WATER : OWNER_NONE).base();
+				_m[t].m4 = EncodeLegacyOwner(TileHeight(t) == 0 ? OWNER_WATER : OWNER_NONE);
 			}
 		}
 	}
@@ -2331,7 +2392,7 @@ bool AfterLoadGame()
 							MakeCanal(t, o, Random());
 						}
 					} else if (IsShipDepot(t)) {
-						Owner o = (Owner)_m[t].m4; // Original water owner
+						Owner o = DecodeLegacyOwner(_m[t].m4); // Original water owner
 						SetWaterClass(t, o == OWNER_WATER ? WaterClass::Sea : WaterClass::Canal);
 					}
 				}

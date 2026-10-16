@@ -688,17 +688,9 @@ private:
 
 	void ShowColourDropDownMenu(uint32_t widget)
 	{
-		EnumBitSet<Colours, uint16_t, Colours::End> used_colours{};
 		const Livery *livery, *default_livery = nullptr;
 		bool primary = widget == WID_SCL_PRI_COL_DROPDOWN;
 		uint8_t default_col{};
-
-		/* Disallow other company colours for the primary colour */
-		if (this->livery_class < LiveryClass::GroupRail && this->sel.schemes.Test(LiveryScheme::Default) && primary) {
-			for (const Company *c : Company::Iterate()) {
-				if (c->index != _local_company) used_colours.Set(c->colour);
-			}
-		}
 
 		const Company *c = Company::Get((CompanyID)this->window_number);
 
@@ -725,7 +717,7 @@ private:
 			list.push_back(std::make_unique<DropDownListColourItem<>>(default_col, false));
 		}
 		for (Colours colour : EnumRange(Colours::End)) {
-			list.push_back(std::make_unique<DropDownListColourItem<>>(to_underlying(colour), used_colours.Test(colour)));
+			list.push_back(std::make_unique<DropDownListColourItem<>>(to_underlying(colour), false));
 		}
 
 		uint8_t sel;

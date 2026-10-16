@@ -576,7 +576,17 @@ static Colours GenerateCompanyColour()
 	}
 
 	/* Return the first available colour */
-	return colours.at(0);
+	if (!colours.empty()) return colours.front();
+
+	/* There are more companies than colours, reuse one of the least used colours. */
+	std::array<uint, to_underlying(Colours::End)> usage{};
+	for (const Company *c : Company::Iterate()) usage[to_underlying(c->colour)]++;
+	const uint min_usage = *std::ranges::min_element(usage);
+	std::vector<Colours> candidates;
+	for (Colours colour : EnumRange(Colours::End)) {
+		if (usage[to_underlying(colour)] == min_usage) candidates.push_back(colour);
+	}
+	return candidates[RandomRange(static_cast<uint32_t>(candidates.size()))];
 }
 
 /**
@@ -1283,13 +1293,6 @@ CommandCost CmdSetCompanyColour(DoCommandFlags flags, LiveryScheme scheme, bool 
 	if (scheme == LiveryScheme::Default && colour == Colours::Invalid) return CMD_ERROR;
 
 	Company *c = Company::Get(_current_company);
-
-	/* Ensure no two companies have the same primary colour */
-	if (scheme == LiveryScheme::Default && primary) {
-		for (const Company *cc : Company::Iterate()) {
-			if (cc != c && cc->colour == colour) return CMD_ERROR;
-		}
-	}
 
 	if (flags.Test(DoCommandFlag::Execute)) {
 		if (primary) {

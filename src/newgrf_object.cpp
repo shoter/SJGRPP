@@ -293,7 +293,7 @@ static uint32_t GetCountAndDistanceOfClosestInstance(uint32_t local_id, GrfID gr
 			case 0x42: return CalTime::CurDate().base();
 
 			/* Object founder information */
-			case 0x44: return _current_company.base();
+			case 0x44: return EncodeLegacyOwner(_current_company);
 
 			/* Object view */
 			case 0x48: return this->view;
@@ -340,7 +340,7 @@ static uint32_t GetCountAndDistanceOfClosestInstance(uint32_t local_id, GrfID gr
 		case 0x43: return GetAnimationFrame(this->tile);
 
 		/* Object founder information */
-		case 0x44: return GetTileOwner(this->tile).base();
+		case 0x44: return EncodeLegacyOwner(GetTileOwner(this->tile));
 
 		/* Get town zone and Manhattan distance of closest town */
 		case 0x45: return (t == nullptr) ? 0 : (to_underlying(GetTownRadiusGroup(t, this->tile)) << 16 | ClampTo<uint16_t>(DistanceManhattan(this->tile, t->xy)));

@@ -289,6 +289,33 @@ inline bool HasTileAnyRoadType(TileIndex t, RoadTypes rts)
 }
 
 /**
+ * Get the storage of the high (5th) bit of the tram owner.
+ * The low 4 bits are stored in m3 bits 7..4.
+ * For road stops this is m4 bit 7, for road and tunnel/bridge tiles this is m8 bit 15.
+ * @param t The tile to query.
+ * @return Whether the bit is set.
+ */
+inline bool GetTramOwnerHighBit(TileIndex t)
+{
+	if (IsTileType(t, TileType::Station)) return HasBit(_m[t].m4, 7);
+	return HasBit(_me[t].m8, 15);
+}
+
+/**
+ * Set the high (5th) bit of the tram owner, see #GetTramOwnerHighBit.
+ * @param t The tile to change.
+ * @param bit The new value of the bit.
+ */
+inline void SetTramOwnerHighBit(TileIndex t, bool bit)
+{
+	if (IsTileType(t, TileType::Station)) {
+		AssignBit(_m[t].m4, 7, bit);
+	} else {
+		AssignBit(_me[t].m8, 15, bit);
+	}
+}
+
+/**
  * Get the owner of a specific road type.
  * @param t  The tile to query.
  * @param rtt RoadTramType.
@@ -297,11 +324,11 @@ inline bool HasTileAnyRoadType(TileIndex t, RoadTypes rts)
 inline Owner GetRoadOwner(TileIndex t, RoadTramType rtt)
 {
 	dbg_assert(MayHaveRoad(t));
-	if (rtt == RoadTramType::Road) return (Owner)GB(IsNormalRoadTile(t) ? _m[t].m1 : _me[t].m7, 0, 5);
+	if (rtt == RoadTramType::Road) return DecodeLegacyOwner(GB(IsNormalRoadTile(t) ? _m[t].m1 : _me[t].m7, 0, 5));
 
 	/* Trams don't need OWNER_TOWN, and remapping OWNER_NONE
 	 * to OWNER_TOWN makes it use one bit less */
-	Owner o = (Owner)GB(_m[t].m3, 4, 4);
+	Owner o = DecodeLegacyOwner(GB(_m[t].m3, 4, 4) | (GetTramOwnerHighBit(t) ? 0x10 : 0));
 	return o == OWNER_TOWN ? OWNER_NONE : o;
 }
 
@@ -314,9 +341,11 @@ inline Owner GetRoadOwner(TileIndex t, RoadTramType rtt)
 inline void SetRoadOwner(TileIndex t, RoadTramType rtt, Owner o)
 {
 	if (rtt == RoadTramType::Road) {
-		SB(IsNormalRoadTile(t) ? _m[t].m1 : _me[t].m7, 0, 5, o.base());
+		SB(IsNormalRoadTile(t) ? _m[t].m1 : _me[t].m7, 0, 5, EncodeLegacyOwner(o));
 	} else {
-		SB(_m[t].m3, 4, 4, (o == OWNER_NONE ? OWNER_TOWN : o).base());
+		const uint8_t encoded = EncodeLegacyOwner(o == OWNER_NONE ? OWNER_TOWN : o);
+		SB(_m[t].m3, 4, 4, GB(encoded, 0, 4));
+		SetTramOwnerHighBit(t, HasBit(encoded, 4));
 	}
 }
 

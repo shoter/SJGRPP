@@ -487,8 +487,9 @@ static const NamedSaveLoad _company_desc[] = {
 	NSL("months_of_bankruptcy",             SLE_VAR(CompanyProperties, months_of_bankruptcy,  SLE_UINT8)),
 	NSL("bankrupt_last_asked",        SLE_CONDVAR_X(CompanyProperties, bankrupt_last_asked,   SLE_UINT8,        SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_BANKRUPTCY_EXTRA))),
 	NSL("bankrupt_flags",             SLE_CONDVAR_X(CompanyProperties, bankrupt_flags,        SLE_UINT8,        SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_BANKRUPTCY_EXTRA, 2))),
-	NSL("bankrupt_asked",               SLE_CONDVAR(CompanyProperties, bankrupt_asked,        SLE_FILE_U8  | SLE_VAR_U16,  SL_MIN_VERSION, SLV_104)),
-	NSL("bankrupt_asked",               SLE_CONDVAR(CompanyProperties, bankrupt_asked,        SLE_UINT16,                  SLV_104, SL_MAX_VERSION)),
+	NSL("bankrupt_asked",               SLE_CONDVAR(CompanyProperties, bankrupt_asked,        SLE_FILE_U8  | SLE_VAR_U32,  SL_MIN_VERSION, SLV_104)),
+	NSL("bankrupt_asked",             SLE_CONDVAR_X(CompanyProperties, bankrupt_asked,        SLE_FILE_U16 | SLE_VAR_U32,  SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES, 0, 0))),
+	NSL("bankrupt_asked",             SLE_CONDVAR_X(CompanyProperties, bankrupt_asked,        SLE_UINT32,                  SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES))),
 	NSL("bankrupt_timeout",                 SLE_VAR(CompanyProperties, bankrupt_timeout,      SLE_INT16)),
 	NSL("bankrupt_value",               SLE_CONDVAR(CompanyProperties, bankrupt_value,        SLE_VAR_I64 | SLE_FILE_I32,  SL_MIN_VERSION, SLV_65)),
 	NSL("bankrupt_value",               SLE_CONDVAR(CompanyProperties, bankrupt_value,        SLE_INT64,                   SLV_65, SL_MAX_VERSION)),
@@ -678,7 +679,11 @@ static void Load_PLYP()
 {
 	size_t size = SlGetFieldLength();
 	CompanyMask invalid_mask = {};
-	if (SlXvIsFeaturePresent(XSLFI_COMPANY_PW, 2)) {
+	if (SlXvIsFeaturePresent(XSLFI_COMPANY_PW, 3)) {
+		if (size <= 4) return;
+		invalid_mask.edit_base() = SlReadUint32();
+		size -= 4;
+	} else if (SlXvIsFeaturePresent(XSLFI_COMPANY_PW, 2)) {
 		if (size <= 2) return;
 		invalid_mask.edit_base() = SlReadUint16();
 		size -= 2;
@@ -750,8 +755,8 @@ static void Save_PLYP()
 		if (_saved_PLYP_data.empty()) {
 			SlSetLength(0);
 		} else {
-			SlSetLength(2 + _saved_PLYP_data.size());
-			SlWriteUint16(_saved_PLYP_invalid_mask);
+			SlSetLength(4 + _saved_PLYP_data.size());
+			SlWriteUint32(_saved_PLYP_invalid_mask.base());
 			MemoryDumper::GetCurrent()->CopyBytes((const uint8_t *)_saved_PLYP_data.data(), _saved_PLYP_data.size());
 		}
 		return;
@@ -789,8 +794,8 @@ static void Save_PLYP()
 	/* Encrypt in place */
 	crypto_aead_lock(buffer.data(), mac.data(), _network_company_password_storage_key.data(), nonce.data(), nullptr, 0, buffer.data(), buffer.size());
 
-	SlSetLength(2 + 16 + 24 + 16 + buffer.size());
-	SlWriteUint16(0); // Invalid mask
+	SlSetLength(4 + 16 + 24 + 16 + buffer.size());
+	SlWriteUint32(0); // Invalid mask
 	static_assert(_network_company_password_storage_token.size() == 16);
 	MemoryDumper::GetCurrent()->CopyBytes(_network_company_password_storage_token.data(), 16);
 	MemoryDumper::GetCurrent()->CopyBytes(nonce);

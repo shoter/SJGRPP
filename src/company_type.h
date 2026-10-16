@@ -13,7 +13,7 @@
 #include "core/base_bitset_type.hpp"
 #include "core/pool_type.hpp"
 
-struct CompanyIDTag : public PoolIDTraits<uint8_t, 0xF, 0xFF> {};
+struct CompanyIDTag : public PoolIDTraits<uint8_t, 28, 0xFF> {};
 using CompanyID = PoolID<CompanyIDTag>;
 
 /* 'Fake' companies used for networks */
@@ -23,14 +23,60 @@ static constexpr CompanyID COMPANY_SPECTATOR{255}; ///< The client is spectating
 
 using Owner = CompanyID;
 static constexpr Owner OWNER_BEGIN = Owner::Begin(); ///< First owner
-static constexpr Owner OWNER_TOWN{0x0F}; ///< A town owns the tile, or a town is expanding
-static constexpr Owner OWNER_NONE{0x10}; ///< The tile has no ownership
-static constexpr Owner OWNER_WATER{0x11}; ///< The tile/execution is done by "water"
-static constexpr Owner OWNER_DEITY{0x12}; ///< The object is owned by a superuser / goal script
-static constexpr Owner OWNER_END{0x13}; ///< Last + 1 owner
+static constexpr Owner OWNER_TOWN{0x1C}; ///< A town owns the tile, or a town is expanding
+static constexpr Owner OWNER_NONE{0x1D}; ///< The tile has no ownership
+static constexpr Owner OWNER_WATER{0x1E}; ///< The tile/execution is done by "water"
+static constexpr Owner OWNER_DEITY{0x1F}; ///< The object is owned by a superuser / goal script
+static constexpr Owner OWNER_END{0x20}; ///< Last + 1 owner
 static constexpr Owner INVALID_OWNER = Owner::Invalid(); ///< An invalid owner
 
 static const uint8_t MAX_COMPANIES = CompanyID::End().base();
+static const uint8_t LEGACY_MAX_COMPANIES = 15; ///< Maximum number of companies before the limit was raised, used for savegame and NewGRF compatibility.
+static_assert(OWNER_TOWN.base() == MAX_COMPANIES);
+
+/**
+ * Encode an owner in the legacy 5-bit form, as stored in the map array and as exposed to NewGRFs.
+ * Companies 0..14 and the special owners keep their historic values (town 0x0F, none 0x10, water 0x11, deity 0x12),
+ * companies 15..27 use the previously unused values 0x13..0x1F.
+ * @param o Owner to encode.
+ * @return Encoded owner.
+ */
+constexpr uint8_t EncodeLegacyOwner(Owner o)
+{
+	const uint8_t v = o.base();
+	if (v < LEGACY_MAX_COMPANIES) return v;
+	if (v < MAX_COMPANIES) return v + (OWNER_END.base() - OWNER_TOWN.base());
+	if (v < OWNER_END.base()) return v - OWNER_TOWN.base() + LEGACY_MAX_COMPANIES;
+	return v;
+}
+
+/**
+ * Decode an owner from the legacy 5-bit form, see #EncodeLegacyOwner.
+ * @param v Encoded owner.
+ * @return Decoded owner.
+ */
+constexpr Owner DecodeLegacyOwner(uint8_t v)
+{
+	constexpr uint8_t num_special = OWNER_END.base() - OWNER_TOWN.base();
+	if (v < LEGACY_MAX_COMPANIES) return Owner{v};
+	if (v < LEGACY_MAX_COMPANIES + num_special) return Owner{static_cast<uint8_t>(v - LEGACY_MAX_COMPANIES + OWNER_TOWN.base())};
+	if (v < OWNER_END.base()) return Owner{static_cast<uint8_t>(v - num_special)};
+	return Owner{v};
+}
+static_assert(EncodeLegacyOwner(OWNER_TOWN) == 0x0F && EncodeLegacyOwner(OWNER_NONE) == 0x10 && EncodeLegacyOwner(OWNER_WATER) == 0x11 && EncodeLegacyOwner(OWNER_DEITY) == 0x12);
+static_assert(EncodeLegacyOwner(Owner{14}) == 14 && EncodeLegacyOwner(Owner{15}) == 0x13 && EncodeLegacyOwner(Owner{MAX_COMPANIES - 1}) == 0x1F);
+static_assert(DecodeLegacyOwner(EncodeLegacyOwner(Owner{20})) == Owner{20} && DecodeLegacyOwner(0x10) == OWNER_NONE && DecodeLegacyOwner(0xFF) == INVALID_OWNER);
+
+/**
+ * Convert an owner value from a savegame which predates the raised company limit.
+ * In those savegames the special owners used the legacy values (town 0x0F, none 0x10, water 0x11, deity 0x12).
+ * @param o Owner as loaded.
+ * @return Owner in the current numbering.
+ */
+constexpr Owner ConvertPreMoreCompaniesOwner(Owner o)
+{
+	return o.base() < OWNER_END.base() ? DecodeLegacyOwner(o.base()) : o;
+}
 static const uint MAX_LENGTH_PRESIDENT_NAME_CHARS = 32; ///< The maximum length of a president name in characters including '\0'
 static const uint MAX_LENGTH_COMPANY_NAME_CHARS   = 32; ///< The maximum length of a company name in characters including '\0'
 
@@ -42,9 +88,9 @@ static const uint MAX_COMPETITORS_INTERVAL = 500; ///< The maximum interval (in 
 
 typedef Owner CompanyID;
 
-class CompanyMask : public BaseBitSet<CompanyMask, CompanyID, uint16_t> {
+class CompanyMask : public BaseBitSet<CompanyMask, CompanyID, uint32_t> {
 public:
-	constexpr CompanyMask() : BaseBitSet<CompanyMask, CompanyID, uint16_t>() {}
+	constexpr CompanyMask() : BaseBitSet<CompanyMask, CompanyID, uint32_t>() {}
 	static constexpr size_t DecayValueType(CompanyID value) { return value.base(); }
 
 	constexpr auto operator <=>(const CompanyMask &) const noexcept = default;

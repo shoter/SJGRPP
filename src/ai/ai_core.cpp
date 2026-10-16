@@ -99,7 +99,7 @@ static constexpr PerformanceElement GetAIPerformanceElement(CompanyID company)
 			c->ai_instance->GameLoop();
 			/* Occasionally collect garbage; every 255 ticks do one company.
 			 * Effectively collecting garbage once every two months per AI. */
-			if ((AI::frame_counter & 255) == 0 && (CompanyID)GB(AI::frame_counter, 8, 4) == c->index) {
+			if ((AI::frame_counter & 255) == 0 && (CompanyID)GB(AI::frame_counter, 8, 5) == c->index) {
 				c->ai_instance->CollectGarbage();
 			}
 		} else {

@@ -588,8 +588,8 @@ static const OldChunks town_chunk[] = {
 	OCL_SVAR( OC_INT16, Town, ratings[6] ),
 	OCL_SVAR( OC_INT16, Town, ratings[7] ),
 
-	OCL_SVAR( OC_FILE_U32 | OC_VAR_U16, Town, have_ratings ),
-	OCL_SVAR( OC_FILE_U32 | OC_VAR_U16, Town, statues ),
+	OCL_SVAR( OC_FILE_U32 | OC_VAR_U32, Town, have_ratings ),
+	OCL_SVAR( OC_FILE_U32 | OC_VAR_U32, Town, statues ),
 	OCL_NULL( 2 ),         ///< num_houses,        no longer in use
 	OCL_SVAR(  OC_FILE_U8 | OC_VAR_U16, Town, time_until_rebuild ),
 	OCL_SVAR(  OC_FILE_U8 | OC_VAR_U16, Town, growth_rate ),
@@ -962,7 +962,7 @@ static const OldChunks _company_chunk[] = {
 	OCL_SVAR(  OC_UINT8, Company, colour ),
 	OCL_SVAR(  OC_UINT8, Company, money_fraction ),
 	OCL_SVAR(  OC_UINT8, Company, months_of_bankruptcy ),
-	OCL_SVAR( OC_FILE_U8  | OC_VAR_U16, Company, bankrupt_asked ),
+	OCL_SVAR( OC_FILE_U8  | OC_VAR_U32, Company, bankrupt_asked ),
 	OCL_SVAR( OC_FILE_U32 | OC_VAR_I64, Company, bankrupt_value ),
 	OCL_SVAR( OC_UINT16, Company, bankrupt_timeout ),
 
@@ -1452,7 +1452,7 @@ static bool LoadOldSign(LoadgameState &ls, int num)
 }
 
 static const OldChunks engine_chunk[] = {
-	OCL_SVAR( OC_UINT16, Engine, company_avail ),
+	OCL_SVAR( OC_FILE_U16 | OC_VAR_U32, Engine, company_avail ),
 	OCL_SVAR( OC_FILE_U16 | OC_VAR_U32, Engine, intro_date ),
 	OCL_SVAR( OC_FILE_U16 | OC_VAR_U32, Engine, age ),
 	OCL_SVAR( OC_UINT16, Engine, reliability ),

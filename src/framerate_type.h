@@ -36,6 +36,7 @@
 #define FRAMERATE_TYPE_H
 
 #include "core/enum_type.hpp"
+#include "company_type.h"
 
 /**
  * Elements of game performance that can be measured.
@@ -59,20 +60,7 @@ enum class PerformanceElement : uint8_t {
 	AllScripts, ///< Sum of all GS/AI scripts
 	GameScript, ///< Game script execution
 	AI0, ///< AI execution for player slot 1
-	AI1, ///< AI execution for player slot 2
-	AI2, ///< AI execution for player slot 3
-	AI3, ///< AI execution for player slot 4
-	AI4, ///< AI execution for player slot 5
-	AI5, ///< AI execution for player slot 6
-	AI6, ///< AI execution for player slot 7
-	AI7, ///< AI execution for player slot 8
-	AI8, ///< AI execution for player slot 9
-	AI9, ///< AI execution for player slot 10
-	AI10, ///< AI execution for player slot 11
-	AI11, ///< AI execution for player slot 12
-	AI12, ///< AI execution for player slot 13
-	AI13, ///< AI execution for player slot 14
-	AI14, ///< AI execution for player slot 15
+	AILast = AI0 + MAX_COMPANIES - 1, ///< AI execution for the last player slot
 	End, ///< End of enum, must be last.
 };
 DECLARE_ENUM_AS_SEQUENTIAL(PerformanceElement)

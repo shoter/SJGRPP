@@ -365,19 +365,23 @@ static const NamedSaveLoad _town_desc[] = {
 	NSL("flags",               SLE_VAR(Town, flags,                 SLE_UINT8)),
 	NSL("church_count",  SLE_CONDVAR_X(Town, church_count,        SLE_UINT16, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_TOWN_MULTI_BUILDING))),
 	NSL("stadium_count", SLE_CONDVAR_X(Town, stadium_count,       SLE_UINT16, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_TOWN_MULTI_BUILDING))),
-	NSL("statues",         SLE_CONDVAR(Town, statues,               SLE_FILE_U8  | SLE_VAR_U16, SL_MIN_VERSION, SLV_104)),
-	NSL("statues",         SLE_CONDVAR(Town, statues,               SLE_UINT16,               SLV_104, SL_MAX_VERSION)),
+	NSL("statues",         SLE_CONDVAR(Town, statues,               SLE_FILE_U8  | SLE_VAR_U32, SL_MIN_VERSION, SLV_104)),
+	NSL("statues",       SLE_CONDVAR_X(Town, statues,               SLE_FILE_U16 | SLE_VAR_U32, SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES, 0, 0))),
+	NSL("statues",       SLE_CONDVAR_X(Town, statues,               SLE_UINT32,               SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES))),
 
 	NSL("", SLE_CONDNULL(1, SL_MIN_VERSION, SLV_2)),                   ///< sort_index, no longer in use
 
-	NSL("have_ratings",    SLE_CONDVAR(Town, have_ratings,          SLE_FILE_U8  | SLE_VAR_U16, SL_MIN_VERSION, SLV_104)),
-	NSL("have_ratings",    SLE_CONDVAR(Town, have_ratings,          SLE_UINT16,               SLV_104, SL_MAX_VERSION)),
+	NSL("have_ratings",    SLE_CONDVAR(Town, have_ratings,          SLE_FILE_U8  | SLE_VAR_U32, SL_MIN_VERSION, SLV_104)),
+	NSL("have_ratings",  SLE_CONDVAR_X(Town, have_ratings,          SLE_FILE_U16 | SLE_VAR_U32, SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES, 0, 0))),
+	NSL("have_ratings",  SLE_CONDVAR_X(Town, have_ratings,          SLE_UINT32,               SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES))),
 	NSL("ratings",         SLE_CONDARR(Town, ratings,               SLE_INT16, 8,               SL_MIN_VERSION, SLV_104)),
-	NSL("ratings",         SLE_CONDARR(Town, ratings,               SLE_INT16, MAX_COMPANIES, SLV_104, SL_MAX_VERSION)),
-	NSL("", SLE_CONDNULL_X(MAX_COMPANIES, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_SPRINGPP))),
+	NSL("ratings",       SLE_CONDARR_X(Town, ratings,               SLE_INT16, LEGACY_MAX_COMPANIES, SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES, 0, 0))),
+	NSL("ratings",       SLE_CONDARR_X(Town, ratings,               SLE_INT16, MAX_COMPANIES, SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES))),
+	NSL("", SLE_CONDNULL_X(LEGACY_MAX_COMPANIES, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_SPRINGPP))),
 	/* failed bribe attempts are stored since savegame format 4 */
 	NSL("unwanted",        SLE_CONDARR(Town, unwanted,              SLE_INT8,  8,               SLV_4, SLV_104)),
-	NSL("unwanted",        SLE_CONDARR(Town, unwanted,              SLE_INT8,  MAX_COMPANIES, SLV_104, SL_MAX_VERSION)),
+	NSL("unwanted",      SLE_CONDARR_X(Town, unwanted,              SLE_INT8,  LEGACY_MAX_COMPANIES, SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES, 0, 0))),
+	NSL("unwanted",      SLE_CONDARR_X(Town, unwanted,              SLE_INT8,  MAX_COMPANIES, SLV_104, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_MORE_COMPANIES))),
 
 	NSL("", SLEG_CONDVAR(_old_pass_supplied[LAST_MONTH].production, SLE_FILE_U16 | SLE_VAR_U32, SL_MIN_VERSION, SLV_9)),
 	NSL("", SLEG_CONDVAR(_old_mail_supplied[LAST_MONTH].production, SLE_FILE_U16 | SLE_VAR_U32, SL_MIN_VERSION, SLV_9)),

@@ -81,7 +81,7 @@ namespace {
 		 * Expected number of cycles per second of the performance element. Use 1 if unknown or not relevant.
 		 * The rate is used for highlighting slow-running elements in the GUI.
 		 */
-		explicit PerformanceData(double expected_rate) : expected_rate(expected_rate) { }
+		PerformanceData(double expected_rate = 1) : expected_rate(expected_rate) { }
 
 		/**
 		 * Collect a complete measurement, given start and ending times for a processing block.
@@ -231,21 +231,7 @@ namespace {
 		PerformanceData(1000.0 * 8192 / 44100), // PerformanceElement::Sound
 		PerformanceData(1), // PerformanceElement::AllScripts
 		PerformanceData(1), // PerformanceElement::GameScript
-		PerformanceData(1), // PerformanceElement::AI0 ...
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1),
-		PerformanceData(1), // PerformanceElement::AI14
+		/* PerformanceElement::AI0 ... PerformanceElement::AILast are default initialised with an expected rate of 1. */
 	};
 
 }
@@ -362,37 +348,32 @@ void ShowFrametimeGraphWindow(PerformanceElement elem);
 
 
 /** Order of the performance elements in the user interface. */
-static constexpr EnumIndexArray<PerformanceElement, PerformanceElement, PerformanceElement::End> DISPLAY_ORDER_PFE = {
-	PerformanceElement::GameLoop,
-	PerformanceElement::GameLoopEconomy,
-	PerformanceElement::GameLoopTrains,
-	PerformanceElement::GameLoopRoadVehicles,
-	PerformanceElement::GameLoopShips,
-	PerformanceElement::GameLoopAircraft,
-	PerformanceElement::GameLoopLandscape,
-	PerformanceElement::AllScripts,
-	PerformanceElement::GameScript,
-	PerformanceElement::AI0,
-	PerformanceElement::AI1,
-	PerformanceElement::AI2,
-	PerformanceElement::AI3,
-	PerformanceElement::AI4,
-	PerformanceElement::AI5,
-	PerformanceElement::AI6,
-	PerformanceElement::AI7,
-	PerformanceElement::AI8,
-	PerformanceElement::AI9,
-	PerformanceElement::AI10,
-	PerformanceElement::AI11,
-	PerformanceElement::AI12,
-	PerformanceElement::AI13,
-	PerformanceElement::AI14,
-	PerformanceElement::GameLoopLinkGraph,
-	PerformanceElement::Drawing,
-	PerformanceElement::ViewportDrawing,
-	PerformanceElement::Video,
-	PerformanceElement::Sound,
-};
+static constexpr EnumIndexArray<PerformanceElement, PerformanceElement, PerformanceElement::End> DISPLAY_ORDER_PFE = []() {
+	EnumIndexArray<PerformanceElement, PerformanceElement, PerformanceElement::End> order{};
+	auto it = order.begin();
+	for (PerformanceElement e : {
+			PerformanceElement::GameLoop,
+			PerformanceElement::GameLoopEconomy,
+			PerformanceElement::GameLoopTrains,
+			PerformanceElement::GameLoopRoadVehicles,
+			PerformanceElement::GameLoopShips,
+			PerformanceElement::GameLoopAircraft,
+			PerformanceElement::GameLoopLandscape,
+			PerformanceElement::AllScripts,
+			PerformanceElement::GameScript}) {
+		*it++ = e;
+	}
+	for (uint i = 0; i < MAX_COMPANIES; i++) *it++ = static_cast<PerformanceElement>(to_underlying(PerformanceElement::AI0) + i);
+	for (PerformanceElement e : {
+			PerformanceElement::GameLoopLinkGraph,
+			PerformanceElement::Drawing,
+			PerformanceElement::ViewportDrawing,
+			PerformanceElement::Video,
+			PerformanceElement::Sound}) {
+		*it++ = e;
+	}
+	return order;
+}();
 
 /**
  * Get the \c CompanyID associated with the AI of the given \c PerformanceElement.

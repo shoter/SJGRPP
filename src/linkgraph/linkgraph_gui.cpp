@@ -694,7 +694,7 @@ void LinkGraphOverlay::SetCompanyMask(CompanyMask company_mask)
 /** Make a number of rows with buttons for each company for the linkgraph legend window. @copydoc NWidgetFunctionType */
 std::unique_ptr<NWidgetBase> MakeCompanyButtonRowsLinkGraphGUI()
 {
-	return MakeCompanyButtonRows(WID_LGL_COMPANY_FIRST, WID_LGL_COMPANY_LAST, Colours::Grey, 3, STR_NULL);
+	return MakeCompanyButtonRows(WID_LGL_COMPANY_FIRST, WID_LGL_COMPANY_LAST, Colours::Grey, 4, STR_NULL);
 }
 
 std::unique_ptr<NWidgetBase> MakeSaturationLegendLinkGraphGUI()
