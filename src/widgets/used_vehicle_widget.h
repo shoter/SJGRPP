@@ -12,12 +12,16 @@
 
 /** Widgets of the #BuyUsedVehicleWindow class. */
 enum BuyUsedVehicleWidgets : WidgetID {
-	WID_UV_CAPTION,   ///< Caption of window.
-	WID_UV_LIST,      ///< List of used vehicles.
-	WID_UV_SCROLLBAR, ///< Scrollbar of the list.
-	WID_UV_PANEL,     ///< Details of the selected used vehicle.
-	WID_UV_BUY_SEL,   ///< Selection to hide the buy button when not in a depot.
-	WID_UV_BUY,       ///< Buy button.
+	WID_UV_CAPTION,                   ///< Caption of window.
+	WID_UV_SORT_ASCENDING_DESCENDING, ///< Sort direction.
+	WID_UV_SORT_DROPDOWN,             ///< Sort criteria dropdown.
+	WID_UV_CARGO_FILTER_DROPDOWN,     ///< Cargo filter dropdown.
+	WID_UV_FILTER,                    ///< Name filter editbox.
+	WID_UV_LIST,                      ///< List of used vehicles.
+	WID_UV_SCROLLBAR,                 ///< Scrollbar of the list.
+	WID_UV_PANEL,                     ///< Details of the selected used vehicle.
+	WID_UV_BUY_SEL,                   ///< Selection to hide the buy button when not in a depot.
+	WID_UV_BUY,                       ///< Buy button.
 };
 
 #endif /* WIDGETS_USED_VEHICLE_WIDGET_H */
