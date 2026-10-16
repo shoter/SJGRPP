@@ -302,6 +302,24 @@ class StressTest:
                         return diffs
         return diffs
 
+    def sample_vehicle_positions(self) -> None:
+        """
+        Record where the route vehicles are, for the "vehicles move" checks. Read-only, so unlike sync_check it
+        also runs while routes are being built (always the case in max-28).
+        """
+        vids = [v for rs in list(self.routes.values()) for r in list(rs) for v in list(r.vehicles)]
+        if not vids:
+            return
+        try:
+            resp = self.mon(self.cluster.server).batch([f"obj vehicle {v} tile x_pos y_pos" for v in vids])
+        except Exception as e:  # noqa: BLE001
+            self.log(f"vehicle position sample failed: {type(e).__name__}: {e}")
+            return
+        for v, r in zip(vids, resp):
+            if r.get("ok"):
+                val = r["result"]
+                self.vehicle_history.setdefault(v, set()).add((val["tile"], val["x_pos"], val["y_pos"]))
+
     def sync_check(self, label: str) -> None:
         assert self.cluster is not None
         try:
@@ -721,6 +739,7 @@ class StressTest:
                 self.aborted = True
                 return
             prev = self.sample_perf(prev)
+            self.sample_vehicle_positions()
             date = prev["date"]
             done = months_between(start_date, date)
             self.log(f"{date} ({done:.1f}/{months} months): speed {prev.get('speed_ratio', '-')}, game loop "
