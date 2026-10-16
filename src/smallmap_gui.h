@@ -193,6 +193,7 @@ protected:
 	void DrawVehicles(const DrawPixelInfo *dpi, Blitter *blitter) const;
 	void DrawTowns(const DrawPixelInfo *dpi, const int vertical_padding) const;
 	void DrawIndustryNames(const DrawPixelInfo *dpi, const int vertical_padding) const;
+	void DrawIndustryOutlines(const DrawPixelInfo *dpi) const;
 	void DrawSmallMap(DrawPixelInfo *dpi, bool draw_indicators = true) const;
 	static bool IsIndustryShown(const struct Industry *ind);
 	void RecomputeIndustryHeat() const;
