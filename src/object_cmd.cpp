@@ -39,6 +39,7 @@
 #include "station_func.h"
 #include "tile_cmd.h"
 #include "pathfinder/water_regions.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 #include "table/object_land.h"
@@ -292,6 +293,9 @@ CommandCost CmdBuildObject(DoCommandFlags flags, TileIndex tile, ObjectType type
 	for (TileIndex t : ta) {
 		if (!IsValidTile(t)) return CommandCost(STR_ERROR_TOO_CLOSE_TO_EDGE_OF_MAP); // Might be off the map
 	}
+
+	CommandCost sector_ret = CheckSectorBuildingRights(ta);
+	if (sector_ret.Failed()) return sector_ret;
 
 	if (type == OBJECT_OWNED_LAND) {
 		if (_settings_game.construction.purchase_land_permitted == 0) return CommandCost(STR_PURCHASE_LAND_NOT_PERMITTED);

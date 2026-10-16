@@ -855,6 +855,12 @@ enum class WindowClass : uint16_t {
 	 */
 	ModifierKeyToggle,
 
+	/**
+	 * Sector map window; %Window numbers:
+	 *   - 0 = #SectorWidgets
+	 */
+	Sectors,
+
 	End,              ///< End sentinel.
 	Invalid = 0xFFFF, ///< Invalid window.
 };

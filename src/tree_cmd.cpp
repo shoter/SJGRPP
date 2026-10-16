@@ -29,6 +29,7 @@
 #include "tree_func.h"
 #include "tile_cmd.h"
 #include "3rdparty/robin_hood/robin_hood.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 #include "table/tree_land.h"
@@ -706,6 +707,11 @@ struct CmdPlantTreeHelper {
 
 	void PlantTrees(TileIndex tile, TreeType tree_to_plant, uint8_t count)
 	{
+		if (CheckSectorBuildingRights(tile).Failed()) {
+			this->msg = STR_ERROR_SECTOR_NO_BUILDING_RIGHTS;
+			return;
+		}
+
 		const TileType tile_type = GetTileType(tile);
 		switch (tile_type) {
 			case TileType::Trees: {

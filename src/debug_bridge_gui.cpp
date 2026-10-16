@@ -11,6 +11,7 @@
 #include "company_base.h"
 #include "company_func.h"
 #include "station_base.h"
+#include "sector_func.h"
 #include "station_func.h"
 #include "town.h"
 #include "vehicle_base.h"
@@ -122,6 +123,7 @@ const std::map<std::string, Opener, std::less<>> &Openers()
 		{ "performance_league", plain(ShowPerformanceLeagueTable) },
 		{ "league", plain(ShowFirstLeagueTable) },
 		{ "plans", plain(ShowPlansWindow) },
+		{ "sectors", plain(ShowSectorWindow) },
 		{ "company", company(ShowCompany) },
 		{ "finances", company(ShowCompanyFinances) },
 		{ "company_stations", company(ShowCompanyStations) },
@@ -165,7 +167,7 @@ std::vector<std::string> DebugBridgeWindowNames()
  */
 std::string DebugBridgeShowWindow(std::string_view name, int64_t arg)
 {
-	if (_game_mode != GameMode::Normal) return "no game running";
+	if (_game_mode != GameMode::Normal && !(_game_mode == GameMode::Editor && name == "sectors")) return "no game running";
 	auto it = Openers().find(name);
 	if (it == Openers().end()) return fmt::format("unknown window '{}', see 'show' without arguments", name);
 	if (!it->second(arg)) return fmt::format("nothing to show for '{}'", name);

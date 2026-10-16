@@ -50,6 +50,7 @@
 #include "tile_cmd.h"
 #include "tile_track_func.h"
 #include "script/api/script_event_types.hpp"
+#include "sector_func.h"
 
 #include "table/strings.h"
 
@@ -119,6 +120,9 @@ CommandCost CmdBuildShipDepot(DoCommandFlags flags, TileIndex tile, Axis axis)
 {
 	if (!IsValidAxis(axis)) return CMD_ERROR;
 	TileIndex tile2 = tile + TileOffsByAxis(axis);
+
+	CommandCost sector_ret = CheckSectorBuildingRights(TileArea(tile, tile2));
+	if (sector_ret.Failed()) return sector_ret;
 
 	if (!HasTileWaterGround(tile) || !HasTileWaterGround(tile2)) {
 		return CommandCost(STR_ERROR_MUST_BE_BUILT_ON_WATER);
@@ -354,7 +358,10 @@ static CommandCost DoBuildLock(TileIndex tile, DiagDirection dir, DoCommandFlags
 	CommandCost cost(ExpensesType::Construction);
 
 	TileIndexDiff delta = TileOffsByDiagDir(dir);
-	CommandCost ret = EnsureNoVehicleOnGround(tile);
+	CommandCost ret = CheckSectorBuildingRights(TileArea(tile - delta, tile + delta));
+	if (ret.Failed()) return ret;
+
+	ret = EnsureNoVehicleOnGround(tile);
 	if (ret.Succeeded()) ret = EnsureNoVehicleOnGround(tile + delta);
 	if (ret.Succeeded()) ret = EnsureNoVehicleOnGround(tile - delta);
 	if (ret.Failed()) return ret;
@@ -529,7 +536,8 @@ CommandCost CmdBuildCanal(DoCommandFlags flags, TileIndex tile, TileIndex start_
 	OrthogonalOrDiagonalTileIterator iter(tile, start_tile, diagonal);
 	for (; *iter != INVALID_TILE; ++iter) {
 		TileIndex current_tile = *iter;
-		CommandCost ret;
+		CommandCost ret = CheckSectorBuildingRights(current_tile);
+		if (ret.Failed()) return ret;
 
 		Slope slope = GetTileSlope(current_tile);
 		if (slope != SLOPE_FLAT && (wc != WaterClass::River || !IsInclinedSlope(slope))) {

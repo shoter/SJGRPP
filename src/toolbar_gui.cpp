@@ -81,6 +81,7 @@
 #include "network/network.h"
 #include "network/network_gui.h"
 #include "network/network_func.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 
@@ -472,6 +473,7 @@ enum class MapMenuEntries : uint8_t {
 	ShowTownDirectory, ///< Open window with list of towns.
 	ShowIndustryDirectory, ///< Open window with list of industries.
 	ShowPlans, ///< Open plan window.
+	ShowSectors, ///< Open sector map window.
 };
 
 static CallBackFunction ToolbarMapClick(Window *w)
@@ -482,6 +484,7 @@ static CallBackFunction ToolbarMapClick(Window *w)
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_LINGRAPH_LEGEND,         MapMenuEntries::ShowLinkGraph,         false));
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SIGN_LIST,               MapMenuEntries::ShowSignList,          false));
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_PLAN_LIST,               MapMenuEntries::ShowPlans,             false));
+	if (_game_mode == GameMode::Editor || MapHasSectors()) list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SECTOR_MAP, MapMenuEntries::ShowSectors, false));
 	PopupMainToolbarMenu(w, WID_TN_SMALL_MAP, std::move(list), 0);
 	return CallBackFunction::None;
 }
@@ -493,6 +496,7 @@ static CallBackFunction ToolbarScenMapTownDir(Window *w)
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_EXTRA_VIEWPORT,          MapMenuEntries::ShowExtraViewport,     false));
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SIGN_LIST,               MapMenuEntries::ShowSignList,          false));
 	list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_PLAN_LIST,               MapMenuEntries::ShowPlans,             false));
+	if (_game_mode == GameMode::Editor || MapHasSectors()) list.push_back(MakeDropDownListStringItem(STR_MAP_MENU_SECTOR_MAP, MapMenuEntries::ShowSectors, false));
 	list.push_back(MakeDropDownListStringItem(STR_TOWN_MENU_TOWN_DIRECTORY,         MapMenuEntries::ShowTownDirectory,     false));
 	list.push_back(MakeDropDownListStringItem(STR_INDUSTRY_MENU_INDUSTRY_DIRECTORY, MapMenuEntries::ShowIndustryDirectory, false));
 	PopupMainToolbarMenu(w, WID_TE_SMALL_MAP, std::move(list), 0);
@@ -515,6 +519,7 @@ static CallBackFunction MenuClickMap(int index)
 		case MapMenuEntries::ShowTownDirectory:     ShowTownDirectory(); break;
 		case MapMenuEntries::ShowIndustryDirectory: ShowIndustryDirectory(); break;
 		case MapMenuEntries::ShowPlans:             ShowPlansWindow(); break;
+		case MapMenuEntries::ShowSectors:           ShowSectorWindow(); break;
 	}
 	return CallBackFunction::None;
 }
@@ -1117,6 +1122,7 @@ static CallBackFunction MenuClickNewspaper(int index)
 enum HelpMenuEntries {
 	HME_LANDINFO = 0,
 	HME_PICKER,
+	HME_SECTOR_OVERLAY,
 
 	HME_HELP,
 	HME_SCREENSAVER,
@@ -1273,6 +1279,9 @@ static CallBackFunction ToolbarHelpClick(Window *w)
 	DropDownList list;
 	list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_LAND_BLOCK_INFO,           HME_LANDINFO,      false));
 	list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_SHOW_PICKER_TOOL,          HME_PICKER,        _local_company == COMPANY_SPECTATOR));
+	if (_game_mode == GameMode::Editor || MapHasSectors()) {
+		list.push_back(MakeDropDownListCheckedItem(_show_sector_overlay, STR_ABOUT_MENU_TOGGLE_SECTOR_OVERLAY, HME_SECTOR_OVERLAY, !MapHasSectors()));
+	}
 	list.push_back(MakeDropDownListDividerItem());
 	list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_HELP,                      HME_HELP,          false));
 	list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_ENTER_SCREENSAVER_MODE,    HME_SCREENSAVER,   false));
@@ -1377,6 +1386,7 @@ static CallBackFunction MenuClickHelp(int index)
 	switch (index) {
 		case HME_LANDINFO:       return PlaceLandBlockInfo();
 		case HME_PICKER:         return PlacePickerTool();
+		case HME_SECTOR_OVERLAY: ToggleSectorOverlay();            break;
 		case HME_HELP:           ShowHelpWindow();                 break;
 		case HME_SCREENSAVER:    ToggleScreensaverMode();          break;
 		case HME_CONSOLE:        IConsoleSwitch();                 break;

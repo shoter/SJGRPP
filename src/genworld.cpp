@@ -46,6 +46,7 @@
 #include "signs_cmd.h"
 #include "road_cmd.h"
 #include "scope.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 
@@ -176,6 +177,11 @@ static void _GenerateWorld()
 				GenerateTrees();
 				GeneratePublicRoads(_settings_game.game_creation.build_public_roads);
 			}
+		}
+
+		/* Divide the map into sectors; always in the scenario editor, so they can be edited. */
+		if (_game_mode == GameMode::Editor || (_game_mode != GameMode::Menu && _settings_game.economy.sectors)) {
+			GenerateSectors(_settings_game.economy.sector_size);
 		}
 
 		/* These are probably pointless when inside the scenario editor. */

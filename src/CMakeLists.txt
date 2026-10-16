@@ -504,6 +504,13 @@ add_files(
     signal_type.h
     signature.cpp
     signature.h
+    sector.cpp
+    sector_base.h
+    sector_cmd.cpp
+    sector_cmd.h
+    sector_func.h
+    sector_gui.cpp
+    sector_type.h
     signs.cpp
     signs_base.h
     signs_cmd.cpp

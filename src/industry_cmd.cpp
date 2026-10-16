@@ -51,6 +51,7 @@
 #include "map_func.h"
 #include "tile_cmd.h"
 #include "script/api/script_event_types.hpp"
+#include "sector_func.h"
 
 #include "table/strings.h"
 #include "table/industry_land.h"
@@ -1527,6 +1528,9 @@ static CommandCost CheckIfIndustryTilesAreFree(TileIndex tile, const IndustryTil
 		if (!IsValidTile(cur_tile)) {
 			return CommandCost(STR_ERROR_SITE_UNSUITABLE);
 		}
+
+		CommandCost sector_ret = CheckSectorBuildingRights(cur_tile);
+		if (sector_ret.Failed()) return sector_ret;
 
 		if (gfx == GFX_WATERTILE_SPECIALCHECK) {
 			if (!IsWaterTile(cur_tile) ||

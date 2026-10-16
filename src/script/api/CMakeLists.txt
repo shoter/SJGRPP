@@ -197,6 +197,8 @@ add_files(
     script_railtypelist.hpp
     script_road.hpp
     script_roadtypelist.hpp
+    script_sector.hpp
+    script_sectorlist.hpp
     script_sign.hpp
     script_signlist.hpp
     script_station.hpp
@@ -270,6 +272,8 @@ add_files(
     script_railtypelist.cpp
     script_road.cpp
     script_roadtypelist.cpp
+    script_sector.cpp
+    script_sectorlist.cpp
     script_sign.cpp
     script_signlist.cpp
     script_station.cpp

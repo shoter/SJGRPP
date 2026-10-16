@@ -950,6 +950,9 @@ SettingsContainer &GetSettingsTree()
 		{
 			accounting->Add(new SettingEntry("difficulty.infinite_money"));
 			accounting->Add(new SettingEntry("economy.inflation"));
+			accounting->Add(new SettingEntry("economy.sectors"));
+			accounting->Add(new ConditionallyHiddenSettingEntry("economy.sector_size", []() -> bool { return !GetGameSettings().economy.sectors; }));
+			accounting->Add(new ConditionallyHiddenSettingEntry("economy.sector_price_per_tile", []() -> bool { return !GetGameSettings().economy.sectors; }));
 			accounting->Add(new SettingEntry("economy.inflation_fixed_dates"));
 			accounting->Add(new SettingEntry("difficulty.initial_interest"));
 			accounting->Add(new SettingEntry("difficulty.max_loan"));

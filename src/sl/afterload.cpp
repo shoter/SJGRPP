@@ -95,6 +95,7 @@
 #include <signal.h>
 #include <algorithm>
 
+#include "../sector_func.h"
 #include "../safeguards.h"
 
 extern bool IndividualRoadVehicleController(RoadVehicle *v, const RoadVehicle *prev);
@@ -4677,6 +4678,7 @@ bool AfterLoadGame()
 	AfterLoadLabelMaps();
 	AfterLoadCompanyStats();
 	AfterLoadStoryBook();
+	AfterLoadSectors();
 
 	InitializeRailGUI(); // Needs to be after AfterLoadCompanyStats
 	InitializeRoadGUI(); // "

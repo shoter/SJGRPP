@@ -134,6 +134,7 @@
 #include <condition_variable>
 
 #include "widgets/vehicle_widget.h"
+#include "sector_func.h"
 
 #include "table/darklight_colours.h"
 #include "table/strings.h"
@@ -1978,6 +1979,7 @@ static void ViewportAddLandscape()
 				if (_cur_ti.tile != INVALID_TILE && min_visible_height <= 0) {
 					DrawTileSelection(&_cur_ti);
 					DrawTileZoning(&_cur_ti);
+					DrawTileSectorOverlay(&_cur_ti);
 				}
 			}
 		}

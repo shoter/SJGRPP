@@ -70,6 +70,7 @@
 
 #include "widgets/station_widget.h"
 #include "widgets/misc_widget.h"
+#include "sector_func.h"
 
 #include "table/strings.h"
 
@@ -1634,6 +1635,9 @@ CommandCost CmdBuildRailStation(DoCommandFlags flags, TileIndex tile_org, RailTy
 	/* these values are those that will be stored in train_tile and station_platforms */
 	TileArea new_location(tile_org, w_org, h_org);
 
+	CommandCost sector_ret = CheckSectorBuildingRights(new_location);
+	if (sector_ret.Failed()) return sector_ret;
+
 	/* Make sure the area below consists of clear tiles. (OR tiles belonging to a certain rail station) */
 	StationID est = StationID::Invalid();
 	std::vector<Train *> affected_vehicles;
@@ -1950,6 +1954,10 @@ CommandCost RemoveFromRailBaseStation(TileArea ta, std::vector<T *> &affected_st
 			if (ret.Failed()) continue;
 		}
 
+		ret = CheckSectorBuildingRights(tile);
+		error.AddCost(std::move(ret));
+		if (ret.Failed()) continue;
+
 		Train *v = nullptr;
 		Track track = GetRailStationTrack(tile);
 		if (HasStationReservation(tile)) {
@@ -2237,6 +2245,9 @@ CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width
 
 	TileArea roadstop_area(tile, width, length);
 
+	CommandCost sector_ret = CheckSectorBuildingRights(roadstop_area);
+	if (sector_ret.Failed()) return sector_ret;
+
 	if (distant_join && (!_settings_game.station.distant_join_stations || !Station::IsValidID(station_to_join))) return CMD_ERROR;
 
 	/* Trams only have drive through stops */
@@ -2375,6 +2386,9 @@ CommandCost CmdBuildRoadStop(DoCommandFlags flags, TileIndex tile, uint8_t width
 
 CommandCost RemoveRoadWaypointStop(TileIndex tile, DoCommandFlags flags, int replacement_spec_index)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	Waypoint *wp = Waypoint::GetByTile(tile);
 
 	if (_current_company != OWNER_WATER) {
@@ -2444,6 +2458,9 @@ CommandCost RemoveRoadWaypointStop(TileIndex tile, DoCommandFlags flags, int rep
  */
 CommandCost RemoveRoadStop(TileIndex tile, DoCommandFlags flags, int replacement_spec_index)
 {
+	CommandCost sector_ret = CheckSectorBuildingRights(tile);
+	if (sector_ret.Failed()) return sector_ret;
+
 	if (IsRoadWaypoint(tile)) {
 		return RemoveRoadWaypointStop(tile, flags, replacement_spec_index);
 	}
@@ -2835,6 +2852,9 @@ CommandCost CmdBuildAirport(DoCommandFlags flags, TileIndex tile, uint8_t airpor
 	if (rotation == Direction::E || rotation == Direction::W) std::swap(w, h);
 	TileArea airport_area = TileArea(tile, w, h);
 
+	CommandCost sector_ret = CheckSectorBuildingRights(airport_area);
+	if (sector_ret.Failed()) return sector_ret;
+
 	if (w > _settings_game.station.station_spread || h > _settings_game.station.station_spread) {
 		return CommandCost(STR_ERROR_STATION_TOO_SPREAD_OUT);
 	}
@@ -3158,6 +3178,9 @@ CommandCost CmdBuildDock(DoCommandFlags flags, TileIndex tile, StationID station
 	cost.AddCost(ret.GetCost());
 
 	TileIndex flat_tile = tile + TileOffsByDiagDir(direction);
+
+	CommandCost sector_ret = CheckSectorBuildingRights(TileArea(tile, flat_tile));
+	if (sector_ret.Failed()) return sector_ret;
 
 	if (!HasTileWaterGround(flat_tile) || !IsTileFlat(flat_tile)) {
 		return CommandCost(STR_ERROR_SITE_UNSUITABLE);
