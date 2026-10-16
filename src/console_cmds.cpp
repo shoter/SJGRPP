@@ -55,6 +55,7 @@
 #include "waypoint_base.h"
 #include "waypoint_func.h"
 #include "economy_func.h"
+#include "infrastructure_func.h"
 #include "town.h"
 #include "industry.h"
 #include "string_func_extra.h"
@@ -3596,6 +3597,26 @@ static bool ConDumpVehicle(std::span<std::string_view> argv)
 }
 
 /**
+ * List the current infrastructure sharing fees, including inflation.
+ * @return True.
+ */
+static bool ConSharingFees(std::span<std::string_view> argv)
+{
+	if (argv.empty()) {
+		IConsolePrint(CC_HELP, "List the current infrastructure sharing fees (as money fractions, 1/256 of a currency unit), including inflation.");
+		return true;
+	}
+
+	IConsolePrint(CC_DEFAULT, "inflation: {}, inflation_prices: {}", _settings_game.economy.sharing_fee_inflation ? "on" : "off", _economy.inflation_prices);
+	static const std::string_view names[] = { "rail", "road", "water", "air" };
+	for (VehicleType type : { VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft }) {
+		IConsolePrint(CC_DEFAULT, "{}: setting {}, enabled {}, fee_fract {}", names[to_underlying(type)],
+				_settings_game.economy.sharing_fee[to_underlying(type)], IsInfrastructureSharingEnabled(type) ? 1 : 0, GetSharingFeeFract(type));
+	}
+	return true;
+}
+
+/**
  * Dump the state of a tile on the map.
  * param x tile number or tile x coordinate.
  * param y optional y coordinate.
@@ -4700,6 +4721,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("dump_vehicle",            ConDumpVehicle,      nullptr, true);
 	IConsole::CmdRegister("dump_tile",               ConDumpTile,         nullptr, true);
 	IConsole::CmdRegister("sectors",                 ConSectors);
+	IConsole::CmdRegister("sharing_fees",            ConSharingFees);
 	IConsole::CmdRegister("dump_grf_cargo_tables",   ConDumpGrfCargoTables, nullptr, true);
 	IConsole::CmdRegister("dump_signal_styles",      ConDumpSignalStyles, nullptr, true);
 	IConsole::CmdRegister("dump_sprite_cache_stats", ConSpriteCacheStats, nullptr, true);

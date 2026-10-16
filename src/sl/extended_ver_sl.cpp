@@ -205,6 +205,7 @@ const std::initializer_list<SlxiSubChunkInfo> _sl_xv_sub_chunk_infos = {
 	{ XSLFI_CUSTOM_COMPANY_COLOURS,           XSCF_NULL,                1,   1, "custom_company_colours",           nullptr, nullptr, nullptr          },
 	{ XSLFI_USED_VEHICLES,                     XSCF_IGNORABLE_ALL,       1,   1, "used_vehicles",                    nullptr, nullptr, "UVMK,UVOH"      },
 	{ XSLFI_SECTORS,                          XSCF_IGNORABLE_ALL,       1,   1, "sectors",                          nullptr, nullptr, "SECT,SECM"      },
+	{ XSLFI_SHARING_FEE_INFLATION,            XSCF_IGNORABLE_ALL,       1,   1, "sharing_fee_inflation",            nullptr, nullptr, nullptr          },
 
 	{ XSLFI_SCRIPT_INT64,                     XSCF_NULL,                1,   1, "script_int64",                     nullptr, nullptr, nullptr          },
 	{ XSLFI_U64_TICK_COUNTER,                 XSCF_NULL,                1,   1, "u64_tick_counter",                 nullptr, nullptr, nullptr          },

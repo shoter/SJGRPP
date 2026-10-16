@@ -26,6 +26,7 @@
 #include "order_dest_func.h"
 #include "strings_func.h"
 #include "scope.h"
+#include "economy_func.h"
 
 #include "table/strings.h"
 
@@ -49,6 +50,29 @@ static void PaySharingFee(Vehicle *v, Owner infra_owner, Money cost)
 }
 
 /**
+ * Scale a sharing fee setting with inflation.
+ * @param fee The fee as set in the settings, in base (game start) prices.
+ * @param inflation_prices Cumulated price inflation, 16 bit fractional part.
+ * @param scale_with_inflation Whether the fee scales with inflation.
+ * @return The fee as money fraction (shifted 8 bits to the left).
+ */
+Money ScaleSharingFeeFract(uint fee, uint64_t inflation_prices, bool scale_with_inflation)
+{
+	if (!scale_with_inflation) return static_cast<Money>(fee) << 8;
+	return static_cast<Money>((static_cast<uint64_t>(fee) * inflation_prices) >> 8);
+}
+
+/**
+ * Get the current sharing fee of a vehicle type, including inflation if enabled.
+ * @param type The vehicle type.
+ * @return The fee as money fraction (shifted 8 bits to the left): per day for road vehicles, ships and aircraft, per 1000 tonnes per day for trains.
+ */
+Money GetSharingFeeFract(VehicleType type)
+{
+	return ScaleSharingFeeFract(_settings_game.economy.sharing_fee[to_underlying(type)], _economy.inflation_prices, _settings_game.economy.sharing_fee_inflation);
+}
+
+/**
  * Pay the fee for spending a single tick inside a station.
  * @param v The vehicle that is using the station.
  * @param st The station that it uses.
@@ -56,8 +80,7 @@ static void PaySharingFee(Vehicle *v, Owner infra_owner, Money cost)
 void PayStationSharingFee(Vehicle *v, const Station *st)
 {
 	if (v->owner == st->owner || st->owner == OWNER_NONE || v->type == VehicleType::Train) return;
-	Money cost = _settings_game.economy.sharing_fee[to_underlying(v->type)];
-	PaySharingFee(v, st->owner, (cost << 8) / DAY_TICKS);
+	PaySharingFee(v, st->owner, GetSharingFeeFract(v->type) / DAY_TICKS);
 }
 
 /**
@@ -68,7 +91,7 @@ void PayDailyTrackSharingFee(Train *v)
 {
 	Owner owner = GetTileOwner(v->tile);
 	if (owner == v->owner) return;
-	Money cost = _settings_game.economy.sharing_fee[to_underlying(VehicleType::Train)] << 8;
+	Money cost = GetSharingFeeFract(VehicleType::Train);
 	/* Cost is calculated per 1000 tonnes */
 	cost = (cost * v->gcache.cached_weight) / 1000;
 	/* Only pay the required fraction */
