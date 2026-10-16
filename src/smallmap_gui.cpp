@@ -43,6 +43,8 @@
 #include <bitset>
 #include <cmath>
 #include <utility>
+#include <limits>
+#include <array>
 
 #include "safeguards.h"
 
@@ -449,25 +451,67 @@ static inline uint32_t GetSmallMapIndustriesPixels(TileIndex tile, TileType t)
 	return ApplyMask(_smallmap_show_heightmap ? cs->height_colours[TileHeight(tile)] : cs->default_colour, _smallmap_vehicles_andor[GetSmallMapTileType(tile, t)]);
 }
 
-/** Colour bands of the industry density heatmap: lowest share of the peak density for each colour, low to high. */
-static const std::pair<float, PixelColour> _industry_heat_colours[] = {
-	{0.08f, PC_DARK_BLUE}, {0.3f, PC_LIGHT_BLUE}, {0.5f, PC_GREEN}, {0.7f, PC_YELLOW}, {0.85f, PC_ORANGE}, {0.97f, PC_RED},
+/** Colour stops of the industry density heatmap: share of the peak density, RGB colour and opacity (0-255), low to high. */
+struct IndustryHeatStop {
+	float at;
+	uint8_t r, g, b, alpha;
+};
+static const IndustryHeatStop _industry_heat_stops[] = {
+	{0.00f, 0x2C, 0x7B, 0xB6, 0}, {0.08f, 0x2C, 0x7B, 0xB6, 110}, {0.30f, 0x00, 0xA6, 0xCA, 145}, {0.50f, 0x7F, 0xDC, 0x8A, 170},
+	{0.70f, 0xF9, 0xD0, 0x57, 190}, {0.85f, 0xF2, 0x9E, 0x2E, 205}, {1.00f, 0xD7, 0x19, 0x1C, 220},
 };
 
-/**
- * Return the colour of a tile in the industry density heatmap.
- * @param tile The tile of which we would like to get the colour.
- * @param t    Effective tile type of the tile (see #SmallMapWindow::GetTileColours).
- * @param heat Normalised heat of the tile, in range 0..1.
- * @return The colour of tile in the small map in mode "Industries" with heatmap.
- */
-static inline uint32_t GetSmallMapIndustryHeatPixels(TileIndex tile, TileType t, float heat)
+static constexpr uint INDUSTRY_HEAT_LEVELS = 32; ///< Number of distinct heat levels drawn.
+
+/** For each heat level, the palette colour closest to each palette colour with that level's heat colour laid over it. */
+static std::array<std::array<uint8_t, 256>, INDUSTRY_HEAT_LEVELS> _industry_heat_blend;
+static bool _industry_heat_blend_built = false;
+
+/** Build #_industry_heat_blend from the current palette. */
+static void BuildIndustryHeatBlend()
 {
-	PixelColour colour = _industry_heat_colours[0].second;
-	for (const auto &[from, band] : _industry_heat_colours) {
-		if (heat >= from) colour = band;
+	_industry_heat_blend_built = true;
+	for (uint level = 0; level < INDUSTRY_HEAT_LEVELS; level++) {
+		const float at = static_cast<float>(level) / (INDUSTRY_HEAT_LEVELS - 1);
+		size_t upper = 1;
+		while (upper < std::size(_industry_heat_stops) - 1 && _industry_heat_stops[upper].at < at) upper++;
+		const IndustryHeatStop &from = _industry_heat_stops[upper - 1];
+		const IndustryHeatStop &to = _industry_heat_stops[upper];
+		const float t = std::clamp((at - from.at) / (to.at - from.at), 0.0f, 1.0f);
+		auto mix = [t](float a, float b) { return a + (b - a) * t; };
+		const float r = mix(from.r, to.r), g = mix(from.g, to.g), b = mix(from.b, to.b);
+		const float alpha = mix(from.alpha, to.alpha) / 255.0f;
+
+		for (uint base = 0; base < 256; base++) {
+			const Colour &c = _cur_palette.palette[base];
+			const float br = c.r + (r - c.r) * alpha, bg = c.g + (g - c.g) * alpha, bb = c.b + (b - c.b) * alpha;
+			uint best = base;
+			float best_dist = std::numeric_limits<float>::max();
+			for (uint i = 1; i < PALETTE_ANIM_START; i++) {
+				const Colour &p = _cur_palette.palette[i];
+				const float dist = (p.r - br) * (p.r - br) + (p.g - bg) * (p.g - bg) + (p.b - bb) * (p.b - bb);
+				if (dist < best_dist) {
+					best_dist = dist;
+					best = i;
+				}
+			}
+			_industry_heat_blend[level][base] = static_cast<uint8_t>(best);
+		}
 	}
-	return ApplyMask(colour.p * 0x01010101, _smallmap_vehicles_andor[GetSmallMapTileType(tile, t)]);
+}
+
+/**
+ * Lay the industry density heatmap colour over the colours of a tile.
+ * @param colours Colours of the tile, one palette index per byte.
+ * @param heat Share of the peak density, in range 0..1.
+ * @return The blended colours.
+ */
+static inline uint32_t BlendIndustryHeat(uint32_t colours, float heat)
+{
+	const uint level = std::min<uint>(static_cast<uint>(heat * (INDUSTRY_HEAT_LEVELS - 1) + 0.5f), INDUSTRY_HEAT_LEVELS - 1);
+	if (level == 0) return colours;
+	const auto &blend = _industry_heat_blend[level];
+	return blend[GB(colours, 0, 8)] | (blend[GB(colours, 8, 8)] << 8) | (blend[GB(colours, 16, 8)] << 16) | (static_cast<uint32_t>(blend[GB(colours, 24, 8)]) << 24);
 }
 
 /**
@@ -512,6 +556,7 @@ bool SmallMapWindow::IsIndustryShown(const Industry *ind)
 void SmallMapWindow::RecomputeIndustryHeat() const
 {
 	this->heat_dirty = false;
+	if (!_industry_heat_blend_built) BuildIndustryHeatBlend();
 	this->heat_w = std::max<uint>(1, Map::SizeX() >> HEAT_CELL_SHIFT);
 	this->heat_h = std::max<uint>(1, Map::SizeY() >> HEAT_CELL_SHIFT);
 	this->heat.assign(static_cast<size_t>(this->heat_w) * this->heat_h, 0.0f);
@@ -907,12 +952,14 @@ inline uint32_t SmallMapWindow::GetTileColours(const TileArea &ta) const
 		case SmallMapType::Vehicles:
 			return GetSmallMapVehiclesPixels(tile, et);
 
-		case SmallMapType::Industries:
-			if (SmallMapWindow::show_industry_heat && tile != INVALID_TILE && et != TileType::Water && this->heat_max > 0) {
+		case SmallMapType::Industries: {
+			uint32_t colours = GetSmallMapIndustriesPixels(tile, et);
+			if (SmallMapWindow::show_industry_heat && tile != INVALID_TILE && this->heat_max > 0) {
 				float h = this->heat[static_cast<size_t>(std::min<uint>(TileY(tile) >> HEAT_CELL_SHIFT, this->heat_h - 1)) * this->heat_w + std::min<uint>(TileX(tile) >> HEAT_CELL_SHIFT, this->heat_w - 1)];
-				if (h >= _industry_heat_colours[0].first * this->heat_max) return GetSmallMapIndustryHeatPixels(tile, et, h / this->heat_max);
+				colours = BlendIndustryHeat(colours, h / this->heat_max);
 			}
-			return GetSmallMapIndustriesPixels(tile, et);
+			return colours;
+		}
 
 		case SmallMapType::LinkStats:
 			return GetSmallMapLinkStatsPixels(tile, et);
@@ -1064,6 +1111,40 @@ void SmallMapWindow::DrawTowns(const DrawPixelInfo *dpi, const int vertical_padd
 }
 
 /**
+ * Outlines the footprints of the shown industries, white over black.
+ * @param dpi the part of the smallmap to be drawn into
+ */
+void SmallMapWindow::DrawIndustryOutlines(const DrawPixelInfo *dpi) const
+{
+	const int offset = 2 * this->ui_zoom;
+	for (const PixelColour colour : {PC_BLACK, PC_WHITE}) {
+		const int width = colour.p == PC_BLACK.p ? 3 : 1;
+		for (const Industry *i : Industry::Iterate()) {
+			if (!IsIndustryShown(i)) continue;
+			if (i->type == _smallmap_industry_highlight && !_smallmap_industry_highlight_state) continue;
+
+			const int x0 = TileX(i->location.tile), y0 = TileY(i->location.tile);
+			const int x1 = x0 + i->location.w, y1 = y0 + i->location.h;
+			Point corners[4] = {
+				this->TileToPixel(x0 * TILE_SIZE, y0 * TILE_SIZE), this->TileToPixel(x1 * TILE_SIZE, y0 * TILE_SIZE),
+				this->TileToPixel(x1 * TILE_SIZE, y1 * TILE_SIZE), this->TileToPixel(x0 * TILE_SIZE, y1 * TILE_SIZE),
+			};
+			int left = INT_MAX, right = INT_MIN, top = INT_MAX, bottom = INT_MIN;
+			for (Point &pt : corners) {
+				pt.x += offset;
+				left = std::min(left, pt.x); right = std::max(right, pt.x);
+				top = std::min(top, pt.y); bottom = std::max(bottom, pt.y);
+			}
+			if (right < dpi->left - 2 || left > dpi->left + dpi->width + 2 || bottom < dpi->top - 2 || top > dpi->top + dpi->height + 2) continue;
+			for (int c = 0; c < 4; c++) {
+				const Point &a = corners[c], &b = corners[(c + 1) % 4];
+				GfxDrawLine(a.x, a.y, b.x, b.y, colour, width);
+			}
+		}
+	}
+}
+
+/**
  * Adds industry names to the smallmap.
  * @param dpi the part of the smallmap to be drawn into
  */
@@ -1200,6 +1281,9 @@ void SmallMapWindow::DrawSmallMap(DrawPixelInfo *dpi, bool draw_indicators) cons
 
 	/* Draw town names */
 	if (this->show_towns) this->DrawTowns(dpi, map_labels_vertical_padding);
+
+	/* Outline the industries the density is made of, so they stand out from it. */
+	if (this->map_type == SmallMapType::Industries && SmallMapWindow::show_industry_heat) this->DrawIndustryOutlines(dpi);
 
 	/* Draw industry names */
 	if (this->show_ind_names) this->DrawIndustryNames(dpi, map_labels_vertical_padding);
