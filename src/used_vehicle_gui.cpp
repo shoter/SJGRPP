@@ -42,8 +42,6 @@
 
 #include "safeguards.h"
 
-uint GetEngineListHeight(VehicleType type);
-
 static constexpr uint USED_VEHICLE_DETAILS_LINES = 13;      ///< Height of the details panel in lines.
 static constexpr uint USED_VEHICLE_MAX_HISTORY_LINES = 4;   ///< Maximum number of previous owners shown in the details panel.
 

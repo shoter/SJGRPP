@@ -47,7 +47,6 @@ void ShowCompanyFinances(CompanyID company);
 void ShowCompanyStations(CompanyID company);
 void ShowGoalsList(CompanyID company);
 void ShowOrdersWindow(const Vehicle *v);
-void ShowTimetableWindow(const Vehicle *v);
 void ShowDeparturesWindow(StationID station);
 void ShowStationCargo(StationID station);
 void ShowExtraViewportWindow(TileIndex tile);
