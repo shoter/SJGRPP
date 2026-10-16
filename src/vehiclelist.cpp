@@ -24,14 +24,16 @@
  */
 uint32_t VehicleListIdentifier::Pack() const
 {
-	uint8_t c = this->company == OWNER_NONE ? 0xF : this->company.base();
-	assert(c < (1 << 4));
+	/* The company uses bits 28..31 and bit 22 as the 5th bit. */
+	uint32_t c = this->company == OWNER_NONE ? 0x1F : this->company.base();
+	static_assert(MAX_COMPANIES < 0x1F);
+	assert(c < (1 << 5));
 	assert(to_underlying(this->vtype) < (1 << 2));
 	assert(this->index < (1 << 20));
 	assert(this->type < VehicleListType::End);
 	static_assert(to_underlying(VehicleListType::End) <= (1 << 3));
 
-	return c << 28 | to_underlying(this->type) << 23 | to_underlying(this->vtype) << 26 | this->index;
+	return GB(c, 0, 4) << 28 | GB(c, 4, 1) << 22 | to_underlying(this->type) << 23 | to_underlying(this->vtype) << 26 | this->index;
 }
 
 /**
@@ -41,8 +43,8 @@ uint32_t VehicleListIdentifier::Pack() const
  */
 bool VehicleListIdentifier::UnpackIfValid(uint32_t data)
 {
-	uint8_t c     = GB(data, 28, 4);
-	this->company = c == 0xF ? OWNER_NONE : (CompanyID)c;
+	uint8_t c     = GB(data, 28, 4) | GB(data, 22, 1) << 4;
+	this->company = c == 0x1F ? OWNER_NONE : (CompanyID)c;
 	this->type    = (VehicleListType)GB(data, 23, 3);
 	this->vtype   = (VehicleType)GB(data, 26, 2);
 	this->index   = GB(data, 0, 20);
