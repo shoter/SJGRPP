@@ -20,10 +20,12 @@ enum class SellVehicleFlags : uint8_t {
 	SellChain             = (1U << 0), ///< Sell the vehicle and all vehicles following it in the chain.
 	BackupOrder           = (1U << 1), ///< Make a backup of the vehicle's order (if an engine).
 	VirtualOnly           = (1U << 2), ///< Only allow command to be run on virtual trains
+	ToUsedMarket          = (1U << 3), ///< The sold vehicles are offered on the used vehicle market.
 };
 DECLARE_ENUM_AS_BIT_SET(SellVehicleFlags)
 
 DEF_CMD_TUPLE    (Commands::BuildVehicle,             CmdBuildVehicle,              CMD_CLIENT_ID, CommandType::VehicleConstruction, CmdDataT<EngineID, bool, CargoType, ClientID>)
+DEF_CMD_TUPLE    (Commands::BuyUsedVehicle,           CmdBuyUsedVehicle,            CMD_CLIENT_ID, CommandType::VehicleConstruction, CmdDataT<uint32_t, ClientID>)
 DEF_CMD_TUPLE    (Commands::SellVehicle,              CmdSellVehicle,               CMD_CLIENT_ID, CommandType::VehicleConstruction, CmdDataT<VehicleID, SellVehicleFlags, ClientID>)
 DEF_CMD_TUPLE_LT (Commands::RefitVehicle,             CmdRefitVehicle,                         {}, CommandType::VehicleConstruction, CmdDataT<VehicleID, CargoType, uint8_t, bool, bool, uint8_t>)
 DEF_CMD_TUPLE_NT (Commands::SendVehicleToDepot,       CmdSendVehicleToDepot,                   {}, CommandType::VehicleManagement,   CmdDataT<VehicleID, DepotCommandFlags, TileIndex>)

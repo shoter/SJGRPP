@@ -29,6 +29,7 @@
 #include "zoom_func.h"
 #include "date_func.h"
 #include "vehicle_func.h"
+#include "used_vehicle.h"
 #include "autoreplace_cmd.h"
 #include "autoreplace_func.h"
 #include "autoreplace_gui.h"
@@ -1157,6 +1158,8 @@ void Vehicle::PreDestructor()
 
 	SCOPE_INFO_FMT([this], "Vehicle::PreDestructor: {}", VehicleInfoDumper(this));
 
+	RemoveVehicleOwnerInfo(this->index);
+
 	if (Station::IsValidID(this->last_station_visited)) {
 		Station *st = Station::Get(this->last_station_visited);
 		st->loading_vehicles.erase(std::remove(st->loading_vehicles.begin(), st->loading_vehicles.end(), this), st->loading_vehicles.end());
@@ -1741,7 +1744,7 @@ void CallVehicleTicks()
 		int y = v->y_pos;
 		int z = v->z_pos;
 
-		CommandCost cost = Command<Commands::SellVehicle>::Do(DoCommandFlag::Execute, v->tile, v->index, SellVehicleFlags::SellChain, ClientID::Invalid);
+		CommandCost cost = Command<Commands::SellVehicle>::Do(DoCommandFlag::Execute, v->tile, v->index, SellVehicleFlags::SellChain | SellVehicleFlags::ToUsedMarket, ClientID::Invalid);
 		v = nullptr;
 		if (!cost.Succeeded()) continue;
 
@@ -4016,7 +4019,7 @@ CommandCost Vehicle::SendToDepot(DoCommandFlags flags, DepotCommandFlags command
 				int y = this->y_pos;
 				int z = this->z_pos;
 
-				CommandCost cost = Command<Commands::SellVehicle>::Do(flags, this->tile, this->index, SellVehicleFlags::SellChain, ClientID::Invalid);
+				CommandCost cost = Command<Commands::SellVehicle>::Do(flags, this->tile, this->index, SellVehicleFlags::SellChain | SellVehicleFlags::ToUsedMarket, ClientID::Invalid);
 				if (cost.Succeeded()) {
 					if (IsLocalCompany()) {
 						if (cost.GetCost() != 0) {

@@ -662,6 +662,9 @@ add_files(
     tunnelbridge_cmd.h
     tunnelbridge_map.h
     unit_conversion.h
+    used_vehicle.cpp
+    used_vehicle.h
+    used_vehicle_gui.cpp
     vehicle.cpp
     vehicle_base.h
     vehicle_cmd.cpp
