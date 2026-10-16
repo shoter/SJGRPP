@@ -26,6 +26,7 @@
 #include "event_logs.h"
 #include "timer/timer.h"
 #include "timer/timer_game_calendar.h"
+#include "used_vehicle.h"
 
 #include "safeguards.h"
 
@@ -362,6 +363,7 @@ static void OnNewCalendarYear()
 	InvalidateWindowClassesData(WindowClass::BuildBusStation);
 	InvalidateWindowClassesData(WindowClass::BuildTruckStation);
 	if (_network_server) NetworkServerCalendarYearlyLoop();
+	UsedVehicleMarketYearlyLoop();
 
 	if (CalTime::CurYear() == _settings_client.gui.semaphore_build_before) ResetSignalVariant();
 
@@ -438,6 +440,7 @@ static void OnNewEconomyMonth()
 static void OnNewCalendarDay()
 {
 	EnginesDailyLoop();
+	UsedVehicleMarketDailyLoop();
 
 	if (!_settings_time.time_in_minutes || _settings_client.gui.date_with_time > 0) {
 		SetWindowWidgetDirty(WindowClass::Statusbar, 0, WID_S_LEFT);

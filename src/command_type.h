@@ -541,6 +541,7 @@ enum class Commands : uint8_t {
 
 	BuildVehicle,                           ///< build a vehicle
 	SellVehicle,                            ///< sell a vehicle
+	BuyUsedVehicle,                         ///< buy a vehicle on the used vehicle market
 	RefitVehicle,                           ///< refit the cargo space of a vehicle
 	SendVehicleToDepot,                     ///< send a vehicle to a depot
 	MassSendVehicleToDepot,                 ///< mass send vehicles to depots

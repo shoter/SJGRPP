@@ -23,6 +23,7 @@ enum DepotWidgets : WidgetID {
 	WID_D_SHOW_H_SCROLL,   ///< Show horizontal scrollbar panel.
 	WID_D_H_SCROLL,        ///< Horizontal scrollbar.
 	WID_D_BUILD,           ///< Build button.
+	WID_D_BUILD_USED,      ///< Buy used vehicle button.
 	WID_D_CLONE,           ///< Clone button.
 	WID_D_LOCATION,        ///< Location button.
 	WID_D_SHOW_RENAME,     ///< Show rename panel.

@@ -60,6 +60,7 @@ add_files(
     town_widget.h
     transparency_widget.h
     tree_widget.h
+    used_vehicle_widget.h
     vehicle_widget.h
     viewport_widget.h
     waypoint_widget.h

@@ -42,6 +42,7 @@
 #include "event_logs.h"
 #include "string_func.h"
 #include "plans_func.h"
+#include "used_vehicle.h"
 #include "session_stats.h"
 #include "core/format.hpp"
 #include "3rdparty/monocypher/monocypher.h"
@@ -228,6 +229,7 @@ void InitializeGame(uint size_x, uint size_y, bool reset_date, bool reset_settin
 	InitializeObjects();
 
 	InitializeCompanies();
+	InitializeUsedVehicleMarket();
 	AI::Initialize();
 	Game::Initialize();
 	InitializeCheats();
