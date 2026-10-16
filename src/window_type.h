@@ -855,6 +855,13 @@ enum class WindowClass : uint16_t {
 	 */
 	ModifierKeyToggle,
 
+	/**
+	 * Buy used vehicle; %Window numbers:
+	 *   - #TileIndex = #BuyUsedVehicleWidgets
+	 *   - #VehicleType = #BuyUsedVehicleWidgets
+	 */
+	BuyUsedVehicle,
+
 	End,              ///< End sentinel.
 	Invalid = 0xFFFF, ///< Invalid window.
 };

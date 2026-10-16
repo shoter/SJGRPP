@@ -151,6 +151,7 @@ enum SlXvFeatureIndex {
 	XSLFI_STATION_CARGO_TRUNCATE,                 ///< Station cargo truncation setting
 	XSLFI_MORE_COMPANIES,                         ///< Company limit raised from 15 to 28, special owner IDs renumbered, 5-bit tram owner
 	XSLFI_CUSTOM_COMPANY_COLOURS,                 ///< Custom RGB livery colours
+	XSLFI_USED_VEHICLES,                          ///< Used vehicle market and vehicle owner history
 
 	XSLFI_SCRIPT_INT64,                           ///< See: SLV_SCRIPT_INT64
 	XSLFI_U64_TICK_COUNTER,                       ///< See: SLV_U64_TICK_COUNTER

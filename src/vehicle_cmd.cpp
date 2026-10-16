@@ -34,6 +34,7 @@
 #include "company_base.h"
 #include "core/random_func.hpp"
 #include "vehicle_cmd.h"
+#include "used_vehicle.h"
 #include "train_cmd.h"
 #include "tbtr_template_vehicle.h"
 #include "tbtr_template_vehicle_cmd.h"
@@ -117,7 +118,25 @@ static CommandCost GetRefitCost(const Vehicle *v, EngineID engine_type, CargoTyp
  * @param client_id User
  * @return the cost of this operation or an error
  */
+static CommandCost BuildVehicle(DoCommandFlags flags, TileIndex tile, EngineID eid, bool use_free_vehicles, CargoType cargo, ClientID client_id, bool used);
+
 CommandCost CmdBuildVehicle(DoCommandFlags flags, TileIndex tile, EngineID eid, bool use_free_vehicles, CargoType cargo, ClientID client_id)
+{
+	return BuildVehicle(flags, tile, eid, use_free_vehicles, cargo, client_id, false);
+}
+
+/**
+ * Build a vehicle.
+ * @param flags for command
+ * @param tile tile of depot where the vehicle is built
+ * @param eid vehicle type being built.
+ * @param use_free_vehicles use free vehicles when building the vehicle.
+ * @param cargo refit cargo type.
+ * @param client_id User
+ * @param used The vehicle is bought on the used vehicle market, the engine does not have to be on sale as a new vehicle.
+ * @return the cost of this operation or an error
+ */
+static CommandCost BuildVehicle(DoCommandFlags flags, TileIndex tile, EngineID eid, bool use_free_vehicles, CargoType cargo, ClientID client_id, bool used)
 {
 	/* Elementary check for valid location. */
 	if (!IsDepotTile(tile)) return CMD_ERROR;
@@ -128,7 +147,7 @@ CommandCost CmdBuildVehicle(DoCommandFlags flags, TileIndex tile, EngineID eid, 
 	}
 
 	/* Validate the engine type. */
-	if (!IsEngineBuildable(eid, type, _current_company)) return CommandCost(STR_ERROR_RAIL_VEHICLE_NOT_AVAILABLE + to_underlying(type));
+	if (!(used ? IsUsedEngineBuildable(eid, type, _current_company) : IsEngineBuildable(eid, type, _current_company))) return CommandCost(STR_ERROR_RAIL_VEHICLE_NOT_AVAILABLE + to_underlying(type));
 
 	/* Validate the cargo type. */
 	if (cargo >= NUM_CARGO && cargo != INVALID_CARGO) return CMD_ERROR;
@@ -246,6 +265,51 @@ CommandCost CmdBuildVehicle(DoCommandFlags flags, TileIndex tile, EngineID eid, 
 	return value;
 }
 
+/**
+ * Buy a vehicle on the used vehicle market.
+ * @param flags for command
+ * @param tile tile of depot where the vehicle is placed
+ * @param listing_id identifier of the listing being bought
+ * @param client_id User
+ * @return the cost of this operation or an error
+ */
+CommandCost CmdBuyUsedVehicle(DoCommandFlags flags, TileIndex tile, uint32_t listing_id, ClientID client_id)
+{
+	if (!IsUsedVehicleMarketEnabled()) return CMD_ERROR;
+	if (!IsDepotTile(tile)) return CMD_ERROR;
+
+	const UsedVehicleListing *listing = GetUsedVehicleListing(listing_id);
+	if (listing == nullptr) return CommandCost(STR_ERROR_USED_VEHICLE_NO_LONGER_AVAILABLE);
+	const EngineID eid = listing->engine;
+	const Money price = listing->GetPrice();
+
+	CommandCost ret = BuildVehicle(flags, tile, eid, false, INVALID_CARGO, client_id, true);
+	if (ret.Failed()) return ret;
+
+	CommandCost cost(ExpensesType::NewVehicles, price);
+	if (flags.Test(DoCommandFlag::Execute)) {
+		Vehicle *v = Vehicle::Get(ret.GetResultData<VehicleID>().value());
+		const uint16_t reliability = listing->GetReliability();
+		for (Vehicle *u = v; u != nullptr; u = u->Next()) {
+			u->age = listing->age;
+			u->economy_age = EconTime::DateDelta{listing->age.base()};
+			u->build_year = CalTime::DateToYear(CalTime::CurDate() - listing->age);
+			u->reliability = reliability;
+		}
+		v->value = price;
+		if (!listing->name.empty() && IsUniqueVehicleName(listing->name)) v->name = listing->name;
+
+		VehicleOwnerInfo &info = GetOrCreateVehicleOwnerInfo(v->index);
+		info.acquired = CalTime::CurDate();
+		info.history = listing->history;
+
+		RemoveUsedVehicleListing(listing_id);
+		SetWindowDirty(WindowClass::VehicleDetails, v->index);
+		cost.SetResultData(v->index);
+	}
+	return cost;
+}
+
 CommandCost CmdSellRailWagon(DoCommandFlags flags, Vehicle *t, bool sell_chain, bool backup_order, ClientID user);
 
 /**
@@ -276,6 +340,11 @@ CommandCost CmdSellVehicle(DoCommandFlags flags, TileIndex tile, VehicleID v_id,
 	/* Do this check only if the vehicle to be moved is non-virtual */
 	if (!HasFlag(sell_flags, SellVehicleFlags::VirtualOnly) && !front->IsStoppedInDepot()) return CommandCost(STR_ERROR_TRAIN_MUST_BE_STOPPED_INSIDE_DEPOT + to_underlying(front->type));
 
+	std::vector<UsedVehicleSaleCandidate> used_vehicles;
+	if (flags.Test(DoCommandFlag::Execute) && HasFlag(sell_flags, SellVehicleFlags::ToUsedMarket) && !HasFlag(sell_flags, SellVehicleFlags::VirtualOnly) && IsUsedVehicleMarketEnabled()) {
+		CollectUsedVehicleSaleCandidates(v, HasFlag(sell_flags, SellVehicleFlags::SellChain), used_vehicles);
+	}
+
 	if (v->type == VehicleType::Train) {
 		ret = CmdSellRailWagon(flags, v, HasFlag(sell_flags, SellVehicleFlags::SellChain), HasFlag(sell_flags, SellVehicleFlags::BackupOrder), client_id);
 	} else {
@@ -286,6 +355,8 @@ CommandCost CmdSellVehicle(DoCommandFlags flags, TileIndex tile, VehicleID v_id,
 			delete front;
 		}
 	}
+
+	if (ret.Succeeded()) AddUsedVehicleListings(std::move(used_vehicles));
 
 	return ret;
 }
@@ -781,7 +852,7 @@ CommandCost CmdDepotSellAllVehicles(DoCommandFlags flags, TileIndex tile, Vehicl
 	bool had_success = false;
 	for (const Vehicle *v : list) {
 		if (v->owner != _current_company) continue;
-		CommandCost ret = Command<Commands::SellVehicle>::Do(flags, v->tile, v->index, SellVehicleFlags::SellChain, ClientID::Invalid);
+		CommandCost ret = Command<Commands::SellVehicle>::Do(flags, v->tile, v->index, SellVehicleFlags::SellChain | SellVehicleFlags::ToUsedMarket, ClientID::Invalid);
 		if (ret.Succeeded()) {
 			cost.AddCost(ret.GetCost());
 			had_success = true;
