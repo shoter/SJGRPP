@@ -27,6 +27,8 @@ static const SaveLoad _group_desc[] = {
 	 SLE_CONDVAR(Group, livery.in_use, VarTypes::U8, SaveLoadVersion::GroupLiveries, SaveLoadVersion::MaxVersion),
 	 SLE_CONDVAR(Group, livery.colour1, VarTypes::U8, SaveLoadVersion::GroupLiveries, SaveLoadVersion::MaxVersion),
 	 SLE_CONDVAR(Group, livery.colour2, VarTypes::U8, SaveLoadVersion::GroupLiveries, SaveLoadVersion::MaxVersion),
+	     SLE_VAR(Group, livery.custom1, VarTypes::U32),
+	     SLE_VAR(Group, livery.custom2, VarTypes::U32),
 	 SLE_CONDVAR(Group, parent, VarTypes::U16, SaveLoadVersion::GroupHierarchy, SaveLoadVersion::MaxVersion),
 	 SLE_CONDVAR(Group, number, VarTypes::U16, SaveLoadVersion::GroupNumbers, SaveLoadVersion::MaxVersion),
 };

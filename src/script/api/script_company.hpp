@@ -479,6 +479,48 @@ public:
 	 * @return Secondary colour of livery.
 	 */
 	static ScriptCompany::Colours GetSecondaryLiveryColour(LiveryScheme scheme);
+
+	/**
+	 * Set a custom (RGB) primary colour for your company.
+	 * The nearest preset colour is used where only preset colours are supported, e.g. by NewGRFs.
+	 * @param scheme Livery scheme to set.
+	 * @param rgb Colour to set, as 0xRRGGBB.
+	 * @game @pre ScriptCompanyMode::IsValid().
+	 * @pre rgb >= 0 && rgb <= 0xFFFFFF.
+	 * @return False if unable to set primary colour of the livery scheme.
+	 */
+	static bool SetPrimaryLiveryCustomColour(LiveryScheme scheme, SQInteger rgb);
+
+	/**
+	 * Set a custom (RGB) secondary colour for your company.
+	 * The nearest preset colour is used where only preset colours are supported, e.g. by NewGRFs.
+	 * @param scheme Livery scheme to set.
+	 * @param rgb Colour to set, as 0xRRGGBB.
+	 * @game @pre ScriptCompanyMode::IsValid().
+	 * @pre rgb >= 0 && rgb <= 0xFFFFFF.
+	 * @return False if unable to set secondary colour of the livery scheme.
+	 */
+	static bool SetSecondaryLiveryCustomColour(LiveryScheme scheme, SQInteger rgb);
+
+	/**
+	 * Get the custom (RGB) primary colour of a livery for your company.
+	 * @param scheme Livery scheme to get.
+	 * @game @pre ScriptCompanyMode::IsValid().
+	 * @pre scheme >= LS_DEFAULT.
+	 * @pre scheme <= LS_FREIGHT_TRAM.
+	 * @return Primary colour of livery as 0xRRGGBB, or -1 if the livery uses a preset colour.
+	 */
+	static SQInteger GetPrimaryLiveryCustomColour(LiveryScheme scheme);
+
+	/**
+	 * Get the custom (RGB) secondary colour of a livery for your company.
+	 * @param scheme Livery scheme to get.
+	 * @game @pre ScriptCompanyMode::IsValid().
+	 * @pre scheme >= LS_DEFAULT.
+	 * @pre scheme <= LS_FREIGHT_TRAM.
+	 * @return Secondary colour of livery as 0xRRGGBB, or -1 if the livery uses a preset colour.
+	 */
+	static SQInteger GetSecondaryLiveryCustomColour(LiveryScheme scheme);
 };
 
 DECLARE_INCREMENT_DECREMENT_OPERATORS(ScriptCompany::CompanyID)

@@ -8,6 +8,7 @@
 /** @file screenshot.cpp The creation of screenshots! */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include "core/backup_type.hpp"
 #include "fileio_func.h"
 #include "viewport_func.h"
@@ -801,7 +802,7 @@ static void MinimapScreenCallback(void *userdata, void *buf, uint y, uint pitch,
 	/* Fill with the company colours */
 	TypedIndexContainer<std::array<PixelColour, OWNER_END + 1>, CompanyID> owner_colours;
 	for (const Company *c : Company::Iterate()) {
-		owner_colours[c->index] = GetColourGradient(c->colour, Shade::Light);
+		owner_colours[c->index] = GetCompanyColourGradient(c->index, Shade::Light);
 	}
 
 	/* Fill with some special colours */

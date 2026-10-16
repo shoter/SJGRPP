@@ -8,6 +8,7 @@
 /** @file gfxinit.cpp Initializing of the (GRF) graphics. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include "fios.h"
 #include "newgrf.h"
 #include "3rdparty/md5/md5.h"
@@ -476,6 +477,7 @@ void GfxLoadSprites()
 	VideoDriver::GetInstance()->ClearSystemSprites();
 	FontCache::ClearFontCaches(FONTSIZES_ALL);
 	GfxInitSpriteMem();
+	ResetCustomColourPalettes();
 	GfxInitPalettes();
 	LoadSpriteTables();
 	GfxClearSpriteCacheLoadIndex();

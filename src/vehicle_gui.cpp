@@ -8,6 +8,7 @@
 /** @file vehicle_gui.cpp The base GUI for all vehicles. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include "debug.h"
 #include "company_func.h"
 #include "gui.h"
@@ -2174,7 +2175,7 @@ void BaseVehicleListWindow::DrawVehicleListItems(VehicleID selected_vehicle, int
 				PixelColour ccolour{0};
 				Company *c = Company::Get(v->owner);
 				if (c != nullptr) {
-					ccolour = GetColourGradient(c->colour, Shade::Lighter);
+					ccolour = GetCompanyColourGradient(c->index, Shade::Lighter);
 				}
 				GfxFillRect((tr.right - 1) - (GetCharacterHeight(FontSize::Small) - 2), ir.top + 1, tr.right - 1, (ir.top + 1) + (GetCharacterHeight(FontSize::Small) - 2), ccolour, FillRectMode::Opaque);
 			}

@@ -8,6 +8,7 @@
 /** @file linkgraph_gui.cpp Implementation of linkgraph overlay GUI. */
 
 #include "../stdafx.h"
+#include "../custom_colour.h"
 #include "../window_gui.h"
 #include "../window_func.h"
 #include "../company_base.h"
@@ -534,7 +535,7 @@ void LinkGraphOverlay::DrawStationDots(Blitter *blitter, const DrawPixelInfo *dp
 		uint r = width * 2 + width * 2 * std::min<uint>(200, i.quantity) / 200;
 
 		LinkGraphOverlay::DrawVertex(blitter, dpi, pt.x, pt.y, r,
-				GetColourGradient(st->owner != OWNER_NONE ? Company::Get(st->owner)->colour : Colours::Grey, Shade::Light),
+				st->owner != OWNER_NONE ? GetCompanyColourGradient(st->owner, Shade::Light) : GetColourGradient(Colours::Grey, Shade::Light),
 				GetColourGradient(Colours::Grey, Shade::Darkest));
 	}
 }

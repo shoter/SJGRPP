@@ -8,6 +8,7 @@
 /** @file widget.cpp Handling of the default/simple widgets. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include "core/backup_type.hpp"
 #include "company_func.h"
 #include "settings_gui.h"
@@ -753,7 +754,7 @@ void DrawCaption(const Rect &r, Colours colour, Owner owner, TextColour text_col
 	DrawFrameRect(ir, colour, company_owned ? FrameFlags{FrameFlag::Lowered, FrameFlag::Darkened, FrameFlag::BorderOnly} : FrameFlags{FrameFlag::Lowered, FrameFlag::Darkened});
 
 	if (company_owned) {
-		GfxFillRect(ir.Shrink(WidgetDimensions::scaled.bevel), GetColourGradient(_company_colours[owner], Shade::Normal));
+		GfxFillRect(ir.Shrink(WidgetDimensions::scaled.bevel), GetCompanyColourGradient(owner, Shade::Normal));
 	}
 
 	if (str.empty()) return;

@@ -8,6 +8,7 @@
 /** @file smallmap_gui.cpp GUI that shows a small map of the world with metadata like owner or height. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include "core/backup_type.hpp"
 #include "clear_map.h"
 #include "industry.h"
@@ -347,7 +348,7 @@ void BuildOwnerLegend()
 
 	int i = NUM_NO_COMPANY_ENTRIES;
 	for (const Company *c : Company::Iterate()) {
-		_legend_land_owners[i].colour = GetColourGradient(c->colour, Shade::Light);
+		_legend_land_owners[i].colour = GetCompanyColourGradient(c->index, Shade::Light);
 		_legend_land_owners[i].company = c->index;
 		_legend_land_owners[i].show_on_map = true;
 		_legend_land_owners[i].col_break = false;

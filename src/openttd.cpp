@@ -1153,12 +1153,16 @@ static void MakeNewGameDone()
 	/* Overwrite colour from settings if needed
 	 * Colours::End corresponds to Random colour */
 
-	if (_settings_client.gui.starting_colour != Colours::End) {
-		Command<Commands::SetCompanyColour>::Post(LiveryScheme::Default, true, _settings_client.gui.starting_colour);
+	if (IsCustomColour(_settings_client.gui.starting_colour_custom)) {
+		Command<Commands::SetCompanyColour>::Post(LiveryScheme::Default, true, Colours::Begin, _settings_client.gui.starting_colour_custom);
+	} else if (_settings_client.gui.starting_colour != Colours::End) {
+		Command<Commands::SetCompanyColour>::Post(LiveryScheme::Default, true, _settings_client.gui.starting_colour, CUSTOM_COLOUR_NONE);
 	}
 
-	if (_settings_client.gui.starting_colour_secondary != Colours::End && _loaded_newgrf_features.used_liveries.Test(LiveryScheme::Default)) {
-		Command<Commands::SetCompanyColour>::Post(LiveryScheme::Default, false, _settings_client.gui.starting_colour_secondary);
+	if (IsCustomColour(_settings_client.gui.starting_colour_secondary_custom) && _loaded_newgrf_features.used_liveries.Test(LiveryScheme::Default)) {
+		Command<Commands::SetCompanyColour>::Post(LiveryScheme::Default, false, Colours::Begin, _settings_client.gui.starting_colour_secondary_custom);
+	} else if (_settings_client.gui.starting_colour_secondary != Colours::End && _loaded_newgrf_features.used_liveries.Test(LiveryScheme::Default)) {
+		Command<Commands::SetCompanyColour>::Post(LiveryScheme::Default, false, _settings_client.gui.starting_colour_secondary, CUSTOM_COLOUR_NONE);
 	}
 
 	OnStartGame(false);

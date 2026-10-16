@@ -8,6 +8,7 @@
 /** @file graph_gui.cpp GUI that shows performance graphs. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include <ranges>
 #include "misc/history_func.hpp"
 #include "graph_gui.h"
@@ -958,7 +959,7 @@ public:
 			if (c == nullptr) continue;
 
 			DataSet &dataset = this->data.emplace_back();
-			dataset.colour = GetColourGradient(c->colour, Shade::Lighter);
+			dataset.colour = GetCompanyColourGradient(c->index, Shade::Lighter);
 			dataset.exclude_bit = k.base();
 
 			for (int j = this->num_on_x_axis, i = 0; --j >= 0;) {

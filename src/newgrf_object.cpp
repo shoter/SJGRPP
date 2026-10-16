@@ -8,6 +8,7 @@
 /** @file newgrf_object.cpp Handling of object NewGRFs. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include "company_base.h"
 #include "company_func.h"
 #include "debug.h"
@@ -559,7 +560,7 @@ void DrawNewObjectTileInGUI(int x, int y, const ObjectSpec *spec, uint8_t view)
 		/* Get the colours of our company! */
 		if (spec->flags.Test(ObjectFlag::Uses2CC)) {
 			const Livery &l = Company::Get(_local_company)->livery[LiveryScheme::Default];
-			palette = SPR_2CCMAP_BASE + l.GetRecolourOffset();
+			palette = GetLiveryPalette(l, true);
 		} else {
 			palette = GetCompanyPalette(_local_company);
 		}

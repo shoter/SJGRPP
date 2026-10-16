@@ -256,6 +256,8 @@ static const NamedSaveLoad _company_livery_desc[] = {
 	NSL("in_use",  SLE_CONDVAR(Livery, in_use,  SLE_UINT8, SLV_34, SL_MAX_VERSION)),
 	NSL("colour1", SLE_CONDVAR(Livery, colour1, SLE_UINT8, SLV_34, SL_MAX_VERSION)),
 	NSL("colour2", SLE_CONDVAR(Livery, colour2, SLE_UINT8, SLV_34, SL_MAX_VERSION)),
+	NSL("custom1", SLE_CONDVAR_X(Livery, custom1, SLE_UINT32, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_CUSTOM_COMPANY_COLOURS))),
+	NSL("custom2", SLE_CONDVAR_X(Livery, custom2, SLE_UINT32, SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_CUSTOM_COMPANY_COLOURS))),
 };
 
 static void LoadLiveries(CompanyProperties *c, uint num_liveries, const SaveLoadTable &slt)
@@ -267,8 +269,8 @@ static void LoadLiveries(CompanyProperties *c, uint num_liveries, const SaveLoad
 		SlObjectLoadFiltered(&livery, slt);
 		if (update_in_use && i != to_underlying(LiveryScheme::Default)) {
 			if (livery.in_use.base() == 0) {
-				livery.colour1 = c->livery[LiveryScheme::Default].colour1;
-				livery.colour2 = c->livery[LiveryScheme::Default].colour2;
+				livery.CopyPrimaryColour(c->livery[LiveryScheme::Default]);
+				livery.CopySecondaryColour(c->livery[LiveryScheme::Default]);
 			} else {
 				livery.in_use = {Livery::Flag::Primary, Livery::Flag::Secondary};
 			}

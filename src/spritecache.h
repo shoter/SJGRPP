@@ -83,6 +83,7 @@ size_t GetGRFSpriteOffset(uint32_t id);
 bool LoadNextSprite(SpriteID load_index, SpriteFile &file, uint file_sprite_id);
 bool SkipSpriteData(SpriteFile &file, uint8_t type, uint16_t num);
 void DupSprite(SpriteID old_spr, SpriteID new_spr);
+void SetGeneratedRecolourSprite(SpriteID id, std::span<const uint8_t, 256> remap);
 
 #if !defined(DEDICATED)
 uint32_t GetSpriteMainColour(SpriteID sprite_id, PaletteID palette_id);

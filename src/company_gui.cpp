@@ -8,6 +8,8 @@
 /** @file company_gui.cpp %Company related GUIs. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
+#include "custom_colour_gui.h"
 #include "currency_func.h"
 #include "error.h"
 #include "gui.h"
@@ -660,6 +662,46 @@ public:
 	}
 };
 
+/** Dropdown value of the "custom colour" entry of the colour dropdowns. */
+static constexpr int COLOUR_DROPDOWN_CUSTOM = 0x100;
+
+/**
+ * Get the custom colour of a livery.
+ * @param l The livery.
+ * @param primary Whether to get the primary colour.
+ * @return The custom colour, or #CUSTOM_COLOUR_NONE.
+ */
+static CustomColour GetLiveryCustomColour(const Livery &l, bool primary)
+{
+	return primary ? l.custom1 : l.custom2;
+}
+
+/**
+ * Get the palette to draw a colour square of a livery colour with.
+ * @param l The livery.
+ * @param primary Whether to use the primary colour.
+ * @return The palette.
+ */
+static PaletteID GetLiveryColourSquarePalette(const Livery &l, bool primary)
+{
+	return GetCustomColourPalette(GetColourPalette(primary ? l.colour1 : l.colour2), GetLiveryCustomColour(l, primary), CUSTOM_COLOUR_NONE);
+}
+
+/**
+ * Get the name of a livery colour.
+ * @param l The livery.
+ * @param primary Whether to use the primary colour.
+ * @return The name.
+ */
+static std::string GetLiveryColourName(const Livery &l, bool primary)
+{
+	CustomColour custom = GetLiveryCustomColour(l, primary);
+	if (IsCustomColour(custom)) {
+		return GetString(STR_COLOUR_CUSTOM_VALUE, fmt::format("{:02X}{:02X}{:02X}", GetCustomColourRed(custom), GetCustomColourGreen(custom), GetCustomColourBlue(custom)));
+	}
+	return GetString(STR_COLOUR_DARK_BLUE + to_underlying(primary ? l.colour1 : l.colour2));
+}
+
 /**
  * Get either the primary or secondary colour of the given Livery for offsets.
  * @param l The livery to get the offset for.
@@ -679,6 +721,7 @@ private:
 		GroupID group = GroupID::Invalid(); ///< Selected group.
 	} sel{}; ///< Current selection.
 	LiveryClass livery_class{};
+	bool custom_colour_all_schemes = false; ///< Whether the custom colour being picked is applied to all visible schemes.
 	Dimension square{};
 	uint rows = 0;
 	uint line_height = 0;
@@ -719,10 +762,11 @@ private:
 		for (Colours colour : EnumRange(Colours::End)) {
 			list.push_back(std::make_unique<DropDownListColourItem<>>(to_underlying(colour), false));
 		}
+		list.push_back(MakeDropDownListIconItem(SPR_SQUARE, GetLiveryColourSquarePalette(*livery, primary), STR_COLOUR_CUSTOM, COLOUR_DROPDOWN_CUSTOM));
 
-		uint8_t sel;
+		int sel;
 		if (default_livery == nullptr || livery->in_use.Test(primary ? Livery::Flag::Primary : Livery::Flag::Secondary)) {
-			sel = GetColourOffset(*livery, primary);
+			sel = IsCustomColour(GetLiveryCustomColour(*livery, primary)) ? COLOUR_DROPDOWN_CUSTOM : GetColourOffset(*livery, primary);
 		} else {
 			sel = default_col;
 		}
@@ -851,6 +895,7 @@ public:
 					size.width = std::max(size.width, GetStringBoundingBox(STR_COLOUR_DARK_BLUE + to_underlying(colour)).width + string_padding);
 				}
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COLOUR_DEFAULT).width + string_padding);
+				size.width = std::max(size.width, GetStringBoundingBox(GetString(STR_COLOUR_CUSTOM_VALUE, "DDDDDD")).width + string_padding);
 				break;
 			}
 		}
@@ -880,14 +925,13 @@ public:
 			case WID_SCL_SEC_COL_DROPDOWN: {
 				const Company *c = Company::Get((CompanyID)this->window_number);
 				bool primary = widget == WID_SCL_PRI_COL_DROPDOWN;
-				StringID colour = STR_COLOUR_DEFAULT;
 
 				if (this->livery_class < LiveryClass::GroupRail) {
 					LiveryScheme scheme = this->sel.schemes.GetNthSetBit(0).value_or(LiveryScheme::End);
 					if (scheme != LiveryScheme::End) {
 						const Livery &livery = c->livery[scheme];
 						if (scheme == LiveryScheme::Default || livery.in_use.Test(primary ? Livery::Flag::Primary : Livery::Flag::Secondary)) {
-							colour = STR_COLOUR_DARK_BLUE + GetColourOffset(livery, primary);
+							return GetLiveryColourName(livery, primary);
 						}
 					}
 				} else {
@@ -895,11 +939,11 @@ public:
 						const Group *g = Group::Get(this->sel.group);
 						const Livery &livery = g->livery;
 						if (livery.in_use.Test(primary ? Livery::Flag::Primary : Livery::Flag::Secondary)) {
-							colour = STR_COLOUR_DARK_BLUE + GetColourOffset(livery, primary);
+							return GetLiveryColourName(livery, primary);
 						}
 					}
 				}
-				return GetString(colour);
+				return GetString(STR_COLOUR_DEFAULT);
 			}
 
 			default:
@@ -941,13 +985,13 @@ public:
 			DrawString(sch.left + (rtl ? 0 : indent), sch.right - (rtl ? indent : 0), y + text_offs, str, is_selected ? TextColour::White : TextColour::Black);
 
 			/* Text below the first dropdown. */
-			DrawSprite(SPR_SQUARE, GetColourPalette(livery.colour1), pri_squ.left, y + square_offs);
-			DrawString(pri.left, pri.right, y + text_offs, (is_default_scheme || livery.in_use.Test(Livery::Flag::Primary)) ? STR_COLOUR_DARK_BLUE + to_underlying(livery.colour1) : STR_COLOUR_DEFAULT, is_selected ? TextColour::White : TextColour::Gold);
+			DrawSprite(SPR_SQUARE, GetLiveryColourSquarePalette(livery, true), pri_squ.left, y + square_offs);
+			DrawString(pri.left, pri.right, y + text_offs, (is_default_scheme || livery.in_use.Test(Livery::Flag::Primary)) ? GetLiveryColourName(livery, true) : GetString(STR_COLOUR_DEFAULT), is_selected ? TextColour::White : TextColour::Gold);
 
 			/* Text below the second dropdown. */
 			if (sec.right > sec.left) { // Second dropdown has non-zero size.
-				DrawSprite(SPR_SQUARE, GetColourPalette(livery.colour2), sec_squ.left, y + square_offs);
-				DrawString(sec.left, sec.right, y + text_offs, (is_default_scheme || livery.in_use.Test(Livery::Flag::Secondary)) ? STR_COLOUR_DARK_BLUE + to_underlying(livery.colour2) : STR_COLOUR_DEFAULT, is_selected ? TextColour::White : TextColour::Gold);
+				DrawSprite(SPR_SQUARE, GetLiveryColourSquarePalette(livery, false), sec_squ.left, y + square_offs);
+				DrawString(sec.left, sec.right, y + text_offs, (is_default_scheme || livery.in_use.Test(Livery::Flag::Secondary)) ? GetLiveryColourName(livery, false) : GetString(STR_COLOUR_DEFAULT), is_selected ? TextColour::White : TextColour::Gold);
 			}
 
 			y += this->line_height;
@@ -1048,26 +1092,80 @@ public:
 		this->vscroll->SetCapacityFromWidget(this, WID_SCL_MATRIX);
 	}
 
+	/**
+	 * Apply a colour to the selected livery schemes or group.
+	 * @param widget The colour dropdown the colour was chosen with.
+	 * @param colour The preset colour, or #Colours::Invalid to reset to the default.
+	 * @param custom The custom colour, or #CUSTOM_COLOUR_NONE.
+	 * @param all_schemes Whether to apply to all visible schemes instead of only the selected ones.
+	 */
+	void ApplyColour(WidgetID widget, Colours colour, CustomColour custom, bool all_schemes)
+	{
+		if (this->livery_class < LiveryClass::GroupRail) {
+			/* Set company colour livery */
+			for (LiveryScheme scheme : this->visible_schemes) {
+				/* Changed colour for the selected scheme, or all visible schemes if CTRL is pressed. */
+				if (this->sel.schemes.Test(scheme) || all_schemes) {
+					Command<Commands::SetCompanyColour>::Post(scheme, widget == WID_SCL_PRI_COL_DROPDOWN, colour, custom);
+				}
+			}
+		} else if (this->sel.group != GroupID::Invalid()) {
+			/* Setting group livery */
+			Command<Commands::SetGroupLivery>::Post(this->sel.group, widget == WID_SCL_PRI_COL_DROPDOWN, colour, custom);
+		}
+	}
+
+	/**
+	 * Get the livery whose colours are shown in the colour dropdowns.
+	 * @return The livery.
+	 */
+	const Livery &GetSelectedLivery() const
+	{
+		if (this->livery_class >= LiveryClass::GroupRail) return Group::Get(this->sel.group)->livery;
+		const Company *c = Company::Get((CompanyID)this->window_number);
+		return c->livery[this->sel.schemes.GetNthSetBit(0).value_or(LiveryScheme::Default)];
+	}
+
 	void OnDropdownSelect(WidgetID widget, int index, int) override
 	{
 		bool local = (CompanyID)this->window_number == _local_company;
 		if (!local) return;
 
+		if (index == COLOUR_DROPDOWN_CUSTOM) {
+			if (this->livery_class >= LiveryClass::GroupRail && this->sel.group == GroupID::Invalid()) return;
+			const Livery &livery = this->GetSelectedLivery();
+			const bool primary = widget == WID_SCL_PRI_COL_DROPDOWN;
+			CustomColour initial = GetLiveryCustomColour(livery, primary);
+			if (!IsCustomColour(initial)) initial = GetPresetColourRGB(primary ? livery.colour1 : livery.colour2);
+			this->custom_colour_all_schemes = _ctrl_pressed;
+
+			/* Offer to remember the colour as starting colour when changing the default livery. */
+			std::optional<bool> starting_colour;
+			if (this->livery_class < LiveryClass::GroupRail && this->sel.schemes.Test(LiveryScheme::Default)) {
+				const CustomColour current = primary ? _settings_client.gui.starting_colour_custom : _settings_client.gui.starting_colour_secondary_custom;
+				starting_colour = IsCustomColour(current) && current == initial;
+			}
+
+			ShowCustomColourPicker(this, widget, initial, [](Window *w, WidgetID widget, CustomColour colour, bool starting_colour) {
+				SelectCompanyLiveryWindow *lw = static_cast<SelectCompanyLiveryWindow *>(w);
+				lw->ApplyColour(widget, GetNearestPresetColour(colour), colour, lw->custom_colour_all_schemes);
+
+				if (lw->livery_class < LiveryClass::GroupRail && lw->sel.schemes.Test(LiveryScheme::Default)) {
+					CustomColour &setting = (widget == WID_SCL_PRI_COL_DROPDOWN) ? _settings_client.gui.starting_colour_custom : _settings_client.gui.starting_colour_secondary_custom;
+					if (starting_colour) {
+						setting = colour;
+					} else if (setting == colour) {
+						setting = CUSTOM_COLOUR_NONE;
+					}
+				}
+			}, starting_colour);
+			return;
+		}
+
 		Colours colour = static_cast<Colours>(index);
 		if (colour >= Colours::End) colour = Colours::Invalid;
 
-		if (this->livery_class < LiveryClass::GroupRail) {
-			/* Set company colour livery */
-			for (LiveryScheme scheme : this->visible_schemes) {
-				/* Changed colour for the selected scheme, or all visible schemes if CTRL is pressed. */
-				if (this->sel.schemes.Test(scheme) || _ctrl_pressed) {
-					Command<Commands::SetCompanyColour>::Post(scheme, widget == WID_SCL_PRI_COL_DROPDOWN, colour);
-				}
-			}
-		} else {
-			/* Setting group livery */
-			Command<Commands::SetGroupLivery>::Post(this->sel.group, widget == WID_SCL_PRI_COL_DROPDOWN, colour);
-		}
+		this->ApplyColour(widget, colour, CUSTOM_COLOUR_NONE, _ctrl_pressed);
 	}
 
 	/**

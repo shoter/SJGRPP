@@ -8,6 +8,7 @@
 /** @file group_cmd.cpp Handling of the engine groups. */
 
 #include "stdafx.h"
+#include "custom_colour.h"
 #include "command_func.h"
 #include "train.h"
 #include "vehiclelist.h"
@@ -360,15 +361,15 @@ static void PropagateChildLivery(const GroupID top_gid, const Owner owner, const
 			}
 			if (pg->parent == GroupID::Invalid()) break;
 			pg = Group::Get(pg->parent);
-			if (!livery.in_use.Test(Livery::Flag::Primary)) livery.colour1 = pg->livery.colour1;
-			if (!livery.in_use.Test(Livery::Flag::Secondary)) livery.colour2 = pg->livery.colour2;
+			if (!livery.in_use.Test(Livery::Flag::Primary)) livery.CopyPrimaryColour(pg->livery);
+			if (!livery.in_use.Test(Livery::Flag::Secondary)) livery.CopySecondaryColour(pg->livery);
 			livery.in_use |= pg->livery.in_use;
 		}
 		if (is_descendant) {
-			if (!livery.in_use.Test(Livery::Flag::Primary)) livery.colour1 = top_livery.colour1;
-			if (!livery.in_use.Test(Livery::Flag::Secondary)) livery.colour2 = top_livery.colour2;
-			g->livery.colour1 = livery.colour1;
-			g->livery.colour2 = livery.colour2;
+			if (!livery.in_use.Test(Livery::Flag::Primary)) livery.CopyPrimaryColour(top_livery);
+			if (!livery.in_use.Test(Livery::Flag::Secondary)) livery.CopySecondaryColour(top_livery);
+			g->livery.CopyPrimaryColour(livery);
+			g->livery.CopySecondaryColour(livery);
 		}
 	}
 }
@@ -555,13 +556,13 @@ CommandCost CmdCreateGroup(DoCommandFlags flags, VehicleType vt, GroupID parent_
 		Company *c = Company::Get(g->owner);
 		g->number = c->freegroups.UseID(c->freegroups.NextID());
 		if (pg == nullptr) {
-			g->livery.colour1 = c->livery[LiveryScheme::Default].colour1;
-			g->livery.colour2 = c->livery[LiveryScheme::Default].colour2;
+			g->livery.CopyPrimaryColour(c->livery[LiveryScheme::Default]);
+			g->livery.CopySecondaryColour(c->livery[LiveryScheme::Default]);
 			if (c->settings.renew_keep_length) g->flags.Set(GroupFlag::ReplaceWagonRemoval);
 		} else {
 			g->parent = pg->index;
-			g->livery.colour1 = pg->livery.colour1;
-			g->livery.colour2 = pg->livery.colour2;
+			g->livery.CopyPrimaryColour(pg->livery);
+			g->livery.CopySecondaryColour(pg->livery);
 			g->flags = pg->flags;
 			if (vt == VehicleType::Train) ReindexTemplateReplacementsForGroup(g->index);
 		}
@@ -687,14 +688,15 @@ CommandCost CmdAlterGroup(DoCommandFlags flags, AlterGroupMode mode, GroupID gro
 				const Livery *livery = GetParentLivery(g);
 
 				bool colour_changed = false;
-				auto update_colour = [&colour_changed](Colours &group_colour, Colours new_parent_colour) {
-					if (group_colour != new_parent_colour) {
+				auto update_colour = [&colour_changed](Colours &group_colour, CustomColour &group_custom, Colours new_parent_colour, CustomColour new_parent_custom) {
+					if (group_colour != new_parent_colour || group_custom != new_parent_custom) {
 						group_colour = new_parent_colour;
+						group_custom = new_parent_custom;
 						colour_changed = true;
 					}
 				};
-				if (!g->livery.in_use.Test(Livery::Flag::Primary)) update_colour(g->livery.colour1, livery->colour1);
-				if (!g->livery.in_use.Test(Livery::Flag::Secondary)) update_colour(g->livery.colour2, livery->colour2);
+				if (!g->livery.in_use.Test(Livery::Flag::Primary)) update_colour(g->livery.colour1, g->livery.custom1, livery->colour1, livery->custom1);
+				if (!g->livery.in_use.Test(Livery::Flag::Secondary)) update_colour(g->livery.colour2, g->livery.custom2, livery->colour2, livery->custom2);
 
 				if (colour_changed) {
 					PropagateChildLivery(g, true);
@@ -976,25 +978,36 @@ CommandCost CmdRemoveAllVehiclesGroup(DoCommandFlags flags, GroupID group_id)
  * @param group_id Group ID.
  * @param primary Set primary instead of secondary colour
  * @param colour Colour.
+ * @param custom Custom RGB colour, or #CUSTOM_COLOUR_NONE to use the preset colour. If set,  colour is ignored.
  * @return The (zero) cost or error.
  */
-CommandCost CmdSetGroupLivery(DoCommandFlags flags, GroupID group_id, bool primary, Colours colour)
+CommandCost CmdSetGroupLivery(DoCommandFlags flags, GroupID group_id, bool primary, Colours colour, CustomColour custom)
 {
 	Group *g = Group::GetIfValid(group_id);
 
 	if (g == nullptr || g->owner != _current_company) return CMD_ERROR;
 
+	if (!IsValidCustomColour(custom)) return CMD_ERROR;
+	if (IsCustomColour(custom)) colour = GetNearestPresetColour(custom);
 	if (colour >= Colours::End && colour != Colours::Invalid) return CMD_ERROR;
 
 	if (flags.Test(DoCommandFlag::Execute)) {
 		if (primary) {
 			g->livery.in_use.Set(Livery::Flag::Primary, colour != Colours::Invalid);
-			if (colour == Colours::Invalid) colour = GetParentLivery(g)->colour1;
-			g->livery.colour1 = colour;
+			if (colour == Colours::Invalid) {
+				g->livery.CopyPrimaryColour(*GetParentLivery(g));
+			} else {
+				g->livery.colour1 = colour;
+				g->livery.custom1 = custom;
+			}
 		} else {
 			g->livery.in_use.Set(Livery::Flag::Secondary, colour != Colours::Invalid);
-			if (colour == Colours::Invalid) colour = GetParentLivery(g)->colour2;
-			g->livery.colour2 = colour;
+			if (colour == Colours::Invalid) {
+				g->livery.CopySecondaryColour(*GetParentLivery(g));
+			} else {
+				g->livery.colour2 = colour;
+				g->livery.custom2 = custom;
+			}
 		}
 
 		PropagateChildLivery(g, true);

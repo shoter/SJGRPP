@@ -170,6 +170,8 @@ STR_ITEMS                                                       :{COMMA}{NBSP}it
 STR_CRATES                                                      :{COMMA}{NBSP}crate{P "" s}
 
 STR_COLOUR_DEFAULT                                              :Default
+STR_COLOUR_CUSTOM                                               :Custom colour...
+STR_COLOUR_CUSTOM_VALUE                                         :Custom #{RAW_STRING}
 ###length 17
 STR_COLOUR_DARK_BLUE                                            :Dark Blue
 STR_COLOUR_PALE_GREEN                                           :Pale Green
@@ -2358,6 +2360,19 @@ STR_LIVERY_TRAIN_GROUP_EMPTY                                    :No train groups
 STR_LIVERY_ROAD_VEHICLE_GROUP_EMPTY                             :No road vehicle groups are set up
 STR_LIVERY_SHIP_GROUP_EMPTY                                     :No ship groups are set up
 STR_LIVERY_AIRCRAFT_GROUP_EMPTY                                 :No aircraft groups are set up
+
+STR_CUSTOM_COLOUR_CAPTION                                       :{WHITE}Custom Colour
+STR_CUSTOM_COLOUR_RED                                           :{BLACK}Red
+STR_CUSTOM_COLOUR_GREEN                                         :{BLACK}Green
+STR_CUSTOM_COLOUR_BLUE                                          :{BLACK}Blue
+STR_CUSTOM_COLOUR_VALUE                                         :{BLACK}{NUM}
+STR_CUSTOM_COLOUR_SLIDER_TOOLTIP                                :{BLACK}Click or drag to change this component of the colour
+STR_CUSTOM_COLOUR_HEX_OSKTITLE                                  :{BLACK}Enter the colour as hexadecimal RRGGBB
+STR_CUSTOM_COLOUR_HEX_TOOLTIP                                   :{BLACK}The colour as hexadecimal RRGGBB, type to change it
+STR_CUSTOM_COLOUR_PREVIEW_TOOLTIP                               :{BLACK}Preview of the colour in all its shades, as it will be shown in game. Colours are matched to the nearest colours of the game palette
+STR_CUSTOM_COLOUR_PRESETS_TOOLTIP                               :{BLACK}Click a preset colour to start from it
+STR_CUSTOM_COLOUR_STARTING                                      :{BLACK}Use as my starting colour
+STR_CUSTOM_COLOUR_STARTING_TOOLTIP                              :{BLACK}Also use this colour for new companies you start, in this and future games
 
 ###length 23
 STR_LIVERY_DEFAULT                                              :Default Livery
