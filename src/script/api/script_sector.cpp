@@ -54,6 +54,7 @@
 
 /* static */ Money ScriptSector::GetPrice(SectorID sector_id)
 {
+	EnforceDeityOrCompanyModeValid(-1);
 	if (!IsValidSector(sector_id)) return -1;
 	const ::Sector *s = ::Sector::Get(sector_id);
 	::CompanyID company = ScriptObject::GetCompany();

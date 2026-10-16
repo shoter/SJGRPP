@@ -10,8 +10,8 @@
 #include "stdafx.h"
 #include "company_base.h"
 #include "company_func.h"
-#include "station_base.h"
 #include "sector_func.h"
+#include "station_base.h"
 #include "station_func.h"
 #include "town.h"
 #include "vehicle_base.h"
@@ -48,7 +48,6 @@ void ShowCompanyFinances(CompanyID company);
 void ShowCompanyStations(CompanyID company);
 void ShowGoalsList(CompanyID company);
 void ShowOrdersWindow(const Vehicle *v);
-void ShowTimetableWindow(const Vehicle *v);
 void ShowDeparturesWindow(StationID station);
 void ShowStationCargo(StationID station);
 void ShowExtraViewportWindow(TileIndex tile);
