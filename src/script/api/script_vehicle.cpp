@@ -178,7 +178,7 @@
 	EnforcePrecondition(false, IsValidVehicle(vehicle_id));
 
 	const Vehicle *v = ::Vehicle::Get(vehicle_id);
-	return ScriptObject::Command<Commands::SellVehicle>::Do(v->tile, vehicle_id, (v->type == ::VehicleType::Train) ? SellVehicleFlags::SellChain : SellVehicleFlags::None, ClientID::Invalid);
+	return ScriptObject::Command<Commands::SellVehicle>::Do(v->tile, vehicle_id, ((v->type == ::VehicleType::Train) ? SellVehicleFlags::SellChain : SellVehicleFlags::None) | SellVehicleFlags::ToUsedMarket, ClientID::Invalid);
 }
 
 /* static */ bool ScriptVehicle::_SellWagonInternal(VehicleID vehicle_id, SQInteger wagon, bool sell_attached_wagons)
@@ -190,7 +190,7 @@
 	const Train *v = ::Train::Get(vehicle_id);
 	while (wagon-- > 0) v = v->GetNextUnit();
 
-	return ScriptObject::Command<Commands::SellVehicle>::Do(v->tile, v->index, sell_attached_wagons ? SellVehicleFlags::SellChain : SellVehicleFlags::None, ClientID::Invalid);
+	return ScriptObject::Command<Commands::SellVehicle>::Do(v->tile, v->index, (sell_attached_wagons ? SellVehicleFlags::SellChain : SellVehicleFlags::None) | SellVehicleFlags::ToUsedMarket, ClientID::Invalid);
 }
 
 /* static */ bool ScriptVehicle::SellWagon(VehicleID vehicle_id, SQInteger wagon)

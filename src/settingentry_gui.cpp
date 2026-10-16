@@ -1016,6 +1016,8 @@ SettingsContainer &GetSettingsTree()
 			vehicles->Add(new SettingEntry("vehicle.adjacent_crossings"));
 			vehicles->Add(new SettingEntry("vehicle.safer_crossings"));
 			vehicles->Add(new SettingEntry("vehicle.non_leading_engines_keep_name"));
+			vehicles->Add(new SettingEntry("vehicle.used_vehicle_market"));
+			vehicles->Add(new SettingEntry("vehicle.used_vehicle_yearly_chance"));
 		}
 
 		SettingsPage *limitations = main->Add(new SettingsPage(STR_CONFIG_SETTING_LIMITATIONS));

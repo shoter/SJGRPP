@@ -856,6 +856,13 @@ enum class WindowClass : uint16_t {
 	ModifierKeyToggle,
 
 	/**
+	 * Buy used vehicle; %Window numbers:
+	 *   - #TileIndex = #BuyUsedVehicleWidgets
+	 *   - #VehicleType = #BuyUsedVehicleWidgets
+	 */
+	BuyUsedVehicle,
+
+	/**
 	 * Sector map window; %Window numbers:
 	 *   - 0 = #SectorWidgets
 	 */

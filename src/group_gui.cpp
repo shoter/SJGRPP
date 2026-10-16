@@ -36,6 +36,7 @@
 #include "fios.h"
 
 #include "widgets/group_widget.h"
+#include "used_vehicle.h"
 
 #include "table/sprites.h"
 #include "table/strings.h"
@@ -106,6 +107,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_group_widgets = {
 			NWidget(NWID_HORIZONTAL),
 				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_GL_AVAILABLE_VEHICLES), SetMinimalSize(106, 12),
 						SetToolTip(STR_VEHICLE_LIST_AVAILABLE_ENGINES_TOOLTIP),
+				NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_GL_USED_VEHICLES), SetMinimalSize(80, 12),
+						SetStringTip(STR_VEHICLE_LIST_USED_VEHICLES, STR_VEHICLE_LIST_USED_VEHICLES_TOOLTIP),
 				NWidget(WWT_PANEL, Colours::Grey), SetMinimalSize(0, 12), SetFill(1, 0), SetResize(1, 0), EndContainer(),
 				NWidget(WWT_DROPDOWN, Colours::Grey, WID_GL_MANAGE_VEHICLES_DROPDOWN), SetMinimalSize(118, 12),
 						SetStringTip(STR_VEHICLE_LIST_MANAGE_LIST, STR_VEHICLE_LIST_MANAGE_LIST_TOOLTIP),
@@ -703,6 +706,7 @@ public:
 		this->SetWidgetsDisabledState(_local_company != this->vli.company,
 				WID_GL_CREATE_GROUP,
 				WID_GL_AVAILABLE_VEHICLES);
+		this->SetWidgetDisabledState(WID_GL_USED_VEHICLES, !IsUsedVehicleMarketEnabled());
 
 		/* If not a default group and the group has replace protection, show an enabled replace sprite. */
 		uint16_t protect_sprite = SPR_GROUP_REPLACE_OFF_TRAIN;
@@ -988,6 +992,10 @@ public:
 
 			case WID_GL_AVAILABLE_VEHICLES:
 				ShowBuildVehicleWindow(INVALID_TILE, this->vli.vtype);
+				break;
+
+			case WID_GL_USED_VEHICLES:
+				ShowBuyUsedVehicleWindow(INVALID_TILE, this->vli.vtype);
 				break;
 
 			case WID_GL_MANAGE_VEHICLES_DROPDOWN: {

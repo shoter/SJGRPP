@@ -6116,3 +6116,50 @@ STR_BADGE_CONFIG_FILTERS                                        :{WHITE}Badge Fi
 STR_BADGE_CONFIG_PREVIEW                                        :Preview Image
 STR_BADGE_CONFIG_NAME                                           :Name
 STR_BADGE_FILTER_ANY_LABEL                                      :Any {STRING}
+
+# Used vehicle market
+STR_CONFIG_SETTING_USED_VEHICLE_MARKET                          :Enable used vehicle market: {STRING2}
+STR_CONFIG_SETTING_USED_VEHICLE_MARKET_HELPTEXT                 :Companies can buy second-hand vehicles. The market is filled with used vehicles of every available model at the start of the game, vehicles sold by companies are offered to everyone, and listings age by a year at the start of every year until they reach the end of their lifespan. Only locomotives are traded for trains, not wagons. Disabling this removes all listings
+STR_CONFIG_SETTING_USED_VEHICLE_YEARLY_CHANCE                   :Yearly chance of a new used vehicle per model: {STRING2}
+STR_CONFIG_SETTING_USED_VEHICLE_YEARLY_CHANCE_HELPTEXT          :At the start of every year, each vehicle model that is still on sale has this chance of a used vehicle with a random age being added to the used vehicle market
+
+STR_ERROR_CAN_T_BUY_USED_VEHICLE                                :{WHITE}Can't buy used vehicle...
+STR_ERROR_USED_VEHICLE_NO_LONGER_AVAILABLE                      :{WHITE}... this used vehicle is no longer offered
+
+STR_DEPOT_USED_VEHICLES_BUTTON                                  :{BLACK}Used Vehicles
+STR_DEPOT_USED_VEHICLES_TOOLTIP                                 :{BLACK}Buy a used vehicle
+STR_VEHICLE_LIST_USED_VEHICLES                                  :{BLACK}Used Vehicles
+STR_VEHICLE_LIST_USED_VEHICLES_TOOLTIP                          :{BLACK}Show the used vehicles on the market for this vehicle type
+
+###length VEHICLE_TYPES
+STR_USED_VEHICLE_CAPTION_TRAIN                                  :{WHITE}Used Trains
+STR_USED_VEHICLE_CAPTION_ROAD_VEHICLE                           :{WHITE}Used Road Vehicles
+STR_USED_VEHICLE_CAPTION_SHIP                                   :{WHITE}Used Ships
+STR_USED_VEHICLE_CAPTION_AIRCRAFT                               :{WHITE}Used Aircraft
+
+STR_USED_VEHICLE_LIST_TOOLTIP                                   :{BLACK}Used vehicles on the market - click on a vehicle for information. Double click to buy it
+STR_USED_VEHICLE_ROW_NAME                                       :{BLACK}{ENGINE}
+STR_USED_VEHICLE_ROW_NAME_CUSTOM                                :{BLACK}{ENGINE} {GRAY}"{RAW_STRING}"
+STR_USED_VEHICLE_ROW_AGE                                        :{BLACK}{NUM} yr
+STR_USED_VEHICLE_ROW_PRICE                                      :{GOLD}{CURRENCY_LONG}
+STR_USED_VEHICLE_EMPTY                                          :{GRAY}No used vehicles are offered at the moment
+STR_USED_VEHICLE_DISABLED                                       :{GRAY}The used vehicle market is disabled
+STR_USED_VEHICLE_INFO_ENGINE                                    :{BLACK}Model: {GOLD}{ENGINE}
+STR_USED_VEHICLE_INFO_NAME                                      :{BLACK}Name: {GOLD}{RAW_STRING}
+STR_USED_VEHICLE_INFO_AGE                                       :{BLACK}Age: {GOLD}{NUM} year{P "" s} {BLACK}(lifespan: {NUM} year{P "" s})
+STR_USED_VEHICLE_INFO_PRICE                                     :{BLACK}Price: {GOLD}{CURRENCY_LONG} {BLACK}(new: {CURRENCY_LONG})
+STR_USED_VEHICLE_INFO_RELIABILITY                               :{BLACK}Reliability: {GOLD}{COMMA}%
+STR_USED_VEHICLE_INFO_RUNNING_COST                              :{BLACK}Running cost: {GOLD}{CURRENCY_LONG}/yr
+STR_USED_VEHICLE_INFO_RUNNING_COST_PERIOD                       :{BLACK}Running cost: {GOLD}{CURRENCY_LONG}/period
+STR_USED_VEHICLE_INFO_NOT_ON_SALE                               :{BLACK}This model is no longer sold new
+STR_USED_VEHICLE_INFO_NOT_HERE                                  :{RED}Can't be used in this depot
+STR_USED_VEHICLE_INFO_PREVIOUS_OWNERS                           :{BLACK}Previous owners:
+STR_USED_VEHICLE_INFO_PREVIOUS_OWNERS_UNKNOWN                   :{BLACK}Previous owners: {GOLD}unknown
+STR_USED_VEHICLE_BUY_BUTTON                                     :{BLACK}Buy Used Vehicle
+STR_USED_VEHICLE_BUY_TOOLTIP                                    :{BLACK}Buy the selected used vehicle. Shift+Click shows estimated cost without purchase
+
+STR_VEHICLE_INFO_OWNER_HISTORY                                  :{BLACK}Owner history:
+STR_VEHICLE_INFO_OWNER_HISTORY_ENTRY                            :{BLACK}{RAW_STRING}: {GOLD}{DATE_SHORT} - {DATE_SHORT}
+STR_VEHICLE_INFO_OWNER_HISTORY_CURRENT                          :{BLACK}{COMPANY}: {GOLD}{DATE_SHORT} - now
+STR_VEHICLE_INFO_OWNER_HISTORY_UNKNOWN                          :{BLACK}Earlier owners unknown
+STR_VEHICLE_INFO_OWNER_HISTORY_MORE                             :{BLACK}... and {NUM} earlier owner{P "" s}

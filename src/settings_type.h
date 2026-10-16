@@ -859,6 +859,8 @@ struct VehicleSettings {
 	CalTime::Year          no_expire_vehicles_after;              ///< do not expire vehicles after this year
 	CalTime::Year          no_introduce_vehicles_after;           ///< do not introduce vehicles after this year
 	uint8_t                extend_vehicle_life;                   ///< extend vehicle life by this many years
+	bool                   used_vehicle_market;                   ///< enable the used vehicle market
+	uint8_t                used_vehicle_yearly_chance;            ///< chance in percent that a new used vehicle of each engine type is offered every year
 	RoadVehicleDrivingSide road_side;                             ///< the side of the road vehicles drive on
 	uint8_t                plane_crashes;                         ///< number of plane crashes, 0 = none, 1 = reduced, 2 = normal
 	bool                   aircraft_range;                        ///< enable range limits for aircraft

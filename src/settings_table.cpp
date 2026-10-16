@@ -51,6 +51,7 @@
 #include "void_map.h"
 #include "widget_type.h"
 #include "window_func.h"
+#include "used_vehicle.h"
 #include "window_type.h"
 #include "zoning.h"
 #include "ai/ai.hpp"

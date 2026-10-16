@@ -41,6 +41,7 @@
 #include "station_base.h"
 #include "waypoint_base.h"
 #include "economy_base.h"
+#include "used_vehicle.h"
 #include "core/pool_func.hpp"
 #include "core/backup_type.hpp"
 #include "core/container_func.hpp"
@@ -536,6 +537,7 @@ void ChangeOwnershipOfCompanyItems(Owner old_owner, Owner new_owner)
 					Command<Commands::ChangeServiceInterval>::Do({DoCommandFlag::Execute, DoCommandFlag::Bankrupt}, v->index, interval, false, new_company->settings.vehicle.servint_ispercent);
 				}
 
+				RecordVehicleOwnerChange(v, new_owner);
 				v->owner = new_owner;
 
 				/* Owner changes, clear cache */
