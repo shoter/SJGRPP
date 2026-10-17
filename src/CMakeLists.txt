@@ -673,6 +673,8 @@ add_files(
     used_vehicle.cpp
     used_vehicle.h
     used_vehicle_gui.cpp
+    variable_inflation.cpp
+    variable_inflation.h
     vehicle.cpp
     vehicle_base.h
     vehicle_cmd.cpp

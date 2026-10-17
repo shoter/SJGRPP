@@ -664,6 +664,12 @@ enum class WindowClass : uint16_t {
 	TownCargoGraph,
 
 	/**
+	 * Economy (inflation) graph; %Window numbers:
+	 *   - 0 = #GraphWidgets
+	 */
+	EconomyGraph,
+
+	/**
 	 * Company infrastructure overview; %Window numbers:
 	 *   - #CompanyID = #CompanyInfrastructureWidgets
 	 */

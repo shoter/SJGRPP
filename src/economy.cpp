@@ -73,6 +73,8 @@
 #include <ranges>
 
 #include "sector_func.h"
+#include "variable_inflation.h"
+
 #include "safeguards.h"
 
 
@@ -854,8 +856,8 @@ bool AddInflation(bool check_year)
 	 * 12 -> months per year
 	 * This is only a good approximation for small values
 	 */
-	_economy.inflation_prices  += (_economy.inflation_prices  * _economy.infl_amount    * 54) >> 16;
-	_economy.inflation_payment += (_economy.inflation_payment * _economy.infl_amount_pr * 54) >> 16;
+	_economy.inflation_prices  = ApplyMonthlyInflation(_economy.inflation_prices,  _variable_inflation.cost_rate);
+	_economy.inflation_payment = ApplyMonthlyInflation(_economy.inflation_payment, _variable_inflation.income_rate);
 
 	if (_economy.inflation_prices > MAX_INFLATION) _economy.inflation_prices = MAX_INFLATION;
 	if (_economy.inflation_payment > MAX_INFLATION) _economy.inflation_payment = MAX_INFLATION;
@@ -1035,6 +1037,7 @@ void StartupEconomy()
 	_economy.infl_amount = _settings_game.difficulty.initial_interest;
 	_economy.infl_amount_pr = std::max(0, _settings_game.difficulty.initial_interest - 1);
 	_economy.fluct = GB(Random(), 0, 8) + 168;
+	InitVariableInflation();
 
 	if (_settings_game.economy.inflation && _settings_game.economy.inflation_fixed_dates) {
 		/* Apply inflation that happened before our game start year. */
@@ -1046,6 +1049,7 @@ void StartupEconomy()
 
 	/* Set up prices */
 	RecomputePrices();
+	RecordInflationHistory();
 
 	StartupIndustryDailyChanges(true); // As we are starting a new game, initialize the counter too
 
@@ -1057,6 +1061,7 @@ void StartupEconomy()
 void InitializeEconomy()
 {
 	_economy.inflation_prices = _economy.inflation_payment = 1 << 16;
+	_variable_inflation = {};
 	ClearCargoPickupMonitoring();
 	ClearCargoDeliveryMonitoring();
 }

@@ -954,6 +954,11 @@ SettingsContainer &GetSettingsTree()
 			accounting->Add(new ConditionallyHiddenSettingEntry("economy.sector_size", []() -> bool { return !GetGameSettings().economy.sectors; }));
 			accounting->Add(new ConditionallyHiddenSettingEntry("economy.sector_price_per_tile", []() -> bool { return !GetGameSettings().economy.sectors; }));
 			accounting->Add(new SettingEntry("economy.inflation_fixed_dates"));
+			accounting->Add(new SettingEntry("economy.inflation_change_chance"));
+			accounting->Add(new ConditionallyHiddenSettingEntry("economy.inflation_cost_min", []() -> bool { return GetGameSettings().economy.inflation_change_chance == 0; }));
+			accounting->Add(new ConditionallyHiddenSettingEntry("economy.inflation_cost_max", []() -> bool { return GetGameSettings().economy.inflation_change_chance == 0; }));
+			accounting->Add(new ConditionallyHiddenSettingEntry("economy.inflation_income_min", []() -> bool { return GetGameSettings().economy.inflation_change_chance == 0; }));
+			accounting->Add(new ConditionallyHiddenSettingEntry("economy.inflation_income_max", []() -> bool { return GetGameSettings().economy.inflation_change_chance == 0; }));
 			accounting->Add(new SettingEntry("difficulty.initial_interest"));
 			accounting->Add(new SettingEntry("difficulty.max_loan"));
 			accounting->Add(new SettingEntry("difficulty.subsidy_multiplier"));

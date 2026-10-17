@@ -59,6 +59,7 @@ add_files(
     train_speed_adaptation.cpp
     tunnel_sl.cpp
     used_vehicle_sl.cpp
+    variable_inflation_sl.cpp
     vehicle_sl.cpp
     vehicle_sl.h
     waypoint_sl.cpp

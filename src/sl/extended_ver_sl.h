@@ -154,6 +154,7 @@ enum SlXvFeatureIndex {
 	XSLFI_USED_VEHICLES,                          ///< Used vehicle market and vehicle owner history
 	XSLFI_SECTORS,                                ///< Sectors and building rights
 	XSLFI_SHARING_FEE_INFLATION,                  ///< Infrastructure sharing fees scale with inflation
+	XSLFI_VARIABLE_INFLATION,                     ///< Inflation rates that change each year, with history
 
 	XSLFI_SCRIPT_INT64,                           ///< See: SLV_SCRIPT_INT64
 	XSLFI_U64_TICK_COUNTER,                       ///< See: SLV_U64_TICK_COUNTER

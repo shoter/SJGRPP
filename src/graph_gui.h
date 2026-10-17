@@ -21,6 +21,7 @@ void ShowDeliveredCargoGraph();
 void ShowPerformanceHistoryGraph();
 void ShowCompanyValueGraph();
 void ShowCargoPaymentRates();
+void ShowEconomyGraph();
 void ShowPerformanceRatingDetail();
 void ShowStationCargo(StationID);
 void ShowIndustryProductionGraph(WindowNumber window_number);

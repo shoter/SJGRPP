@@ -32,6 +32,7 @@
 #include "town.h"
 #include "timer/timer.h"
 #include "timer/timer_window.h"
+#include "variable_inflation.h"
 
 #include "widgets/graph_widget.h"
 
@@ -2874,3 +2875,200 @@ void ShowStationCargo(StationID station_id)
 	AllocateWindowDescFront<StationCargoGraphWindow>(_station_cargo_desc, station_id);
 }
 
+
+/***********/
+/* ECONOMY */
+/***********/
+
+/** Graph of the cost and income inflation of the last years. */
+struct EconomyGraphWindow : BaseGraphWindow {
+	/** Lines that can be shown. */
+	enum EconomyGraphKey : uint8_t {
+		CumulativeCost,
+		CurrentCost,
+		CumulativeIncome,
+		CurrentIncome,
+		KeyCount,
+	};
+
+	static inline uint64_t excluded_keys = 0; ///< Lines hidden by the player, kept while the window is closed.
+
+	int32_t first_year = 0; ///< Year of the first point on the x axis.
+	uint line_height = 0;   ///< Pixel height of each key row.
+	uint legend_width = 0;  ///< Width of the legend colour box.
+
+	/** Name, colour and dash pattern of a line. */
+	struct KeyInfo {
+		StringID name;
+		PixelColour colour;
+		uint8_t dash;
+	};
+
+	static inline const KeyInfo KEYS[KeyCount] = {
+		{STR_GRAPH_ECONOMY_KEY_CUMULATIVE_COST,   PC_RED,        0},
+		{STR_GRAPH_ECONOMY_KEY_CURRENT_COST,      PC_ORANGE,     2},
+		{STR_GRAPH_ECONOMY_KEY_CUMULATIVE_INCOME, PC_GREEN,      0},
+		{STR_GRAPH_ECONOMY_KEY_CURRENT_INCOME,    PC_LIGHT_BLUE, 2},
+	};
+
+	EconomyGraphWindow(WindowDesc &desc, WindowNumber window_number) : BaseGraphWindow(desc, STR_GRAPH_ECONOMY_Y_PERCENT)
+	{
+		this->num_vert_lines = INFLATION_HISTORY_YEARS;
+		this->draw_dates = false;
+		this->x_values_reversed = false;
+		this->x_values_increment = 1;
+		this->excluded_data = EconomyGraphWindow::excluded_keys;
+
+		this->CreateNestedTree();
+		this->FinishInitNested(window_number);
+		this->InvalidateData();
+	}
+
+	std::string PrepareXAxisText(uint16_t label) const override
+	{
+		return GetString(STR_GRAPH_ECONOMY_YEAR, this->first_year + label - 1);
+	}
+
+	std::string PrepareXAxisMaxSizeText(uint16_t) const override
+	{
+		return GetString(STR_GRAPH_ECONOMY_YEAR, GetParamMaxValue(9999, 4, FontSize::Small));
+	}
+
+	void UpdateStatistics(bool initialize) override
+	{
+		if (!initialize) return;
+
+		const VariableInflation &vi = _variable_inflation;
+		this->num_on_x_axis = vi.history_count;
+		this->first_year = vi.history_count > 0 ? vi.history[0].year : 0;
+
+		this->data.clear();
+		for (uint8_t k = 0; k < KeyCount; k++) {
+			DataSet &ds = this->data.emplace_back();
+			ds.colour = KEYS[k].colour;
+			ds.exclude_bit = k;
+			ds.range_bit = 0;
+			ds.dash = KEYS[k].dash;
+			for (uint i = 0; i < vi.history_count; i++) {
+				const InflationHistoryEntry &e = vi.history[i];
+				switch (k) {
+					case CumulativeCost:   ds.values[i] = CumulativeInflationPercentTenths(e.inflation_prices); break;
+					case CurrentCost:      ds.values[i] = e.cost_rate; break;
+					case CumulativeIncome: ds.values[i] = CumulativeInflationPercentTenths(e.inflation_payment); break;
+					case CurrentIncome:    ds.values[i] = e.income_rate; break;
+				}
+			}
+		}
+		this->SetDirty();
+	}
+
+	void OnGameTick() override {}
+
+	std::optional<uint8_t> GetDatasetIndex(int y) override
+	{
+		int row = this->GetRowFromWidget(y, WID_GRAPH_MATRIX, 0, this->line_height);
+		if (row < 0 || row >= KeyCount) return std::nullopt;
+		return static_cast<uint8_t>(row);
+	}
+
+	void OnInit() override
+	{
+		this->legend_width = GetCharacterHeight(FontSize::Small) * 9 / 6;
+	}
+
+	void UpdateWidgetSize(WidgetID widget, Dimension &size, const Dimension &padding, Dimension &fill, Dimension &resize) override
+	{
+		if (widget != WID_GRAPH_MATRIX) {
+			BaseGraphWindow::UpdateWidgetSize(widget, size, padding, fill, resize);
+			return;
+		}
+
+		Dimension d{};
+		for (const KeyInfo &key : KEYS) d = maxdim(d, GetStringBoundingBox(key.name));
+		d.width += this->legend_width + WidgetDimensions::scaled.hsep_normal + WidgetDimensions::scaled.framerect.Horizontal();
+		d.height += WidgetDimensions::scaled.framerect.Vertical();
+		this->line_height = d.height;
+		size.width = std::max(size.width, d.width);
+		size.height = this->line_height * KeyCount;
+		resize.width = resize.height = 0;
+		fill.height = 0;
+	}
+
+	void DrawWidget(const Rect &r, WidgetID widget) const override
+	{
+		if (widget != WID_GRAPH_MATRIX) {
+			BaseGraphWindow::DrawWidget(r, widget);
+			return;
+		}
+
+		bool rtl = _current_text_dir == TD_RTL;
+		Rect line = r.WithHeight(this->line_height);
+		for (uint8_t k = 0; k < KeyCount; k++) {
+			if (!HasBit(this->excluded_data, k)) DrawFrameRect(line, Colours::Brown, FrameFlag::Lowered);
+
+			const Rect text = line.Shrink(WidgetDimensions::scaled.framerect);
+			const Rect blob = text.WithWidth(this->legend_width, rtl);
+			GfxFillRect(blob, PC_BLACK);
+			PixelColour pc = KEYS[k].colour;
+			if (this->highlight_data == k) pc = this->highlight_state ? PC_WHITE : PC_BLACK;
+			GfxFillRect(blob.Shrink(WidgetDimensions::scaled.bevel), pc);
+
+			DrawString(text.Indent(this->legend_width + WidgetDimensions::scaled.hsep_normal, rtl), KEYS[k].name);
+			line = line.Translate(0, this->line_height);
+		}
+	}
+
+	void OnClick(Point pt, WidgetID widget, int click_count) override
+	{
+		if (widget != WID_GRAPH_MATRIX) {
+			BaseGraphWindow::OnClick(pt, widget, click_count);
+			return;
+		}
+
+		int row = this->GetRowFromWidget(pt.y, WID_GRAPH_MATRIX, 0, this->line_height);
+		if (row < 0 || row >= KeyCount) return;
+
+		SndClickBeep();
+		ToggleBit(EconomyGraphWindow::excluded_keys, row);
+		this->excluded_data = EconomyGraphWindow::excluded_keys;
+		this->SetDirty();
+	}
+};
+
+static constexpr std::initializer_list<NWidgetPart> _nested_economy_graph_widgets = {
+	NWidget(NWID_HORIZONTAL),
+		NWidget(WWT_CLOSEBOX, Colours::Brown),
+		NWidget(WWT_CAPTION, Colours::Brown, WID_GRAPH_CAPTION), SetStringTip(STR_GRAPH_ECONOMY_CAPTION, STR_TOOLTIP_WINDOW_TITLE_DRAG_THIS),
+		NWidget(WWT_SHADEBOX, Colours::Brown),
+		NWidget(WWT_DEFSIZEBOX, Colours::Brown),
+		NWidget(WWT_STICKYBOX, Colours::Brown),
+	EndContainer(),
+	NWidget(WWT_PANEL, Colours::Brown, WID_GRAPH_BACKGROUND), SetMinimalSize(568, 128),
+		NWidget(NWID_HORIZONTAL), SetPadding(4, 0, 0, 0),
+			NWidget(WWT_EMPTY, Colours::Invalid, WID_GRAPH_GRAPH), SetMinimalSize(495, 0), SetFill(1, 1), SetResize(1, 1),
+			NWidget(NWID_VERTICAL),
+				NWidget(NWID_SPACER), SetMinimalSize(0, 24), SetFill(0, 1), SetResize(0, 1),
+				NWidget(WWT_EMPTY, Colours::Invalid, WID_GRAPH_MATRIX), SetToolTip(STR_GRAPH_ECONOMY_TOGGLE_KEY),
+				NWidget(NWID_SPACER), SetMinimalSize(0, 24), SetFill(0, 1), SetResize(0, 1),
+			EndContainer(),
+			NWidget(NWID_SPACER), SetMinimalSize(5, 0), SetFill(0, 1), SetResize(0, 1),
+		EndContainer(),
+		NWidget(NWID_HORIZONTAL),
+			NWidget(NWID_SPACER), SetFill(1, 0), SetResize(1, 0),
+			NWidget(WWT_RESIZEBOX, Colours::Brown, WID_GRAPH_RESIZE),
+		EndContainer(),
+	EndContainer(),
+};
+
+static WindowDesc _economy_graph_desc(__FILE__, __LINE__,
+	WindowPosition::Automatic, "graph_economy", 0, 0,
+	WindowClass::EconomyGraph, WindowClass::None,
+	{},
+	_nested_economy_graph_widgets
+);
+
+/** Open the economy (inflation) graph. */
+void ShowEconomyGraph()
+{
+	AllocateWindowDescFront<EconomyGraphWindow>(_economy_graph_desc, 0);
+}

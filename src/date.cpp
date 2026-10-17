@@ -27,6 +27,7 @@
 #include "timer/timer.h"
 #include "timer/timer_game_calendar.h"
 #include "used_vehicle.h"
+#include "variable_inflation.h"
 
 #include "safeguards.h"
 
@@ -364,6 +365,7 @@ static void OnNewCalendarYear()
 	InvalidateWindowClassesData(WindowClass::BuildTruckStation);
 	if (_network_server) NetworkServerCalendarYearlyLoop();
 	UsedVehicleMarketYearlyLoop();
+	VariableInflationYearlyLoop();
 
 	if (CalTime::CurYear() == _settings_client.gui.semaphore_build_before) ResetSignalVariant();
 
