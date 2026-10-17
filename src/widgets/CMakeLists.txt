@@ -44,6 +44,7 @@ add_files(
     picker_widget.h
     plans_widget.h
     sector_widget.h
+    sjgrpp_info_widget.h
     rail_widget.h
     road_widget.h
     screenshot_widget.h

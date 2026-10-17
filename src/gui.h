@@ -40,6 +40,7 @@ void ShowHeightmapLoad();
 /* misc_gui.cpp */
 void ShowLandInfo(TileIndex tile);
 void ShowAboutWindow();
+void ShowSjgrppInfoWindow();
 void ShowEstimatedCostOrIncome(Money cost, int x, int y);
 
 /* tree_gui.cpp */

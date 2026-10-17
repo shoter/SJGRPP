@@ -1264,6 +1264,7 @@ SettingsContainer &GetSettingsTree()
 				sharing->Add(new SettingEntry("economy.sharing_fee[1]"));
 				sharing->Add(new SettingEntry("economy.sharing_fee[2]"));
 				sharing->Add(new SettingEntry("economy.sharing_fee[3]"));
+				sharing->Add(new SettingEntry("economy.sharing_fee_inflation"));
 				sharing->Add(new SettingEntry("economy.sharing_payment_in_debt"));
 			}
 
