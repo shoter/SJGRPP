@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12">
+<style>.bg{fill:#ffffff}.fg{fill:#1f2328}.mute{fill:#59636e}.grid{stroke:#d1d9e0}.line{stroke:#0969da}.dot{fill:#0969da}.panel{fill:#f6f8fa;stroke:#d1d9e0}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.fg{fill:#f0f6fc}.mute{fill:#9198a1}.grid{stroke:#3d444d}.line{stroke:#4493f8}.dot{fill:#4493f8}.panel{fill:#151b23;stroke:#3d444d}}</style>
+<rect class="bg" width="900" height="420" rx="6"/>
+<text class="fg" x="20" y="26" font-size="15" font-weight="600">Game loop p95 (ms) on main</text>
+<rect class="panel" x="20" y="40" width="420" height="170" rx="4"/>
+<text class="fg" x="30" y="58" font-weight="600">quick - latest 0.09 ms</text>
+<line class="grid" x1="72" x2="426" y1="184.0" y2="184.0"/>
+<text class="mute" x="66" y="188.0" text-anchor="end">0.081</text>
+<line class="grid" x1="72" x2="426" y1="127.0" y2="127.0"/>
+<text class="mute" x="66" y="131.0" text-anchor="end">0.09</text>
+<line class="grid" x1="72" x2="426" y1="70.0" y2="70.0"/>
+<text class="mute" x="66" y="74.0" text-anchor="end">0.099</text>
+<circle class="dot" cx="249.0" cy="127.0" r="2.5"><title>967acf9 2026-10-17: 0.09 ms</title></circle>
+<text class="mute" x="72" y="202">967acf9 2026-10-17</text>
+<text class="mute" x="426" y="202" text-anchor="end">967acf9 2026-10-17</text>
+<rect class="panel" x="460" y="40" width="420" height="170" rx="4"/>
+<text class="fg" x="470" y="58" font-weight="600">normal - latest 0.06 ms</text>
+<line class="grid" x1="512" x2="866" y1="184.0" y2="184.0"/>
+<text class="mute" x="506" y="188.0" text-anchor="end">0.054</text>
+<line class="grid" x1="512" x2="866" y1="127.0" y2="127.0"/>
+<text class="mute" x="506" y="131.0" text-anchor="end">0.06</text>
+<line class="grid" x1="512" x2="866" y1="70.0" y2="70.0"/>
+<text class="mute" x="506" y="74.0" text-anchor="end">0.066</text>
+<circle class="dot" cx="689.0" cy="127.0" r="2.5"><title>967acf9 2026-10-17: 0.06 ms</title></circle>
+<text class="mute" x="512" y="202">967acf9 2026-10-17</text>
+<text class="mute" x="866" y="202" text-anchor="end">967acf9 2026-10-17</text>
+<rect class="panel" x="20" y="230" width="420" height="170" rx="4"/>
+<text class="fg" x="30" y="248" font-weight="600">max-28 - latest 1.32 ms</text>
+<line class="grid" x1="72" x2="426" y1="374.0" y2="374.0"/>
+<text class="mute" x="66" y="378.0" text-anchor="end">1.19</text>
+<line class="grid" x1="72" x2="426" y1="317.0" y2="317.0"/>
+<text class="mute" x="66" y="321.0" text-anchor="end">1.32</text>
+<line class="grid" x1="72" x2="426" y1="260.0" y2="260.0"/>
+<text class="mute" x="66" y="264.0" text-anchor="end">1.45</text>
+<circle class="dot" cx="249.0" cy="317.0" r="2.5"><title>967acf9 2026-10-17: 1.32 ms</title></circle>
+<text class="mute" x="72" y="392">967acf9 2026-10-17</text>
+<text class="mute" x="426" y="392" text-anchor="end">967acf9 2026-10-17</text>
+<rect class="panel" x="460" y="230" width="420" height="170" rx="4"/>
+<text class="fg" x="470" y="248" font-weight="600">sharing - latest 0.07 ms</text>
+<line class="grid" x1="512" x2="866" y1="374.0" y2="374.0"/>
+<text class="mute" x="506" y="378.0" text-anchor="end">0.063</text>
+<line class="grid" x1="512" x2="866" y1="317.0" y2="317.0"/>
+<text class="mute" x="506" y="321.0" text-anchor="end">0.07</text>
+<line class="grid" x1="512" x2="866" y1="260.0" y2="260.0"/>
+<text class="mute" x="506" y="264.0" text-anchor="end">0.077</text>
+<circle class="dot" cx="689.0" cy="317.0" r="2.5"><title>967acf9 2026-10-17: 0.07 ms</title></circle>
+<text class="mute" x="512" y="392">967acf9 2026-10-17</text>
+<text class="mute" x="866" y="392" text-anchor="end">967acf9 2026-10-17</text>
+</svg>
