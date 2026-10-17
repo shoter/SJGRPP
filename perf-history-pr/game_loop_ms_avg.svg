@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="12">
+<style>.bg{fill:#ffffff}.fg{fill:#1f2328}.mute{fill:#59636e}.grid{stroke:#d1d9e0}.line{stroke:#0969da}.dot{fill:#0969da}.panel{fill:#f6f8fa;stroke:#d1d9e0}@media (prefers-color-scheme: dark){.bg{fill:#0d1117}.fg{fill:#f0f6fc}.mute{fill:#9198a1}.grid{stroke:#3d444d}.line{stroke:#4493f8}.dot{fill:#4493f8}.panel{fill:#151b23;stroke:#3d444d}}</style>
+<rect class="bg" width="900" height="420" rx="6"/>
+<text class="fg" x="20" y="26" font-size="15" font-weight="600">Game loop avg (ms) on main</text>
+<rect class="panel" x="20" y="40" width="420" height="170" rx="4"/>
+<text class="fg" x="30" y="58" font-weight="600">quick - latest 0.21 ms</text>
+<line class="grid" x1="72" x2="426" y1="184.0" y2="184.0"/>
+<text class="mute" x="66" y="188.0" text-anchor="end">0.182</text>
+<line class="grid" x1="72" x2="426" y1="127.0" y2="127.0"/>
+<text class="mute" x="66" y="131.0" text-anchor="end">0.199</text>
+<line class="grid" x1="72" x2="426" y1="70.0" y2="70.0"/>
+<text class="mute" x="66" y="74.0" text-anchor="end">0.217</text>
+<polyline class="line" fill="none" stroke-width="2" points="72.0,145.0 97.3,141.7 122.6,164.7 147.9,128.6 173.1,174.5 198.4,158.1 223.7,112.3 249.0,109.0 274.3,122.1 299.6,118.8 324.9,118.8 350.1,135.2 375.4,128.6 400.7,86.1 426.0,79.5"/>
+<circle class="dot" cx="72.0" cy="145.0" r="2.5"><title>0000000 2026-10-01: 0.19 ms</title></circle>
+<circle class="dot" cx="97.3" cy="141.7" r="2.5"><title>0000001 2026-10-02: 0.20 ms</title></circle>
+<circle class="dot" cx="122.6" cy="164.7" r="2.5"><title>0000002 2026-10-03: 0.19 ms</title></circle>
+<circle class="dot" cx="147.9" cy="128.6" r="2.5"><title>0000003 2026-10-04: 0.20 ms</title></circle>
+<circle class="dot" cx="173.1" cy="174.5" r="2.5"><title>0000004 2026-10-05: 0.18 ms</title></circle>
+<circle class="dot" cx="198.4" cy="158.1" r="2.5"><title>0000005 2026-10-06: 0.19 ms</title></circle>
+<circle class="dot" cx="223.7" cy="112.3" r="2.5"><title>0000006 2026-10-07: 0.20 ms</title></circle>
+<circle class="dot" cx="249.0" cy="109.0" r="2.5"><title>0000007 2026-10-08: 0.20 ms</title></circle>
+<circle class="dot" cx="274.3" cy="122.1" r="2.5"><title>0000008 2026-10-09: 0.20 ms</title></circle>
+<circle class="dot" cx="299.6" cy="118.8" r="2.5"><title>0000009 2026-10-10: 0.20 ms</title></circle>
+<circle class="dot" cx="324.9" cy="118.8" r="2.5"><title>000000a 2026-10-11: 0.20 ms</title></circle>
+<circle class="dot" cx="350.1" cy="135.2" r="2.5"><title>000000b 2026-10-12: 0.20 ms</title></circle>
+<circle class="dot" cx="375.4" cy="128.6" r="2.5"><title>000000c 2026-10-13: 0.20 ms</title></circle>
+<circle class="dot" cx="400.7" cy="86.1" r="2.5"><title>000000d 2026-10-14: 0.21 ms</title></circle>
+<circle class="dot" cx="426.0" cy="79.5" r="2.5"><title>000000e 2026-10-15: 0.21 ms</title></circle>
+<text class="mute" x="72" y="202">0000000 2026-10-01</text>
+<text class="mute" x="426" y="202" text-anchor="end">000000e 2026-10-15</text>
+<rect class="panel" x="460" y="40" width="420" height="170" rx="4"/>
+<text class="fg" x="470" y="58" font-weight="600">max-28 - latest 0.86 ms</text>
+<line class="grid" x1="512" x2="866" y1="184.0" y2="184.0"/>
+<text class="mute" x="506" y="188.0" text-anchor="end">0.743</text>
+<line class="grid" x1="512" x2="866" y1="127.0" y2="127.0"/>
+<text class="mute" x="506" y="131.0" text-anchor="end">0.811</text>
+<line class="grid" x1="512" x2="866" y1="70.0" y2="70.0"/>
+<text class="mute" x="506" y="74.0" text-anchor="end">0.88</text>
+<polyline class="line" fill="none" stroke-width="2" points="512.0,162.1 537.3,159.6 562.6,155.5 587.9,139.8 613.1,163.8 638.4,174.5 663.7,158.0 689.0,157.2 714.3,129.9 739.6,113.4 764.9,148.9 790.1,90.2 815.4,79.5 840.7,110.1 866.0,85.3"/>
+<circle class="dot" cx="512.0" cy="162.1" r="2.5"><title>0000000 2026-10-01: 0.77 ms</title></circle>
+<circle class="dot" cx="537.3" cy="159.6" r="2.5"><title>0000001 2026-10-02: 0.77 ms</title></circle>
+<circle class="dot" cx="562.6" cy="155.5" r="2.5"><title>0000002 2026-10-03: 0.78 ms</title></circle>
+<circle class="dot" cx="587.9" cy="139.8" r="2.5"><title>0000003 2026-10-04: 0.80 ms</title></circle>
+<circle class="dot" cx="613.1" cy="163.8" r="2.5"><title>0000004 2026-10-05: 0.77 ms</title></circle>
+<circle class="dot" cx="638.4" cy="174.5" r="2.5"><title>0000005 2026-10-06: 0.75 ms</title></circle>
+<circle class="dot" cx="663.7" cy="158.0" r="2.5"><title>0000006 2026-10-07: 0.77 ms</title></circle>
+<circle class="dot" cx="689.0" cy="157.2" r="2.5"><title>0000007 2026-10-08: 0.78 ms</title></circle>
+<circle class="dot" cx="714.3" cy="129.9" r="2.5"><title>0000008 2026-10-09: 0.81 ms</title></circle>
+<circle class="dot" cx="739.6" cy="113.4" r="2.5"><title>0000009 2026-10-10: 0.83 ms</title></circle>
+<circle class="dot" cx="764.9" cy="148.9" r="2.5"><title>000000a 2026-10-11: 0.79 ms</title></circle>
+<circle class="dot" cx="790.1" cy="90.2" r="2.5"><title>000000b 2026-10-12: 0.86 ms</title></circle>
+<circle class="dot" cx="815.4" cy="79.5" r="2.5"><title>000000c 2026-10-13: 0.87 ms</title></circle>
+<circle class="dot" cx="840.7" cy="110.1" r="2.5"><title>000000d 2026-10-14: 0.83 ms</title></circle>
+<circle class="dot" cx="866.0" cy="85.3" r="2.5"><title>000000e 2026-10-15: 0.86 ms</title></circle>
+<text class="mute" x="512" y="202">0000000 2026-10-01</text>
+<text class="mute" x="866" y="202" text-anchor="end">000000e 2026-10-15</text>
+<rect class="panel" x="20" y="230" width="420" height="170" rx="4"/>
+<text class="fg" x="30" y="248" font-weight="600">sharing - latest 0.13 ms</text>
+<line class="grid" x1="72" x2="426" y1="374.0" y2="374.0"/>
+<text class="mute" x="66" y="378.0" text-anchor="end">0.106</text>
+<line class="grid" x1="72" x2="426" y1="317.0" y2="317.0"/>
+<text class="mute" x="66" y="321.0" text-anchor="end">0.12</text>
+<line class="grid" x1="72" x2="426" y1="260.0" y2="260.0"/>
+<text class="mute" x="66" y="264.0" text-anchor="end">0.134</text>
+<polyline class="line" fill="none" stroke-width="2" points="72.0,364.5 97.3,340.8 122.6,352.6 147.9,317.0 173.1,309.1 198.4,344.7 223.7,332.8 249.0,328.9 274.3,297.2 299.6,309.1 324.9,313.0 350.1,297.2 375.4,269.5 400.7,313.0 426.0,289.3"/>
+<circle class="dot" cx="72.0" cy="364.5" r="2.5"><title>0000000 2026-10-01: 0.11 ms</title></circle>
+<circle class="dot" cx="97.3" cy="340.8" r="2.5"><title>0000001 2026-10-02: 0.11 ms</title></circle>
+<circle class="dot" cx="122.6" cy="352.6" r="2.5"><title>0000002 2026-10-03: 0.11 ms</title></circle>
+<circle class="dot" cx="147.9" cy="317.0" r="2.5"><title>0000003 2026-10-04: 0.12 ms</title></circle>
+<circle class="dot" cx="173.1" cy="309.1" r="2.5"><title>0000004 2026-10-05: 0.12 ms</title></circle>
+<circle class="dot" cx="198.4" cy="344.7" r="2.5"><title>0000005 2026-10-06: 0.11 ms</title></circle>
+<circle class="dot" cx="223.7" cy="332.8" r="2.5"><title>0000006 2026-10-07: 0.12 ms</title></circle>
+<circle class="dot" cx="249.0" cy="328.9" r="2.5"><title>0000007 2026-10-08: 0.12 ms</title></circle>
+<circle class="dot" cx="274.3" cy="297.2" r="2.5"><title>0000008 2026-10-09: 0.12 ms</title></circle>
+<circle class="dot" cx="299.6" cy="309.1" r="2.5"><title>0000009 2026-10-10: 0.12 ms</title></circle>
+<circle class="dot" cx="324.9" cy="313.0" r="2.5"><title>000000a 2026-10-11: 0.12 ms</title></circle>
+<circle class="dot" cx="350.1" cy="297.2" r="2.5"><title>000000b 2026-10-12: 0.12 ms</title></circle>
+<circle class="dot" cx="375.4" cy="269.5" r="2.5"><title>000000c 2026-10-13: 0.13 ms</title></circle>
+<circle class="dot" cx="400.7" cy="313.0" r="2.5"><title>000000d 2026-10-14: 0.12 ms</title></circle>
+<circle class="dot" cx="426.0" cy="289.3" r="2.5"><title>000000e 2026-10-15: 0.13 ms</title></circle>
+<text class="mute" x="72" y="392">0000000 2026-10-01</text>
+<text class="mute" x="426" y="392" text-anchor="end">000000e 2026-10-15</text>
+</svg>
