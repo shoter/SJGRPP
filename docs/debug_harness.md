@@ -143,12 +143,27 @@ performance between runs. Exit code 1 on any failed check.
 ## CI (GitHub Actions)
 
 `.github/workflows/game-tests.yml` builds the game once on Linux, then runs each test as a separate parallel job:
-pull requests to `main` run `scenarios` (all `scenarios/*.py`), `quick`, `normal`, `max-28` and `sharing`; pushes to `main` run
-`quick`; "Run workflow" accepts any comma-separated subset. Full tests run with `--perf-report-only`: performance is
+pull requests to `main` and pushes to `main` run `scenarios` (all `scenarios/*.py`), `quick`, `normal`, `max-28` and
+`sharing`; "Run workflow" accepts any comma-separated subset. Runs on `main` are never cancelled by newer pushes. Full tests run with `--perf-report-only`: performance is
 reported but only correctness (crashes, desyncs, state/cache mismatches, gameplay) fails a job. Each test job writes its
 own summary; the `Report` job combines all results with `utils/debug_harness/ci_report.py` into the run summary and a
 PR comment (updated in place). Artifacts `game-test-<name>` hold report.json, perf.csv, events.log, screenshots and the
-crash/desync bundle (`collected/`) of a failed test.
+crash/desync bundle (`collected/`) of a failed test. The harness unit tests (`utils/debug_harness/tests/`) run in the
+build job.
+
+### Performance history
+
+`.github/workflows/perf-history.yml` runs after every `Game tests` run of a push to `main`: it downloads that run's
+results and records each full test's perf summary (and whether it passed) for the commit in `history.json` on the
+`perf-history` orphan branch, then regenerates that branch's `README.md` (tables of recent runs) and `charts/*.svg`
+(trends of game loop avg/p95, server memory and command round trip per profile). The main `README.md` embeds two of
+the charts, so they update without commits to `main`.
+
+On pull requests the `Report` job compares the PR's full tests with the `main` run of the PR's base commit (else the
+latest recorded run) and posts a second PR comment, *Full test performance vs main*: every metric with its change,
+flagged 🔴/🟢 only when it is larger than 5%, a per-metric floor and twice the standard deviation of the last 10 `main`
+runs, plus Mermaid trend charts of the last 20 `main` runs with the PR as the last point. Locally:
+`python utils/debug_harness/perf_history.py compare <results dir> --history history.json` (see `--help`).
 
 Run the same locally on Linux: build `openttd`, put a base set into `$OTTD_CONTENT_DIR/baseset`, then
 `python3 utils/debug_harness/full_test.py --profile quick --perf-report-only`.

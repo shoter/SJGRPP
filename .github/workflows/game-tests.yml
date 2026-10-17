@@ -19,7 +19,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # A new PR push replaces the running tests; runs on main are kept, each records the performance of its commit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -43,12 +44,15 @@ jobs:
         INPUT: ${{ github.event.inputs.tests }}
       run: |
         case "$EVENT" in
-          pull_request)      list="scenarios,quick,normal,max-28,sharing" ;;
-          push)              list="quick" ;;
+          # main runs everything too: perf-history.yml records its full test performance as the PR baseline.
+          pull_request|push) list="scenarios,quick,normal,max-28,sharing" ;;
           workflow_dispatch) list="$INPUT" ;;
         esac
         echo "tests=$(python3 -c "import json,sys; print(json.dumps([t.strip() for t in sys.argv[1].split(',') if t.strip()]))" "$list")" >> "$GITHUB_OUTPUT"
         echo "expect=$list" >> "$GITHUB_OUTPUT"
+
+    - name: Harness unit tests
+      run: python3 -m unittest discover -s utils/debug_harness/tests -v
 
     - name: Install dependencies
       env:
@@ -192,21 +196,41 @@ jobs:
           --run-url "$RUN_URL" --out report.md
         cat report.md >> "$GITHUB_STEP_SUMMARY"
 
+    - name: Compare performance with main
+      if: github.event_name == 'pull_request'
+      env:
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      run: |
+        # Full test history of main, written to the perf-history branch by perf-history.yml.
+        if git fetch --depth 1 origin perf-history; then
+          git show FETCH_HEAD:history.json > perf-history.json
+        else
+          echo '{"entries": []}' > perf-history.json
+        fi
+        python3 utils/debug_harness/perf_history.py compare results --history perf-history.json \
+          --base-sha "$BASE_SHA" --expect "${{ needs.build.outputs.expect }}" --run-url "$RUN_URL" \
+          --repo-url "$REPO_URL" --out perf.md
+        cat perf.md >> "$GITHUB_STEP_SUMMARY"
+
     - name: Comment on PR
-      # Pull requests from forks get a read-only token: the report is still in the run summary.
+      # Pull requests from forks get a read-only token: the reports are still in the run summary.
       if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       uses: actions/github-script@v7
       with:
         script: |
           const fs = require('fs');
-          const marker = '<!-- game-tests-report -->';
-          const body = marker + '\n' + fs.readFileSync('report.md', 'utf8');
           const { owner, repo } = context.repo;
           const issue_number = context.issue.number;
           const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
-          const existing = comments.find(c => c.body && c.body.startsWith(marker));
-          if (existing) {
-            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-          } else {
-            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          // Test results and the performance comparison each get their own comment, updated in place.
+          for (const [marker, file] of [['<!-- game-tests-report -->', 'report.md'], ['<!-- perf-compare-report -->', 'perf.md']]) {
+            const body = marker + '\n' + fs.readFileSync(file, 'utf8');
+            const existing = comments.find(c => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
           }

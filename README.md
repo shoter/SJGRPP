@@ -18,6 +18,16 @@ section "Licensing" below for details,
 
 * * *
 
+#### Full test performance on main
+
+Game loop time and server memory of the multiplayer full tests (`utils/debug_harness/full_test.py`) on every commit to `main`, updated by the *Performance history* workflow. Details and raw data: [perf-history branch](https://github.com/shoter/SJGRPP/tree/perf-history).
+
+![Game loop avg on main](https://raw.githubusercontent.com/shoter/SJGRPP/perf-history/charts/game_loop_ms_avg.svg)
+
+![Server memory max on main](https://raw.githubusercontent.com/shoter/SJGRPP/perf-history/charts/server_mem_mb_max.svg)
+
+* * *
+
 See [below](#openttd) for the original OpenTTD readme.
 
 See [jgrpp-changelog.md](jgrpp-changelog.md) for the changelog.
