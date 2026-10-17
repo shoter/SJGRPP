@@ -868,6 +868,12 @@ enum class WindowClass : uint16_t {
 	 */
 	Sectors,
 
+	/**
+	 * sJGRPP info window; %Window numbers:
+	 *   - 0 = #SjgrppInfoWidgets
+	 */
+	SjgrppInfo,
+
 	End,              ///< End sentinel.
 	Invalid = 0xFFFF, ///< Invalid window.
 };

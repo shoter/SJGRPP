@@ -13,6 +13,7 @@ add_test_files(
     mock_spritecache.cpp
     mock_spritecache.h
     serialisation.cpp
+    sharing_fee.cpp
     string_consumer.cpp
     string_func.cpp
     strings_func.cpp

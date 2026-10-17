@@ -16,6 +16,8 @@
 #include "company_func.h"
 #include "tile_map.h"
 
+Money ScaleSharingFeeFract(uint fee, uint64_t inflation_prices, bool scale_with_inflation);
+Money GetSharingFeeFract(VehicleType type);
 void PayStationSharingFee(Vehicle *v, const Station *st);
 void PayDailyTrackSharingFee(Train *v);
 

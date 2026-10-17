@@ -3012,6 +3012,11 @@ bool AfterLoadGame()
 		for (Depot *d : Depot::Iterate()) d->build_date = CalTime::CurDate();
 	}
 
+	if (SlXvIsFeatureMissing(XSLFI_SHARING_FEE_INFLATION)) {
+		/* Sharing fees of older games did not scale with inflation. */
+		_settings_game.economy.sharing_fee_inflation = false;
+	}
+
 	if (SlXvIsFeatureMissing(XSLFI_INFRA_SHARING)) {
 		for (Company *c : Company::Iterate()) {
 			/* yearly_expenses has 3*15 entries now, saveload code gave us 3*13.

@@ -510,6 +510,7 @@ add_files(
     sector_cmd.h
     sector_func.h
     sector_gui.cpp
+    sjgrpp_info_gui.cpp
     sector_type.h
     signs.cpp
     signs_base.h

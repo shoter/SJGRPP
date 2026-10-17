@@ -1132,6 +1132,7 @@ enum HelpMenuEntries {
 	HME_FRAMERATE,
 	HME_MODIFIER_KEYS,
 	HME_ABOUT,
+	HME_SJGRPP_INFO,
 
 	HME_SPRITE_ALIGNER,
 	HME_BOUNDING_BOXES,
@@ -1291,6 +1292,7 @@ static CallBackFunction ToolbarHelpClick(Window *w)
 	list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_SHOW_FRAMERATE,            HME_FRAMERATE,     false));
 	list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_SHOW_TOGGLE_MODIFIER_KEYS, HME_MODIFIER_KEYS, false));
 	list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_ABOUT_OPENTTD,             HME_ABOUT,         false));
+	list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_SJGRPP_INFO,               HME_SJGRPP_INFO,   false));
 	if (_settings_client.gui.newgrf_developer_tools) {
 		list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_SPRITE_ALIGNER,         HME_SPRITE_ALIGNER,       false));
 		list.push_back(MakeDropDownListStringItem(STR_ABOUT_MENU_TOGGLE_BOUNDING_BOXES,  HME_BOUNDING_BOXES,       false));
@@ -1395,6 +1397,7 @@ static CallBackFunction MenuClickHelp(int index)
 		case HME_FRAMERATE:      ShowFramerateWindow();            break;
 		case HME_MODIFIER_KEYS:  ShowModifierKeyToggleWindow();    break;
 		case HME_ABOUT:          ShowAboutWindow();                break;
+		case HME_SJGRPP_INFO:    ShowSjgrppInfoWindow();           break;
 		case HME_SPRITE_ALIGNER: ShowSpriteAlignerWindow();        break;
 		case HME_BOUNDING_BOXES: ToggleBoundingBoxes();            break;
 		case HME_DIRTY_BLOCKS:   ToggleDirtyBlocks();              break;
