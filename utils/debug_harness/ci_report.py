@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Render game test results (stress_test.py report.json files and scenario.py result.json files) as one Markdown report,
+Render game test results (full_test.py report.json files and scenario.py result.json files) as one Markdown report,
 for the GitHub Actions job summary and the PR comment.
 
     ci_report.py <results dir> [--expect quick,normal,...] [--title ...] [--run-url URL] [--out report.md]
@@ -57,7 +57,7 @@ def load_results(root: Path) -> dict[str, dict]:
         data = json.loads(report.read_text(encoding="utf-8"))
         group = next((p.name for p in report.parents if p.name.startswith("game-test-")), None)
         name = group.removeprefix("game-test-") if group else (data.get("args", {}).get("name") or report.parent.name)
-        results[name] = {"kind": "stress", "ok": data.get("ok", False), "seconds": data.get("seconds"),
+        results[name] = {"kind": "full", "ok": data.get("ok", False), "seconds": data.get("seconds"),
                          "checks": data.get("checks", []), "perf": data.get("perf", {}), "routes": data.get("routes", {}),
                          "profile": data.get("profile"), "clients": data.get("args", {}).get("clients"),
                          "build_errors": data.get("build_errors", {})}
@@ -98,7 +98,7 @@ def render(results: dict[str, dict], expect: list[str], title: str, run_url: str
         fails = [c for c in checks if not c["ok"] and c.get("severity", "fail") == "fail"]
         warns = [c for c in checks if not c["ok"] and c.get("severity") == "warn"]
         passed = sum(c["ok"] for c in checks)
-        if r["kind"] == "stress":
+        if r["kind"] == "full":
             p = r["perf"]
             notes = f"{r.get('clients')} clients, {p.get('vehicles_max', 0):,} vehicles"
             if "game_loop_ms_p95" in p:

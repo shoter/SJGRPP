@@ -1,0 +1,74 @@
+name: Performance history
+
+# After the game tests of a push to main finish, record the full test performance of that commit in history.json on
+# the perf-history orphan branch, and regenerate that branch's README.md and SVG trend charts (embedded in the main
+# README). Pull requests compare their full tests against this history (game-tests.yml, report job).
+
+on:
+  workflow_run:
+    workflows: [Game tests]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  # Runs append to the same branch: one at a time, none dropped.
+  group: perf-history
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  record:
+    name: Record main performance
+    if: github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Download results of the game tests run
+      uses: actions/download-artifact@v8
+      with:
+        pattern: game-test-*
+        path: results
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Check out the perf-history branch
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        if git fetch --depth 1 origin perf-history; then
+          git worktree add -B perf-history perf-history FETCH_HEAD
+        else
+          git worktree add --orphan -b perf-history perf-history
+        fi
+
+    - name: Record and render
+      env:
+        SHA: ${{ github.event.workflow_run.head_sha }}
+        DATE: ${{ github.event.workflow_run.head_commit.timestamp }}
+        SUBJECT: ${{ github.event.workflow_run.head_commit.message }}
+        RUN_URL: ${{ github.event.workflow_run.html_url }}
+        REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+      run: |
+        python3 utils/debug_harness/perf_history.py record results --history perf-history/history.json \
+          --sha "$SHA" --date "$DATE" --subject "$SUBJECT" --run-url "$RUN_URL"
+        python3 utils/debug_harness/perf_history.py site --history perf-history/history.json \
+          --out-dir perf-history --repo-url "$REPO_URL"
+
+    - name: Push
+      env:
+        SHA: ${{ github.event.workflow_run.head_sha }}
+      run: |
+        cd perf-history
+        git add -A
+        if git diff --cached --quiet; then
+          echo "nothing to record"
+          exit 0
+        fi
+        git commit -q -m "Record full test performance of ${SHA:0:10}"
+        git push origin HEAD:perf-history

@@ -127,9 +127,9 @@ payload, `order <vehicle> station|waypoint|depot <dest> [options]` appends order
 `tiles [x y w h]` provide what route planning needs. `utils/debug_harness/transport.py` builds road, rail, air and
 ship routes with these (A* over the tile dump, every piece test-run before building).
 
-## Stress test
+## Full test
 
-`python utils/debug_harness/stress_test.py --profile quick|normal|max-28|sharing [--clients N]`: dedicated server + N headless
+`python utils/debug_harness/full_test.py --profile quick|normal|max-28|sharing [--clients N]`: dedicated server + N headless
 clients, each building all transport types, then the game runs (quick: 3 game months, normal: 2 years, max-28: 28
 companies on 1024x1024 for 2 years, each adding a route every month; sharing: 1 year with infrastructure sharing for
 every transport type and inflation, every client runs a bus on the next client's road route and client1's train runs on
@@ -137,18 +137,33 @@ client2's rail route, the server doubles the price inflation halfway; at each st
 setting x inflation on every instance and fees paid must equal fees received). The server tops up company money monthly.
 Checks: crashes/desyncs/disconnects, paused server/client state comparison, game speed and tick times (`fps`),
 memory, command latency, join times, vehicles moving and earning, rejoin/spectator/save churn, save reload. Results in
-`build/harness_runs/stress/<run>/` (summary.txt, report.json, perf.csv); `--save-baseline` / `--baseline` compare
+`build/harness_runs/full/<run>/` (summary.txt, report.json, perf.csv); `--save-baseline` / `--baseline` compare
 performance between runs. Exit code 1 on any failed check.
 
 ## CI (GitHub Actions)
 
 `.github/workflows/game-tests.yml` builds the game once on Linux, then runs each test as a separate parallel job:
-pull requests to `main` run `scenarios` (all `scenarios/*.py`), `quick`, `normal`, `max-28` and `sharing`; pushes to `main` run
-`quick`; "Run workflow" accepts any comma-separated subset. Stress tests run with `--perf-report-only`: performance is
+pull requests to `main` and pushes to `main` run `scenarios` (all `scenarios/*.py`), `quick`, `normal`, `max-28` and
+`sharing`; "Run workflow" accepts any comma-separated subset. Runs on `main` are never cancelled by newer pushes. Full tests run with `--perf-report-only`: performance is
 reported but only correctness (crashes, desyncs, state/cache mismatches, gameplay) fails a job. Each test job writes its
 own summary; the `Report` job combines all results with `utils/debug_harness/ci_report.py` into the run summary and a
 PR comment (updated in place). Artifacts `game-test-<name>` hold report.json, perf.csv, events.log, screenshots and the
-crash/desync bundle (`collected/`) of a failed test.
+crash/desync bundle (`collected/`) of a failed test. The harness unit tests (`utils/debug_harness/tests/`) run in the
+build job.
+
+### Performance history
+
+`.github/workflows/perf-history.yml` runs after every `Game tests` run of a push to `main`: it downloads that run's
+results and records each full test's perf summary (and whether it passed) for the commit in `history.json` on the
+`perf-history` orphan branch, then regenerates that branch's `README.md` (tables of recent runs) and `charts/*.svg`
+(trends of game loop avg/p95, server memory and command round trip per profile). The main `README.md` embeds two of
+the charts, so they update without commits to `main`.
+
+On pull requests the `Report` job compares the PR's full tests with the `main` run of the PR's base commit (else the
+latest recorded run) and posts a second PR comment, *Full test performance vs main*: every metric with its change,
+flagged 🔴/🟢 only when it is larger than 5%, a per-metric floor and twice the standard deviation of the last 10 `main`
+runs, plus Mermaid trend charts of the last 20 `main` runs with the PR as the last point. Locally:
+`python utils/debug_harness/perf_history.py compare <results dir> --history history.json` (see `--help`).
 
 Run the same locally on Linux: build `openttd`, put a base set into `$OTTD_CONTENT_DIR/baseset`, then
-`python3 utils/debug_harness/stress_test.py --profile quick --perf-report-only`.
+`python3 utils/debug_harness/full_test.py --profile quick --perf-report-only`.
