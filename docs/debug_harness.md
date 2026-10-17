@@ -127,25 +127,25 @@ payload, `order <vehicle> station|waypoint|depot <dest> [options]` appends order
 `tiles [x y w h]` provide what route planning needs. `utils/debug_harness/transport.py` builds road, rail, air and
 ship routes with these (A* over the tile dump, every piece test-run before building).
 
-## Stress test
+## Full test
 
-`python utils/debug_harness/stress_test.py --profile quick|normal|max-28 [--clients N]`: dedicated server + N headless
+`python utils/debug_harness/full_test.py --profile quick|normal|max-28 [--clients N]`: dedicated server + N headless
 clients, each building all transport types, then the game runs (quick: 3 game months, normal: 2 years, max-28: 28
 companies on 1024x1024 for 2 years, each adding a route every month). The server tops up company money monthly.
 Checks: crashes/desyncs/disconnects, paused server/client state comparison, game speed and tick times (`fps`),
 memory, command latency, join times, vehicles moving and earning, rejoin/spectator/save churn, save reload. Results in
-`build/harness_runs/stress/<run>/` (summary.txt, report.json, perf.csv); `--save-baseline` / `--baseline` compare
+`build/harness_runs/full/<run>/` (summary.txt, report.json, perf.csv); `--save-baseline` / `--baseline` compare
 performance between runs. Exit code 1 on any failed check.
 
 ## CI (GitHub Actions)
 
 `.github/workflows/game-tests.yml` builds the game once on Linux, then runs each test as a separate parallel job:
 pull requests to `main` run `scenarios` (all `scenarios/*.py`), `quick`, `normal` and `max-28`; pushes to `main` run
-`quick`; "Run workflow" accepts any comma-separated subset. Stress tests run with `--perf-report-only`: performance is
+`quick`; "Run workflow" accepts any comma-separated subset. Full tests run with `--perf-report-only`: performance is
 reported but only correctness (crashes, desyncs, state/cache mismatches, gameplay) fails a job. Each test job writes its
 own summary; the `Report` job combines all results with `utils/debug_harness/ci_report.py` into the run summary and a
 PR comment (updated in place). Artifacts `game-test-<name>` hold report.json, perf.csv, events.log, screenshots and the
 crash/desync bundle (`collected/`) of a failed test.
 
 Run the same locally on Linux: build `openttd`, put a base set into `$OTTD_CONTENT_DIR/baseset`, then
-`python3 utils/debug_harness/stress_test.py --profile quick --perf-report-only`.
+`python3 utils/debug_harness/full_test.py --profile quick --perf-report-only`.

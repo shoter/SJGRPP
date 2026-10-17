@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Multiplayer stress / regression test.
+Multiplayer full test (stress / regression).
 
 A dedicated server and N headless clients (each its own company) on a generated vanilla map. Every client builds road,
 rail, air and ship routes through real game commands (client -> server -> all clients, like GUI actions), then the
@@ -14,13 +14,13 @@ game runs for a period of game time while the test checks:
   - churn:        a client leaves and rejoins its company, a spectator downloads the map, vehicles are added while
                   running, the server saves and the save loads back in a separate instance with the same content
 
-  python utils/debug_harness/stress_test.py                            # 3 clients, normal profile (2 game years)
-  python utils/debug_harness/stress_test.py --profile quick            # 3 game months
-  python utils/debug_harness/stress_test.py --clients 6 --scale 2      # more companies, twice the vehicles
-  python utils/debug_harness/stress_test.py --save-baseline perf_baseline.json
-  python utils/debug_harness/stress_test.py --baseline perf_baseline.json
+  python utils/debug_harness/full_test.py                              # 3 clients, normal profile (2 game years)
+  python utils/debug_harness/full_test.py --profile quick              # 3 game months
+  python utils/debug_harness/full_test.py --clients 6 --scale 2        # more companies, twice the vehicles
+  python utils/debug_harness/full_test.py --save-baseline perf_baseline.json
+  python utils/debug_harness/full_test.py --baseline perf_baseline.json
 
-Output: build/harness_runs/stress/<run>/ (summary.txt, report.json, perf.csv, events.log, instances/, collected/ on
+Output: build/harness_runs/full/<run>/ (summary.txt, report.json, perf.csv, events.log, instances/, collected/ on
 failure). Exit code 0 when no check failed.
 """
 
@@ -125,7 +125,7 @@ class ProcessStats:
             return {}
 
 
-class StressTest:
+class FullTest:
     def __init__(self, args: argparse.Namespace):
         self.args = args
         profile = dict(PROFILES[args.profile])
@@ -423,7 +423,7 @@ class StressTest:
     def start_cluster(self) -> None:
         a = self.args
         self.log(f"starting dedicated server + {a.clients} clients (seed {a.seed}, map {2 ** a.map_bits}^2)")
-        self.cluster = Cluster(clients=a.clients, session="stress", root=self.out / "instances", seed=a.seed,
+        self.cluster = Cluster(clients=a.clients, session="full", root=self.out / "instances", seed=a.seed,
                                company="new", debug=a.debug, server_config=self.server_config(),
                                # Network progress in client logs, so a stalled join or timeout can be diagnosed.
                                client_debug=a.debug or "net=2",
@@ -687,7 +687,7 @@ class StressTest:
             self.drop_mon(spec)
             spec.stop()
         elif event == "save":
-            name = f"stress_mid{index}"
+            name = f"full_mid{index}"
             self.log(f"churn: server saves {name}")
             out = self.mon(c.server).console(f"save {name}", timeout=120)
             self.check(any("saved" in l.lower() or "saving" in l.lower() for l in out) or not out, "server save mid-game",
@@ -863,9 +863,9 @@ class StressTest:
         # Save on the server and load it in a separate instance: same content, keeps running.
         tick = self.pause_synced()
         ref = self.state_snapshot(server)
-        out = server.console("save stress_final", timeout=180)
+        out = server.console("save full_final", timeout=180)
         self.unpause()
-        save = c.server.dir / "save" / "stress_final.sav"
+        save = c.server.dir / "save" / "full_final.sav"
         # Saving runs on a background thread: wait until the file exists and stopped growing.
         deadline, last_size = time.monotonic() + 120, -1
         while time.monotonic() < deadline:
@@ -969,7 +969,7 @@ class StressTest:
         (self.out / "report.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
         fails = [c for c in self.checks if not c["ok"] and c["severity"] == "fail"]
         warns = [c for c in self.checks if not c["ok"] and c["severity"] == "warn"]
-        lines = [f"Stress test {'PASSED' if not fails else 'FAILED'}: profile {self.args.profile}, {self.args.clients} clients, "
+        lines = [f"Full test {'PASSED' if not fails else 'FAILED'}: profile {self.args.profile}, {self.args.clients} clients, "
                  f"{report['seconds']}s", f"output: {self.out}", ""]
         lines += [f"FAIL {c['name']}: {c['detail']}" for c in fails]
         lines += [f"WARN {c['name']}: {c['detail']}" for c in warns]
@@ -1016,11 +1016,11 @@ def main() -> int:
                     help="performance limits only warn (for noisy CI machines); correctness checks still fail")
     ap.add_argument("--save-baseline", help="write this run's perf summary as a baseline")
     ap.add_argument("--debug", default="", help="-d debug levels for all instances, e.g. desync=2")
-    ap.add_argument("--out", default=str(DEFAULT_RUN_ROOT / "stress"))
+    ap.add_argument("--out", default=str(DEFAULT_RUN_ROOT / "full"))
     ap.add_argument("--name", help="run directory name (default: timestamp)")
     ap.add_argument("--keep", action="store_true", help="leave the instances running at the end")
     args = ap.parse_args()
-    return StressTest(args).run()
+    return FullTest(args).run()
 
 
 if __name__ == "__main__":

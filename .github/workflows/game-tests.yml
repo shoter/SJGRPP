@@ -1,6 +1,6 @@
 name: Game tests
 
-# Multiplayer stress / regression tests driven by utils/debug_harness: a dedicated server and headless clients play
+# Multiplayer full tests (stress / regression) driven by utils/debug_harness: a dedicated server and headless clients play
 # a generated map through real game commands. The game is built once, then every test runs as its own parallel job,
 # and a final job renders all results into the run summary (and a PR comment).
 
@@ -132,7 +132,7 @@ jobs:
         if [ "${{ matrix.test }}" = "scenarios" ]; then
           python utils/debug_harness/scenario.py utils/debug_harness/scenarios/*.py --out "$out"
         else
-          python utils/debug_harness/stress_test.py --profile "${{ matrix.test }}" --name "${{ matrix.test }}" \
+          python utils/debug_harness/full_test.py --profile "${{ matrix.test }}" --name "${{ matrix.test }}" \
             --out "$out" --perf-report-only
         fi
         echo "exit_code=$?" >> "$GITHUB_OUTPUT"
