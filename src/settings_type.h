@@ -887,6 +887,11 @@ struct EconomySettings {
 	uint32_t sector_price_per_tile;          ///< price of building rights per tile of a sector without a custom price
 	bool     inflation;                      ///< disable inflation
 	bool     inflation_fixed_dates;          ///< whether inflation is applied between fixed dates
+	uint8_t  inflation_change_chance;        ///< chance in percent that each inflation rate changes at the start of a year, 0 = never
+	uint8_t  inflation_cost_min;             ///< minimum cost inflation rate in percent per year, when the rate can change
+	uint8_t  inflation_cost_max;             ///< maximum cost inflation rate in percent per year, when the rate can change
+	uint8_t  inflation_income_min;           ///< minimum income inflation rate in percent per year, when the rate can change
+	uint8_t  inflation_income_max;           ///< maximum income inflation rate in percent per year, when the rate can change
 	bool     bribe;                          ///< enable bribing the local authority
 	EconomyType type;                        ///< economy type (original/smooth/frozen)
 	bool     allow_shares;                   ///< allow the buying/selling of shares

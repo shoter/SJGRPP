@@ -91,6 +91,7 @@
 #include "debug_bridge.h"
 #include "sector_base.h"
 #include "sector_func.h"
+#include "variable_inflation.h"
 
 #include "safeguards.h"
 
@@ -3187,6 +3188,12 @@ static bool ConDumpInflation(std::span<std::string_view> argv)
 	IConsolePrint(CC_DEFAULT, "inflation_prices: {}", _economy.inflation_prices / 65536.0);
 	IConsolePrint(CC_DEFAULT, "inflation_payment: {}", _economy.inflation_payment / 65536.0);
 	IConsolePrint(CC_DEFAULT, "inflation ratio: {}", (double) _economy.inflation_prices / (double) _economy.inflation_payment);
+	IConsolePrint(CC_DEFAULT, "cost_rate: {}", _variable_inflation.cost_rate);
+	IConsolePrint(CC_DEFAULT, "income_rate: {}", _variable_inflation.income_rate);
+	for (uint i = 0; i < _variable_inflation.history_count; i++) {
+		const InflationHistoryEntry &e = _variable_inflation.history[i];
+		IConsolePrint(CC_DEFAULT, "history: {} {} {} {} {}", e.year, e.cost_rate, e.income_rate, e.inflation_prices, e.inflation_payment);
+	}
 	return true;
 }
 

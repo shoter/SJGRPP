@@ -575,6 +575,16 @@ STR_CONFIG_SETTING_SHARING_FEE_AIR                              :Terminal fee fo
 STR_CONFIG_SETTING_SHARING_FEE_HELPTEXT                         :This fee is paid per unscaled economy day (i.e. per 74 ticks).
 STR_CONFIG_SETTING_SHARING_FEE_INFLATION                        :Sharing fees rise with inflation: {STRING2}
 STR_CONFIG_SETTING_SHARING_FEE_INFLATION_HELPTEXT               :When enabled, the sharing fees above are prices at the start of the game and rise with inflation like other costs. Use Help > sJGRPP info to see the current fees
+STR_CONFIG_SETTING_INFLATION_CHANGE_CHANCE                      :Chance of inflation rates changing each year: {STRING2}
+STR_CONFIG_SETTING_INFLATION_CHANGE_CHANCE_HELPTEXT             :At the start of each year the cost and the income inflation rates can each move up or down by 0.5%. This is the chance of a change. The closer a rate is to its minimum, the more likely it goes up; the closer to its maximum, the more likely it goes down. 0% keeps the rates fixed
+STR_CONFIG_SETTING_INFLATION_COST_MIN                           :Minimum cost inflation: {STRING2}
+STR_CONFIG_SETTING_INFLATION_COST_MIN_HELPTEXT                  :Lowest yearly inflation of costs when the inflation rates can change
+STR_CONFIG_SETTING_INFLATION_COST_MAX                           :Maximum cost inflation: {STRING2}
+STR_CONFIG_SETTING_INFLATION_COST_MAX_HELPTEXT                  :Highest yearly inflation of costs when the inflation rates can change
+STR_CONFIG_SETTING_INFLATION_INCOME_MIN                         :Minimum income inflation: {STRING2}
+STR_CONFIG_SETTING_INFLATION_INCOME_MIN_HELPTEXT                :Lowest yearly inflation of cargo payments when the inflation rates can change
+STR_CONFIG_SETTING_INFLATION_INCOME_MAX                         :Maximum income inflation: {STRING2}
+STR_CONFIG_SETTING_INFLATION_INCOME_MAX_HELPTEXT                :Highest yearly inflation of cargo payments when the inflation rates can change
 STR_CONFIG_SETTING_SHARING_PAYMENT_IN_DEBT                      :Allow companies in debt to pay sharing fees: {STRING2}
 STR_CONFIG_SETTING_SHARING_USED_BY_VEHICLES                     :Can't change this setting, vehicles are using shared infrastructure.
 STR_CONFIG_SETTING_SHARING_ORDERS_TO_OTHERS                     :Can't change this setting, vehicles have orders to destinations of others.
@@ -2716,3 +2726,13 @@ STR_ERROR_CAN_T_BUY_SECTOR_RIGHTS                               :{WHITE}Can't bu
 STR_ERROR_CAN_T_CHANGE_SECTOR                                   :{WHITE}Can't change sector...
 
 STR_LAI_SECTOR                                                  :{BLACK}Sector: {GOLD}{RAW_STRING}
+
+STR_GRAPH_MENU_ECONOMY_GRAPH                                    :Economy
+STR_GRAPH_ECONOMY_CAPTION                                       :{WHITE}Economy - inflation
+STR_GRAPH_ECONOMY_Y_PERCENT                                     :{DECIMAL1}%
+STR_GRAPH_ECONOMY_KEY_CUMULATIVE_COST                           :{TINY_FONT}{BLACK}Cumulative cost inflation
+STR_GRAPH_ECONOMY_KEY_CURRENT_COST                              :{TINY_FONT}{BLACK}Current cost inflation
+STR_GRAPH_ECONOMY_KEY_CUMULATIVE_INCOME                         :{TINY_FONT}{BLACK}Cumulative income inflation
+STR_GRAPH_ECONOMY_KEY_CURRENT_INCOME                            :{TINY_FONT}{BLACK}Current income inflation
+STR_GRAPH_ECONOMY_TOGGLE_KEY                                    :{BLACK}Click to toggle display of this line
+STR_GRAPH_ECONOMY_YEAR                                          :{NUM}

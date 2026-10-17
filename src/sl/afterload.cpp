@@ -96,6 +96,8 @@
 #include <algorithm>
 
 #include "../sector_func.h"
+#include "../variable_inflation.h"
+
 #include "../safeguards.h"
 
 extern bool IndividualRoadVehicleController(RoadVehicle *v, const RoadVehicle *prev);
@@ -3010,6 +3012,15 @@ bool AfterLoadGame()
 
 	if (IsSavegameVersionBefore(SLV_142)) {
 		for (Depot *d : Depot::Iterate()) d->build_date = CalTime::CurDate();
+	}
+
+	if (SlXvIsFeatureMissing(XSLFI_VARIABLE_INFLATION)) {
+		/* Inflation rates of older games were fixed. */
+		_settings_game.economy.inflation_change_chance = 0;
+		_variable_inflation = {};
+		_variable_inflation.cost_rate = _economy.infl_amount * 10;
+		_variable_inflation.income_rate = _economy.infl_amount_pr * 10;
+		RecordInflationHistory();
 	}
 
 	if (SlXvIsFeatureMissing(XSLFI_SHARING_FEE_INFLATION)) {
