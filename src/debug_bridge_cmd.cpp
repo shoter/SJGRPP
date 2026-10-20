@@ -414,6 +414,8 @@ json DebugBridgeEngineList(std::string_view type)
 			j["max_speed"] = e->GetDisplayMaxSpeed();
 			j["cost"] = static_cast<int64_t>(e->GetCost());
 			j["intro_year"] = CalTime::ConvertDateToYMD(e->intro_date).year.base();
+			j["intro_date"] = e->intro_date.base();
+			j["life_days"] = e->GetLifeLengthInDays().base();
 			if (vt == VehicleType::Train) {
 				const RailVehicleInfo &rvi = e->VehInfo<RailVehicleInfo>();
 				j["wagon"] = rvi.railveh_type == RailVehicleType::Wagon;

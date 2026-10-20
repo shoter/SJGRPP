@@ -11,10 +11,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ottd import Instance  # noqa: E402
 from transport import Builder  # noqa: E402
-from used_vehicles import SELL_TO_USED_MARKET, listings  # noqa: E402
+from used_vehicles import FULL_MARKET, SELL_TO_USED_MARKET, buyable_listings, listings  # noqa: E402
 
 CONFIG = {
     "difficulty": {"max_no_competitors": 0, "vehicle_breakdowns": 0, "money_cheat_in_multiplayer": "true"},
+    "vehicle": FULL_MARKET,
 }
 
 
@@ -44,10 +45,12 @@ def run(ctx):
         b.docmd("MoneyCheat", 0, 50_000_000)
         routes.append(Builder(b, log=print).build_road_route(a, z, vehicles=1))
     depot1, depot2 = (r.depot_tile for r in routes)
-    engine = server.obj("vehicle", routes[0].vehicles[0], "engine_type")["engine_type"]
 
     # client1 buys a generated listing and sells it back: now it is a listing with client1 as seller.
-    listing = next(lst for lst in listings(server) if lst["engine"] == engine)
+    cands = buyable_listings(c1, depot1)
+    if not ctx.check(len(cands) > 0, "client1 can buy a generated road listing"):
+        return
+    listing = cands[0]
     res = c1.docmd("BuyUsedVehicle", depot1, listing["id"], 0)
     ctx.check(res["success"], f"client1 bought generated listing {listing['id']}: {res.get('error')}")
     res = c1.docmd("SellVehicle", depot1, int(res["result_data"]), SELL_TO_USED_MARKET, 0)
