@@ -16,6 +16,7 @@ add_test_files(
     serialisation.cpp
     sharing_fee.cpp
     variable_inflation.cpp
+    vehicle_colour_override.cpp
     string_consumer.cpp
     string_func.cpp
     strings_func.cpp

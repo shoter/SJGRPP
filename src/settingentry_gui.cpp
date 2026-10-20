@@ -770,6 +770,10 @@ SettingsContainer &GetSettingsTree()
 				viewports->Add(new SettingEntry("gui.population_in_label"));
 				viewports->Add(new SettingEntry("gui.city_in_label"));
 				viewports->Add(new SettingEntry("gui.liveries"));
+				viewports->Add(new SettingEntry("gui.vehicle_colour_override_own"));
+				viewports->Add(new SettingEntry("gui.vehicle_colour_override_own_secondary"));
+				viewports->Add(new SettingEntry("gui.vehicle_colour_override_other"));
+				viewports->Add(new SettingEntry("gui.vehicle_colour_override_other_secondary"));
 				viewports->Add(new SettingEntry("gui.measure_tooltip"));
 				viewports->Add(new SettingEntry("gui.loading_indicators"));
 				viewports->Add(new SettingEntry("gui.show_track_reservation"));

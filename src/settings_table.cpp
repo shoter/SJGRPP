@@ -763,6 +763,13 @@ static void InvalidateCompanyLiveryWindow(int32_t new_value)
 	MarkWholeScreenDirty();
 }
 
+/** Redraw vehicles after an own/opponent vehicle colour changed. */
+static void VehicleColourOverrideChanged(int32_t)
+{
+	ResetVehicleColourMap();
+	MarkWholeScreenDirty();
+}
+
 static void ScriptMaxOpsChange(int32_t new_value)
 {
 	if (_networking && !_network_server) return;

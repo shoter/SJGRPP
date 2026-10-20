@@ -89,6 +89,7 @@ STR_SETTINGS_MENU_ZONING                                        :Zoning
 
 STR_SETTINGS_MENU_MONEY_TEXT_EFFECTS                            :Income/cost texts displayed
 STR_SETTINGS_MENU_SHOW_HIDDEN_SIGNS                             :Hidden signs and names displayed
+STR_SETTINGS_MENU_VEHICLE_COLOUR_OVERRIDE                       :Own/opponent vehicle colours
 
 STR_MAP_MENU_PLAN_LIST                                          :Plan list
 
@@ -575,6 +576,14 @@ STR_CONFIG_SETTING_SHARING_FEE_AIR                              :Terminal fee fo
 STR_CONFIG_SETTING_SHARING_FEE_HELPTEXT                         :This fee is paid per unscaled economy day (i.e. per 74 ticks).
 STR_CONFIG_SETTING_SHARING_FEE_INFLATION                        :Sharing fees rise with inflation: {STRING2}
 STR_CONFIG_SETTING_SHARING_FEE_INFLATION_HELPTEXT               :When enabled, the sharing fees above are prices at the start of the game and rise with inflation like other costs. Use Help > sJGRPP info to see the current fees
+STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OWN                  :Own vehicle colour: {STRING2}
+STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OWN_HELPTEXT         :Colour of all your vehicles. Used when "Own/opponent vehicle colours" is switched on in the Settings menu of the toolbar
+STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OWN_SECONDARY        :Own vehicle secondary colour: {STRING2}
+STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OWN_SECONDARY_HELPTEXT :Secondary colour of all your vehicles that use two company colours. Used when "Own/opponent vehicle colours" is switched on in the Settings menu of the toolbar
+STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OTHER                :Opponent vehicle colour: {STRING2}
+STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OTHER_HELPTEXT       :Colour of all vehicles of other companies. Used when "Own/opponent vehicle colours" is switched on in the Settings menu of the toolbar
+STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OTHER_SECONDARY      :Opponent vehicle secondary colour: {STRING2}
+STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OTHER_SECONDARY_HELPTEXT :Secondary colour of all vehicles of other companies that use two company colours. Used when "Own/opponent vehicle colours" is switched on in the Settings menu of the toolbar
 STR_CONFIG_SETTING_INFLATION_CHANGE_CHANCE                      :Chance of inflation rates changing each year: {STRING2}
 STR_CONFIG_SETTING_INFLATION_CHANGE_CHANCE_HELPTEXT             :At the start of each year the cost and the income inflation rates can each move up or down by 0.5%. This is the chance of a change. The closer a rate is to its minimum, the more likely it goes up; the closer to its maximum, the more likely it goes down. 0% keeps the rates fixed
 STR_CONFIG_SETTING_INFLATION_COST_MIN                           :Minimum cost inflation: {STRING2}
