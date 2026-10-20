@@ -687,6 +687,7 @@ add_files(
     vehicle_base.h
     vehicle_cmd.cpp
     vehicle_cmd.h
+    vehicle_colour_override.h
     vehicle_func.h
     vehicle_gui.cpp
     vehicle_gui.h

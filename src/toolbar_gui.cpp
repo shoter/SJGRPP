@@ -82,6 +82,7 @@
 #include "network/network_gui.h"
 #include "network/network_func.h"
 #include "sector_func.h"
+#include "vehicle_colour_override.h"
 
 #include "table/strings.h"
 
@@ -291,6 +292,7 @@ enum class OptionMenuEntries : uint8_t {
 	TransparentStationSigns, ///< Toggle transparency of signs and names.
 	ShowMoneyText,
 	ShowHiddenSigns,
+	VehicleColourOverride, ///< Toggle own/opponent vehicle colours.
 };
 
 /**
@@ -336,6 +338,7 @@ static CallBackFunction ToolbarOptionsClick(Window *w)
 	list.push_back(MakeDropDownListCheckedItem(IsTransparencySet(TransparencyOption::Houses),                           STR_SETTINGS_MENU_TRANSPARENT_BUILDINGS,   OptionMenuEntries::TransparentBuildings, false));
 	list.push_back(MakeDropDownListCheckedItem(IsTransparencySet(TransparencyOption::Signs),                            STR_SETTINGS_MENU_TRANSPARENT_SIGNS,       OptionMenuEntries::TransparentStationSigns, false));
 	list.push_back(MakeDropDownListCheckedItem(HasBit(_extra_display_opt, XDO_SHOW_MONEY_TEXT_EFFECTS), STR_SETTINGS_MENU_MONEY_TEXT_EFFECTS,     OptionMenuEntries::ShowMoneyText, false));
+	list.push_back(MakeDropDownListCheckedItem(_vehicle_colour_override,                                  STR_SETTINGS_MENU_VEHICLE_COLOUR_OVERRIDE, OptionMenuEntries::VehicleColourOverride, false));
 
 	ShowDropDownList(w, std::move(list), 0, WID_TN_SETTINGS, 140, GetToolbarDropDownOptions());
 	return CallBackFunction::None;
@@ -380,6 +383,7 @@ static CallBackFunction MenuClickSettings(int index)
 		case OptionMenuEntries::TransparentStationSigns: ToggleTransparency(TransparencyOption::Signs); break;
 		case OptionMenuEntries::ShowMoneyText:           ToggleBit(_extra_display_opt, XDO_SHOW_MONEY_TEXT_EFFECTS); break;
 		case OptionMenuEntries::ShowHiddenSigns:         ToggleBit(_extra_display_opt, XDO_SHOW_HIDDEN_SIGNS); break;
+		case OptionMenuEntries::VehicleColourOverride:   ToggleVehicleColourOverride(); break;
 	}
 	MarkWholeScreenDirty();
 	return CallBackFunction::None;

@@ -72,6 +72,8 @@
 #include "train_cmd.h"
 #include "vehicle_cmd.h"
 #include "tile_cmd.h"
+#include "vehicle_colour_override.h"
+#include "debug_bridge.h"
 #include "script/api/script_event_types.hpp"
 #include "3rdparty/cpp-btree/btree_set.h"
 #include "3rdparty/cpp-btree/btree_map.h"
@@ -1008,6 +1010,37 @@ void ResetVehicleHash()
 void ResetVehicleColourMap()
 {
 	for (Vehicle *v : Vehicle::Iterate()) { v->colourmap = PAL_NONE; }
+}
+
+bool _vehicle_colour_override = false; ///< Whether own/opponent vehicle colours are shown. Not saved: it is switched off at every start.
+
+/**
+ * List the colours of all primary vehicles for the debug bridge.
+ * @return "id:owner:twocc:offset;" per vehicle; offset is the livery recolour offset of the palette (colour1 + colour2 * 16 for 2CC), -1 for a palette that is not a plain company colour map.
+ */
+static std::string DumpVehicleColours()
+{
+	format_buffer buf;
+	for (const Vehicle *v : Vehicle::Iterate()) {
+		if (!v->IsPrimaryVehicle()) continue;
+		const bool twocc = Engine::Get(v->engine_type)->info.misc_flags.Test(EngineMiscFlag::Uses2CC);
+		const PaletteID base = twocc ? static_cast<PaletteID>(SPR_2CCMAP_BASE) : static_cast<PaletteID>(PALETTE_RECOLOUR_START);
+		const PaletteID pal = GetVehiclePalette(v);
+		const int offset = (pal >= base && pal < base + (twocc ? 256 : 16)) ? static_cast<int>(pal - base) : -1;
+		buf.format("{}:{}:{}:{};", v->index, v->owner, twocc ? 1 : 0, offset);
+	}
+	return buf.to_string();
+}
+
+DEBUG_BRIDGE_WATCH("vehicle_colour_override.enabled", _vehicle_colour_override);
+DEBUG_BRIDGE_WATCH("vehicle_colour_override.colours", DumpVehicleColours());
+
+/** Switch own/opponent vehicle colours on or off and redraw all vehicles. */
+void ToggleVehicleColourOverride()
+{
+	_vehicle_colour_override = !_vehicle_colour_override;
+	ResetVehicleColourMap();
+	MarkWholeScreenDirty();
 }
 
 /**
@@ -3297,6 +3330,13 @@ static PaletteID GetEngineColourMap(EngineID engine_type, CompanyID company, Eng
 	if (!Company::IsValidID(company)) return map;
 
 	const Livery *livery = GetEngineLivery(engine_type, company, parent_engine_type, v, _settings_client.gui.liveries, ignore_group);
+
+	const VehicleColourOverrideColours override_colours{
+		_settings_client.gui.vehicle_colour_override_own, _settings_client.gui.vehicle_colour_override_own_secondary,
+		_settings_client.gui.vehicle_colour_override_other, _settings_client.gui.vehicle_colour_override_other_secondary,
+	};
+	const std::optional<Livery> override_livery = GetVehicleColourOverrideLivery(_vehicle_colour_override, _local_company, Company::IsValidID(_local_company), company, override_colours);
+	if (override_livery.has_value()) livery = &*override_livery;
 
 	map = GetLiveryPalette(*livery, twocc, map);
 

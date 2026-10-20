@@ -429,6 +429,10 @@ struct GUISettings : public TimeSettings {
 	Colours     starting_colour_secondary;                       ///< default secondary colour scheme for the company to start a new game with
 	CustomColour starting_colour_custom;                         ///< default custom (RGB) colour for the company to start a new game with, overrides #starting_colour if set
 	CustomColour starting_colour_secondary_custom;               ///< default custom (RGB) secondary colour for the company to start a new game with, overrides #starting_colour_secondary if set
+	Colours     vehicle_colour_override_own;                     ///< primary colour of own vehicles when own/opponent vehicle colours are shown
+	Colours     vehicle_colour_override_own_secondary;           ///< secondary colour of own vehicles when own/opponent vehicle colours are shown
+	Colours     vehicle_colour_override_other;                   ///< primary colour of other companies' vehicles when own/opponent vehicle colours are shown
+	Colours     vehicle_colour_override_other_secondary;         ///< secondary colour of other companies' vehicles when own/opponent vehicle colours are shown
 	bool        show_newgrf_name;                                ///< Show the name of the NewGRF in the build vehicle window
 	bool        show_cargo_in_vehicle_lists;                     ///< Show the cargoes the vehicles can carry in the list windows
 	bool        show_wagon_intro_year;                           ///< Show the introduction year for wagons in the build vehicle window
