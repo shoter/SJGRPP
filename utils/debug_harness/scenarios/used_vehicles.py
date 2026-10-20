@@ -24,15 +24,26 @@ def listings(b) -> list[dict]:
     return out
 
 
-def refill_market_until(b, condition, attempts: int = 10) -> bool:
-    """The number of used vehicles of a type at the start of the game can roll 0: refill the market until condition(listings) holds."""
+def refill_market_until(b, condition, attempts: int = 10, clients=()) -> bool:
+    """
+    The number of used vehicles of a type at the start of the game can roll 0: refill the market until condition(listings) holds.
+    b is the single player game or the server; in multiplayer the clients are synced after each refill.
+    """
+    def advance():
+        if b.info().get("lockstep"):
+            b.step(2 * TICKS_PER_DAY)
+        else:
+            b.wait_ticks(2 * TICKS_PER_DAY, timeout_ms=30000)
+            for c in clients:
+                c.wait_ticks(1, timeout_ms=10000)
+
     for _ in range(attempts):
         if condition(listings(b)):
             return True
         b.console("setting used_vehicle_market false")
-        b.step(2 * TICKS_PER_DAY)
+        advance()
         b.console("setting used_vehicle_market true")
-        b.step(2 * TICKS_PER_DAY)
+        advance()
     return condition(listings(b))
 
 

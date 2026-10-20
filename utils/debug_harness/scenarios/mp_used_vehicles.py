@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from transport import Builder  # noqa: E402
-from used_vehicles import FULL_MARKET, SELL_TO_USED_MARKET, buyable_listings, listings  # noqa: E402
+from used_vehicles import FULL_MARKET, SELL_TO_USED_MARKET, buyable_listings, listings, refill_market_until  # noqa: E402
 
 
 def run(ctx):
@@ -28,6 +28,7 @@ def run(ctx):
     depot = route.depot_tile
 
     company1 = c1.info()["local_company"]
+    refill_market_until(server, lambda _: len(buyable_listings(c1, depot)) >= 3, clients=(c1, c2))
     for _ in range(3):
         cands = buyable_listings(c1, depot)
         if not ctx.check(len(cands) > 0, "client1 can buy a road listing"):

@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ottd import Instance  # noqa: E402
 from transport import Builder  # noqa: E402
-from used_vehicles import FULL_MARKET, SELL_TO_USED_MARKET, buyable_listings, listings  # noqa: E402
+from used_vehicles import FULL_MARKET, SELL_TO_USED_MARKET, buyable_listings, listings, refill_market_until  # noqa: E402
 
 CONFIG = {
     "difficulty": {"max_no_competitors": 0, "vehicle_breakdowns": 0, "money_cheat_in_multiplayer": "true"},
@@ -47,6 +47,7 @@ def run(ctx):
     depot1, depot2 = (r.depot_tile for r in routes)
 
     # client1 buys a generated listing and sells it back: now it is a listing with client1 as seller.
+    refill_market_until(server, lambda _: bool(buyable_listings(c1, depot1)), clients=(c1, c2))
     cands = buyable_listings(c1, depot1)
     if not ctx.check(len(cands) > 0, "client1 can buy a generated road listing"):
         return
