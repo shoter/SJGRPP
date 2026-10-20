@@ -65,7 +65,7 @@ Money ScaleSharingFeeFract(uint fee, uint64_t inflation_prices, bool scale_with_
 /**
  * Get the current sharing fee of a vehicle type, including inflation if enabled.
  * @param type The vehicle type.
- * @return The fee as money fraction (shifted 8 bits to the left): per day for road vehicles, ships and aircraft, per 1000 tonnes per day for trains.
+ * @return The fee as money fraction (shifted 8 bits to the left): per day for road vehicles, ships and aircraft, per tile of train length per day for trains.
  */
 Money GetSharingFeeFract(VehicleType type)
 {
@@ -84,6 +84,21 @@ void PayStationSharingFee(Vehicle *v, const Station *st)
 }
 
 /**
+ * Calculate the track toll of a train.
+ * @param fee The track toll per tile of train length per day, as money fraction (shifted 8 bits to the left).
+ * @param length The length of the train, in vehicle length units (TILE_SIZE units per tile).
+ * @param running_ticks The number of ticks the train was running since the toll was last paid.
+ * @return The toll as money fraction (shifted 8 bits to the left).
+ */
+Money GetTrackTollFract(Money fee, uint length, uint running_ticks)
+{
+	/* Cost is calculated per tile of train length */
+	Money cost = (fee * length) / TILE_SIZE;
+	/* Only pay the required fraction */
+	return (cost * running_ticks) / DAY_TICKS;
+}
+
+/**
  * Pay the daily fee for trains on foreign tracks.
  * @param v The vehicle to pay the fee for.
  */
@@ -91,11 +106,7 @@ void PayDailyTrackSharingFee(Train *v)
 {
 	Owner owner = GetTileOwner(v->tile);
 	if (owner == v->owner) return;
-	Money cost = GetSharingFeeFract(VehicleType::Train);
-	/* Cost is calculated per 1000 tonnes */
-	cost = (cost * v->gcache.cached_weight) / 1000;
-	/* Only pay the required fraction */
-	cost = (cost * v->running_ticks) / DAY_TICKS;
+	Money cost = GetTrackTollFract(GetSharingFeeFract(VehicleType::Train), v->gcache.cached_total_length, v->running_ticks);
 	if (cost != 0) PaySharingFee(v, owner, cost);
 }
 

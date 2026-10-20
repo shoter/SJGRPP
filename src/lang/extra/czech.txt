@@ -413,7 +413,6 @@ STR_CONFIG_SETTING_SHARING_RAIL                                 :Povolit sdílen
 STR_CONFIG_SETTING_SHARING_ROAD                                 :Povolit sdílení silničních zastávek a depa: {STRING}
 STR_CONFIG_SETTING_SHARING_WATER                                :Povolit sdílení doků a lodního depa: {STRING}
 STR_CONFIG_SETTING_SHARING_AIR                                  :Povolit sdílení letišť: {STRING}
-STR_CONFIG_SETTING_SHARING_FEE_RAIL                             :Poplatek za použití železniční dopravní cesty: {STRING} za 1000 tun
 STR_CONFIG_SETTING_SHARING_FEE_ROAD                             :Poplatek za zastavení silničních vozidel ve stanovištích: {STRING} za den
 STR_CONFIG_SETTING_SHARING_FEE_WATER                            :Poplatek za dokování lodí: {STRING} za den
 STR_CONFIG_SETTING_SHARING_FEE_AIR                              :Letištní poplatky za letadlo: {STRING} za den

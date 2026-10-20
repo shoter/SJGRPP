@@ -521,7 +521,6 @@ STR_CONFIG_SETTING_SHARING_RAIL                                 :共享鐵道設
 STR_CONFIG_SETTING_SHARING_ROAD                                 :共享道路設施：{STRING}
 STR_CONFIG_SETTING_SHARING_WATER                                :共享船運設施：{STRING}
 STR_CONFIG_SETTING_SHARING_AIR                                  :共享航空設施：{STRING}
-STR_CONFIG_SETTING_SHARING_FEE_RAIL                             :列車通行費：{STRING}/千噸每日
 STR_CONFIG_SETTING_SHARING_FEE_ROAD                             :車輛停放費：{STRING}/日
 STR_CONFIG_SETTING_SHARING_FEE_WATER                            :船舶停泊費：{STRING}/日
 STR_CONFIG_SETTING_SHARING_FEE_AIR                              :機場使用費：{STRING}/日

@@ -569,11 +569,12 @@ STR_CONFIG_SETTING_SHARING_RAIL                                 :Enable sharing 
 STR_CONFIG_SETTING_SHARING_ROAD                                 :Enable sharing of road stops and depots: {STRING2}
 STR_CONFIG_SETTING_SHARING_WATER                                :Enable sharing of docks and ship depots: {STRING2}
 STR_CONFIG_SETTING_SHARING_AIR                                  :Enable sharing of airports: {STRING2}
-STR_CONFIG_SETTING_SHARING_FEE_RAIL                             :Daily track toll for trains: {STRING2} per 1000 tonnes
+STR_CONFIG_SETTING_SHARING_FEE_RAIL                             :Daily track toll for trains: {STRING2} per tile of train length
 STR_CONFIG_SETTING_SHARING_FEE_ROAD                             :Stopping fee for road vehicles: {STRING2} per day
 STR_CONFIG_SETTING_SHARING_FEE_WATER                            :Docking fee for ships: {STRING2} per day
 STR_CONFIG_SETTING_SHARING_FEE_AIR                              :Terminal fee for aircraft: {STRING2} per day
 STR_CONFIG_SETTING_SHARING_FEE_HELPTEXT                         :This fee is paid per unscaled economy day (i.e. per 74 ticks).
+STR_CONFIG_SETTING_SHARING_FEE_RAIL_HELPTEXT                    :This toll is paid per unscaled economy day (i.e. per 74 ticks) of running on another company's tracks, for each tile of train length. A train of eight standard wagons and a standard locomotive is 4.5 tiles long. The weight of the train does not matter.
 STR_CONFIG_SETTING_SHARING_FEE_INFLATION                        :Sharing fees rise with inflation: {STRING2}
 STR_CONFIG_SETTING_SHARING_FEE_INFLATION_HELPTEXT               :When enabled, the sharing fees above are prices at the start of the game and rise with inflation like other costs. Use Help > sJGRPP info to see the current fees
 STR_CONFIG_SETTING_VEHICLE_COLOUR_OVERRIDE_OWN                  :Own vehicle colour: {STRING2}
@@ -2659,7 +2660,7 @@ STR_SJGRPP_INFO_CAPTION                                         :{WHITE}sJGRPP i
 STR_SJGRPP_INFO_SHARING_TITLE                                   :{WHITE}Infrastructure sharing
 STR_SJGRPP_INFO_SHARING_INFLATION_ON                            :{BLACK}Fees rise with inflation: {LTBLUE}yes{BLACK} (price inflation: {LTBLUE}x{DECIMAL}{BLACK})
 STR_SJGRPP_INFO_SHARING_INFLATION_OFF                           :{BLACK}Fees rise with inflation: {LTBLUE}no
-STR_SJGRPP_INFO_SHARING_RAIL                                    :{BLACK}Track toll for trains: {LTBLUE}{CURRENCY_LONG}{BLACK} per 1000 tonnes per day{STRING}
+STR_SJGRPP_INFO_SHARING_RAIL                                    :{BLACK}Track toll for trains: {LTBLUE}{CURRENCY_LONG}{BLACK} per tile of train length per day{STRING}
 STR_SJGRPP_INFO_SHARING_ROAD                                    :{BLACK}Stopping fee for road vehicles: {LTBLUE}{CURRENCY_LONG}{BLACK} per day{STRING}
 STR_SJGRPP_INFO_SHARING_WATER                                   :{BLACK}Docking fee for ships: {LTBLUE}{CURRENCY_LONG}{BLACK} per day{STRING}
 STR_SJGRPP_INFO_SHARING_AIR                                     :{BLACK}Terminal fee for aircraft: {LTBLUE}{CURRENCY_LONG}{BLACK} per day{STRING}
