@@ -3,59 +3,63 @@
 <rect class="bg" width="900" height="420" rx="6"/>
 <text class="fg" x="20" y="26" font-size="15" font-weight="600">Command round trip p95 (ms) on main</text>
 <rect class="panel" x="20" y="40" width="420" height="170" rx="4"/>
-<text class="fg" x="30" y="58" font-weight="600">quick - latest 92 ms</text>
+<text class="fg" x="30" y="58" font-weight="600">quick - latest 84 ms</text>
 <line class="grid" x1="72" x2="426" y1="184.0" y2="184.0"/>
 <text class="mute" x="66" y="188.0" text-anchor="end">81.7</text>
 <line class="grid" x1="72" x2="426" y1="127.0" y2="127.0"/>
 <text class="mute" x="66" y="131.0" text-anchor="end">91.7</text>
 <line class="grid" x1="72" x2="426" y1="70.0" y2="70.0"/>
 <text class="mute" x="66" y="74.0" text-anchor="end">102</text>
-<polyline class="line" fill="none" stroke-width="2" points="72.0,79.5 249.0,174.5 426.0,124.7"/>
+<polyline class="line" fill="none" stroke-width="2" points="72.0,79.5 190.0,174.5 308.0,124.7 426.0,173.4"/>
 <circle class="dot" cx="72.0" cy="79.5" r="2.5"><title>967acf9 2026-10-17: 100 ms</title></circle>
-<circle class="dot" cx="249.0" cy="174.5" r="2.5"><title>52efdca 2026-10-17: 83 ms</title></circle>
-<circle class="dot" cx="426.0" cy="124.7" r="2.5"><title>0e597f3 2026-10-20: 92 ms</title></circle>
+<circle class="dot" cx="190.0" cy="174.5" r="2.5"><title>52efdca 2026-10-17: 83 ms</title></circle>
+<circle class="dot" cx="308.0" cy="124.7" r="2.5"><title>0e597f3 2026-10-20: 92 ms</title></circle>
+<circle class="dot" cx="426.0" cy="173.4" r="2.5"><title>f105be1 2026-10-20: 84 ms</title></circle>
 <text class="mute" x="72" y="202">967acf9 2026-10-17</text>
-<text class="mute" x="426" y="202" text-anchor="end">0e597f3 2026-10-20</text>
+<text class="mute" x="426" y="202" text-anchor="end">f105be1 2026-10-20</text>
 <rect class="panel" x="460" y="40" width="420" height="170" rx="4"/>
-<text class="fg" x="470" y="58" font-weight="600">normal - latest 91 ms</text>
+<text class="fg" x="470" y="58" font-weight="600">normal - latest 84 ms</text>
 <line class="grid" x1="512" x2="866" y1="184.0" y2="184.0"/>
 <text class="mute" x="506" y="188.0" text-anchor="end">82.7</text>
 <line class="grid" x1="512" x2="866" y1="127.0" y2="127.0"/>
 <text class="mute" x="506" y="131.0" text-anchor="end">87</text>
 <line class="grid" x1="512" x2="866" y1="70.0" y2="70.0"/>
 <text class="mute" x="506" y="74.0" text-anchor="end">91.3</text>
-<polyline class="line" fill="none" stroke-width="2" points="512.0,174.5 689.0,174.5 866.0,79.5"/>
+<polyline class="line" fill="none" stroke-width="2" points="512.0,174.5 630.0,174.5 748.0,79.5 866.0,169.2"/>
 <circle class="dot" cx="512.0" cy="174.5" r="2.5"><title>967acf9 2026-10-17: 83 ms</title></circle>
-<circle class="dot" cx="689.0" cy="174.5" r="2.5"><title>52efdca 2026-10-17: 83 ms</title></circle>
-<circle class="dot" cx="866.0" cy="79.5" r="2.5"><title>0e597f3 2026-10-20: 91 ms</title></circle>
+<circle class="dot" cx="630.0" cy="174.5" r="2.5"><title>52efdca 2026-10-17: 83 ms</title></circle>
+<circle class="dot" cx="748.0" cy="79.5" r="2.5"><title>0e597f3 2026-10-20: 91 ms</title></circle>
+<circle class="dot" cx="866.0" cy="169.2" r="2.5"><title>f105be1 2026-10-20: 84 ms</title></circle>
 <text class="mute" x="512" y="202">967acf9 2026-10-17</text>
-<text class="mute" x="866" y="202" text-anchor="end">0e597f3 2026-10-20</text>
+<text class="mute" x="866" y="202" text-anchor="end">f105be1 2026-10-20</text>
 <rect class="panel" x="20" y="230" width="420" height="170" rx="4"/>
-<text class="fg" x="30" y="248" font-weight="600">max-28 - latest 623 ms</text>
+<text class="fg" x="30" y="248" font-weight="600">max-28 - latest 978 ms</text>
 <line class="grid" x1="72" x2="426" y1="374.0" y2="374.0"/>
-<text class="mute" x="66" y="378.0" text-anchor="end">590</text>
+<text class="mute" x="66" y="378.0" text-anchor="end">588</text>
 <line class="grid" x1="72" x2="426" y1="317.0" y2="317.0"/>
-<text class="mute" x="66" y="321.0" text-anchor="end">789</text>
+<text class="mute" x="66" y="321.0" text-anchor="end">801</text>
 <line class="grid" x1="72" x2="426" y1="260.0" y2="260.0"/>
-<text class="mute" x="66" y="264.0" text-anchor="end">988</text>
-<polyline class="line" fill="none" stroke-width="2" points="72.0,270.9 249.0,269.5 426.0,364.5"/>
-<circle class="dot" cx="72.0" cy="270.9" r="2.5"><title>967acf9 2026-10-17: 950 ms</title></circle>
-<circle class="dot" cx="249.0" cy="269.5" r="2.5"><title>52efdca 2026-10-17: 954 ms</title></circle>
-<circle class="dot" cx="426.0" cy="364.5" r="2.5"><title>0e597f3 2026-10-20: 623 ms</title></circle>
+<text class="mute" x="66" y="264.0" text-anchor="end">1.01e+03</text>
+<polyline class="line" fill="none" stroke-width="2" points="72.0,277.2 190.0,275.9 308.0,364.5 426.0,269.5"/>
+<circle class="dot" cx="72.0" cy="277.2" r="2.5"><title>967acf9 2026-10-17: 950 ms</title></circle>
+<circle class="dot" cx="190.0" cy="275.9" r="2.5"><title>52efdca 2026-10-17: 954 ms</title></circle>
+<circle class="dot" cx="308.0" cy="364.5" r="2.5"><title>0e597f3 2026-10-20: 623 ms</title></circle>
+<circle class="dot" cx="426.0" cy="269.5" r="2.5"><title>f105be1 2026-10-20: 978 ms</title></circle>
 <text class="mute" x="72" y="392">967acf9 2026-10-17</text>
-<text class="mute" x="426" y="392" text-anchor="end">0e597f3 2026-10-20</text>
+<text class="mute" x="426" y="392" text-anchor="end">f105be1 2026-10-20</text>
 <rect class="panel" x="460" y="230" width="420" height="170" rx="4"/>
-<text class="fg" x="470" y="248" font-weight="600">sharing - latest 86 ms</text>
+<text class="fg" x="470" y="248" font-weight="600">sharing - latest 83 ms</text>
 <line class="grid" x1="512" x2="866" y1="374.0" y2="374.0"/>
 <text class="mute" x="506" y="378.0" text-anchor="end">83.1</text>
 <line class="grid" x1="512" x2="866" y1="317.0" y2="317.0"/>
 <text class="mute" x="506" y="321.0" text-anchor="end">84.8</text>
 <line class="grid" x1="512" x2="866" y1="260.0" y2="260.0"/>
 <text class="mute" x="506" y="264.0" text-anchor="end">86.4</text>
-<polyline class="line" fill="none" stroke-width="2" points="512.0,364.5 689.0,364.5 866.0,269.5"/>
+<polyline class="line" fill="none" stroke-width="2" points="512.0,364.5 630.0,364.5 748.0,269.5 866.0,364.5"/>
 <circle class="dot" cx="512.0" cy="364.5" r="2.5"><title>967acf9 2026-10-17: 83 ms</title></circle>
-<circle class="dot" cx="689.0" cy="364.5" r="2.5"><title>52efdca 2026-10-17: 83 ms</title></circle>
-<circle class="dot" cx="866.0" cy="269.5" r="2.5"><title>0e597f3 2026-10-20: 86 ms</title></circle>
+<circle class="dot" cx="630.0" cy="364.5" r="2.5"><title>52efdca 2026-10-17: 83 ms</title></circle>
+<circle class="dot" cx="748.0" cy="269.5" r="2.5"><title>0e597f3 2026-10-20: 86 ms</title></circle>
+<circle class="dot" cx="866.0" cy="364.5" r="2.5"><title>f105be1 2026-10-20: 83 ms</title></circle>
 <text class="mute" x="512" y="392">967acf9 2026-10-17</text>
-<text class="mute" x="866" y="392" text-anchor="end">0e597f3 2026-10-20</text>
+<text class="mute" x="866" y="392" text-anchor="end">f105be1 2026-10-20</text>
 </svg>
