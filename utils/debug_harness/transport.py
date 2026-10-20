@@ -25,6 +25,7 @@ from ottd import Bridge, BridgeError, quote_arg
 # TileType
 CLEAR, RAILWAY, ROAD, HOUSE, TREES, STATION, WATER, VOID, INDUSTRY, TUNNELBRIDGE, OBJECT = range(11)
 WATER_CLEAR = 0  # WaterTileType::Clear (sub value of WATER tiles)
+WATER_CLASS_SEA = 0  # WaterClass::Sea (bits value of WATER tiles)
 ROAD_NORMAL = 0  # RoadTileType::Normal
 
 # DiagDirection: NE = -x, SE = +y, SW = +x, NW = -y
@@ -129,20 +130,21 @@ class GameMap:
             return False
         return not (self.slope[i] & SLOPE_STEEP)
 
-    def is_sea(self, x: int, y: int) -> bool:
+    def is_sea(self, x: int, y: int, sea_only: bool = False) -> bool:
+        """Open water; sea_only: not on rivers or canals."""
         if not (0 < x < self.sx - 1 and 0 < y < self.sy - 1):
             return False
         i = self.tile(x, y)
-        return self.type[i] == WATER and self.sub[i] == WATER_CLEAR
+        return self.type[i] == WATER and self.sub[i] == WATER_CLEAR and (not sea_only or self.bits[i] == WATER_CLASS_SEA)
 
-    def water_bodies(self) -> dict[int, int]:
+    def water_bodies(self, sea_only: bool = False) -> dict[int, int]:
         """Label connected navigable water: tile -> body id."""
         label: dict[int, int] = {}
         next_id = 0
         for y in range(1, self.sy - 1):
             for x in range(1, self.sx - 1):
                 start = self.tile(x, y)
-                if start in label or not self.is_sea(x, y):
+                if start in label or not self.is_sea(x, y, sea_only):
                     continue
                 stack = [(x, y)]
                 label[start] = next_id
@@ -151,7 +153,7 @@ class GameMap:
                     for dx, dy in DELTA.values():
                         nx, ny = cx + dx, cy + dy
                         n = self.tile(nx, ny)
-                        if n not in label and self.is_sea(nx, ny):
+                        if n not in label and self.is_sea(nx, ny, sea_only):
                             label[n] = next_id
                             stack.append((nx, ny))
                 next_id += 1
@@ -670,11 +672,12 @@ class Builder:
 
     def build_ship_route(self, near: tuple[int, int], vehicles: int = 2, min_dist: int = 16, max_dist: int = 60,
                          car_ferry: bool = False, start: bool = True) -> Route:
-        """car_ferry: refit the ships to carry road vehicles. start: start the first ship."""
+        """car_ferry: refit the ships to carry road vehicles, with both docks on the open sea (river mouths can be
+        impassable). start: start the first ship."""
         start_cmds = self.commands_sent
         gmap = self.fresh_map()
-        bodies = gmap.water_bodies()
-        sites = self._dock_sites(gmap, bodies)
+        bodies = gmap.water_bodies(sea_only=car_ferry)
+        sites = self._dock_sites(gmap, bodies, sea_only=car_ferry)
         if not sites:
             raise BuildError("no dock sites on the map")
         sites.sort(key=lambda s: (s[0] - near[0]) ** 2 + (s[1] - near[1]) ** 2)
@@ -762,7 +765,7 @@ class Builder:
                     return {"station": station, "stop": stop, "roads": roads, "depot": depot}
         raise BuildError(f"no bus terminal site next to dock station {station}")
 
-    def _dock_sites(self, gmap: GameMap, bodies: dict[int, int]) -> list[tuple[int, int, int, int]]:
+    def _dock_sites(self, gmap: GameMap, bodies: dict[int, int], sea_only: bool = False) -> list[tuple[int, int, int, int]]:
         """(x, y, water_dir, water_body) of sloped free land tiles with open water in front."""
         sites = []
         for y in range(2, gmap.sy - 2):
@@ -774,7 +777,7 @@ class Builder:
                     dx, dy = DELTA[d]
                     w1 = (x + dx, y + dy)
                     w2 = (x + 2 * dx, y + 2 * dy)
-                    if gmap.is_sea(*w1) and gmap.is_sea(*w2) and gmap.is_sea(x + 3 * dx, y + 3 * dy):
+                    if gmap.is_sea(*w1, sea_only) and gmap.is_sea(*w2, sea_only) and gmap.is_sea(x + 3 * dx, y + 3 * dy, sea_only):
                         sites.append((x, y, d, bodies[gmap.tile(*w2)]))
                         break
         return sites

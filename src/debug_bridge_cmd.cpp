@@ -455,7 +455,7 @@ json DebugBridgeTiles(uint x0, uint y0, uint w, uint h)
 			owner.push_back(has_owner ? static_cast<uint8_t>(GetTileOwner(t).base()) : 255);
 			uint8_t sub_value = 0, bits_value = 0;
 			switch (tt) {
-				case TileType::Water: sub_value = to_underlying(GetWaterTileType(t)); break;
+				case TileType::Water: sub_value = to_underlying(GetWaterTileType(t)); bits_value = to_underlying(GetWaterClass(t)); break;
 				case TileType::Station: sub_value = to_underlying(GetStationType(t)); break;
 				case TileType::Road:
 					sub_value = to_underlying(GetRoadTileType(t));
