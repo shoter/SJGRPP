@@ -6119,9 +6119,14 @@ STR_BADGE_FILTER_ANY_LABEL                                      :Any {STRING}
 
 # Used vehicle market
 STR_CONFIG_SETTING_USED_VEHICLE_MARKET                          :Enable used vehicle market: {STRING2}
-STR_CONFIG_SETTING_USED_VEHICLE_MARKET_HELPTEXT                 :Companies can buy second-hand vehicles. The market is filled with used vehicles of every available model at the start of the game, vehicles sold by companies are offered to everyone, and listings age by a year at the start of every year until they reach the end of their lifespan. Only locomotives are traded for trains, not wagons. Disabling this removes all listings
+STR_CONFIG_SETTING_USED_VEHICLE_MARKET_HELPTEXT                 :Companies can buy second-hand vehicles. The market is filled with used vehicles at the start of the game, vehicles sold by companies are offered to everyone, and listings age by a year at the start of every year until they reach the end of their lifespan. Only locomotives are traded for trains, not wagons. Disabling this removes all listings
 STR_CONFIG_SETTING_USED_VEHICLE_YEARLY_CHANCE                   :Yearly chance of a new used vehicle per model: {STRING2}
 STR_CONFIG_SETTING_USED_VEHICLE_YEARLY_CHANCE_HELPTEXT          :At the start of every year, each vehicle model that is still on sale has this chance of a used vehicle with a random age being added to the used vehicle market
+STR_CONFIG_SETTING_USED_VEHICLE_INITIAL_MAX_ROAD                :Maximum used road vehicles at the start of the game: {STRING2}
+STR_CONFIG_SETTING_USED_VEHICLE_INITIAL_MAX_TRAIN               :Maximum used locomotives at the start of the game: {STRING2}
+STR_CONFIG_SETTING_USED_VEHICLE_INITIAL_MAX_SHIP                :Maximum used ships at the start of the game: {STRING2}
+STR_CONFIG_SETTING_USED_VEHICLE_INITIAL_MAX_AIRCRAFT            :Maximum used aircraft at the start of the game: {STRING2}
+STR_CONFIG_SETTING_USED_VEHICLE_INITIAL_MAX_HELPTEXT            :When the used vehicle market is filled (at the start of the game, or when it is switched on), a random number of used vehicles between 0 and this maximum is added for this vehicle type. Each one is a random model on sale that is at least a year old, and its age is a random whole number of years between 1 and the lower of its lifespan and the years since the model was introduced
 
 STR_ERROR_CAN_T_BUY_USED_VEHICLE                                :{WHITE}Can't buy used vehicle...
 STR_ERROR_USED_VEHICLE_NO_LONGER_AVAILABLE                      :{WHITE}... this used vehicle is no longer offered

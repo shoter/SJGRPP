@@ -9,14 +9,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from transport import BuildError, Builder  # noqa: E402
-from used_vehicles import SELL_TO_USED_MARKET, TICKS_PER_DAY, listings  # noqa: E402
+from used_vehicles import FULL_MARKET, SELL_TO_USED_MARKET, TICKS_PER_DAY, listings, refill_market_until  # noqa: E402
 
 CONFIG = {
     "game_creation": {"map_x": 8, "map_y": 8, "starting_year": 1990, "landscape": "temperate", "variety": 0},
     "difficulty": {"terrain_type": 0, "quantity_sea_lakes": 2, "number_towns": 2, "max_no_competitors": 0,
                    "vehicle_breakdowns": 0},
     "station": {"never_expire_airports": "true"},
-    "vehicle": {"plane_crashes": 0},
+    "vehicle": {"plane_crashes": 0, **FULL_MARKET},
 }
 
 
@@ -53,6 +53,8 @@ def run(ctx):
         "ship": lambda: builder.build_ship_route(txy[0], vehicles=1),
     }
     engine_type = {e["id"]: e["type"] for e in b.engines()}
+    ctx.check(refill_market_until(b, lambda market: {engine_type.get(lst["engine"]) for lst in market} >= set(builders)),
+              "market has listings of every vehicle type")
     depots: dict[str, int] = {}
 
     for kind, build in builders.items():

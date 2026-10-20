@@ -1027,6 +1027,10 @@ SettingsContainer &GetSettingsTree()
 			vehicles->Add(new SettingEntry("vehicle.non_leading_engines_keep_name"));
 			vehicles->Add(new SettingEntry("vehicle.used_vehicle_market"));
 			vehicles->Add(new SettingEntry("vehicle.used_vehicle_yearly_chance"));
+			vehicles->Add(new SettingEntry("vehicle.used_vehicle_initial_max_road"));
+			vehicles->Add(new SettingEntry("vehicle.used_vehicle_initial_max_train"));
+			vehicles->Add(new SettingEntry("vehicle.used_vehicle_initial_max_ship"));
+			vehicles->Add(new SettingEntry("vehicle.used_vehicle_initial_max_aircraft"));
 		}
 
 		SettingsPage *limitations = main->Add(new SettingsPage(STR_CONFIG_SETTING_LIMITATIONS));

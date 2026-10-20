@@ -68,6 +68,8 @@ bool IsUsedEngineBuildable(EngineID engine, VehicleType type, CompanyID company)
 UsedVehicleListing *GetUsedVehicleListing(uint32_t id);
 void RemoveUsedVehicleListing(uint32_t id);
 
+int GetUsedVehicleMaxAgeYears(CalTime::DateDelta life_length, CalTime::DateDelta since_intro);
+
 void InitializeUsedVehicleMarket();
 void UsedVehicleMarketDailyLoop();
 void UsedVehicleMarketYearlyLoop();

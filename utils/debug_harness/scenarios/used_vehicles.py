@@ -9,6 +9,10 @@ from transport import Builder  # noqa: E402
 SELL_TO_USED_MARKET = 8   # SellVehicleFlags::ToUsedMarket
 DAYS_IN_YEAR = 365
 TICKS_PER_DAY = 74
+NO_COMPANY = 255
+
+# Enough used vehicles at the start of the game that tests can rely on finding ones of the type they need.
+FULL_MARKET = {f"used_vehicle_initial_max_{kind}": 100 for kind in ("road", "train", "ship", "aircraft")}
 
 
 def listings(b) -> list[dict]:
@@ -20,20 +24,43 @@ def listings(b) -> list[dict]:
     return out
 
 
+def refill_market_until(b, condition, attempts: int = 10, clients=()) -> bool:
+    """
+    The number of used vehicles of a type at the start of the game can roll 0: refill the market until condition(listings) holds.
+    b is the single player game or the server; in multiplayer the clients are synced after each refill.
+    """
+    def advance():
+        if b.info().get("lockstep"):
+            b.step(2 * TICKS_PER_DAY)
+        else:
+            b.wait_ticks(2 * TICKS_PER_DAY, timeout_ms=30000)
+            for c in clients:
+                c.wait_ticks(1, timeout_ms=10000)
+
+    for _ in range(attempts):
+        if condition(listings(b)):
+            return True
+        b.console("setting used_vehicle_market false")
+        advance()
+        b.console("setting used_vehicle_market true")
+        advance()
+    return condition(listings(b))
+
+
+def buyable_listings(b, depot: int) -> list[dict]:
+    """Listings that the local company can buy into the depot."""
+    return [lst for lst in listings(b) if b.docmd("BuyUsedVehicle", depot, lst["id"], 0, test=True)["success"]]
+
+
 def run(ctx):
-    inst = ctx.solo(args=["-g", "-G", "4242"], lockstep=True)
+    inst = ctx.solo(args=["-g", "-G", "4242"], lockstep=True, config={"vehicle": FULL_MARKET})
     b = inst.bridge
     b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=120, what="game start")
     b.step(2 * TICKS_PER_DAY)
 
     market = listings(b)
     ctx.check(len(market) > 0, f"market seeded at game start ({len(market)} listings)")
-    engines = {e["id"]: e for e in b.engines()}
-    per_engine: dict[int, int] = {}
-    for listing in market:
-        per_engine[listing["engine"]] = per_engine.get(listing["engine"], 0) + 1
-    ctx.check(all(1 <= n <= 20 for n in per_engine.values()), f"1-20 listings per engine ({sorted(set(per_engine.values()))})")
-    ctx.check(all(listing["history"] == 0 and listing["seller"] == 255 for listing in market), "generated listings have no previous owners")
+    ctx.check(all(listing["history"] == 0 and listing["seller"] == NO_COMPANY for listing in market), "generated listings have no previous owners")
 
     # Build a bus route to get a road depot.
     b.docmd("MoneyCheat", 0, 50_000_000)
@@ -45,12 +72,12 @@ def run(ctx):
     txy.sort(key=lambda p: (p[0] - ox) ** 2 + (p[1] - oy) ** 2)
     route = builder.build_road_route(txy[0], txy[1], vehicles=1)
     depot = route.depot_tile
-    bus_engine = b.obj("vehicle", route.vehicles[0], "engine_type")["engine_type"]
 
-    road_listings = [lst for lst in listings(b) if lst["engine"] == bus_engine]
-    ctx.check(len(road_listings) > 0, f"listings of the bus engine {bus_engine} exist")
+    road_listings = buyable_listings(b, depot)
+    if not ctx.check(len(road_listings) > 0, f"road listings can be bought into the depot ({len(road_listings)})"):
+        return
     listing = max(road_listings, key=lambda lst: lst["age"])
-    new_cost = b.docmd("BuildVehicle", depot, bus_engine, False, 255, 0, test=True)["cost"]
+    new_cost = b.docmd("BuildVehicle", depot, listing["engine"], False, 255, 0, test=True)["cost"]
 
     count_before = len(listings(b))
     res = b.docmd("BuyUsedVehicle", depot, listing["id"], 0)

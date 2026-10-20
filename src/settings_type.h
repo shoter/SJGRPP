@@ -865,6 +865,10 @@ struct VehicleSettings {
 	uint8_t                extend_vehicle_life;                   ///< extend vehicle life by this many years
 	bool                   used_vehicle_market;                   ///< enable the used vehicle market
 	uint8_t                used_vehicle_yearly_chance;            ///< chance in percent that a new used vehicle of each engine type is offered every year
+	uint8_t                used_vehicle_initial_max_road;         ///< maximum number of used road vehicles offered at the start of the game
+	uint8_t                used_vehicle_initial_max_train;        ///< maximum number of used train locomotives offered at the start of the game
+	uint8_t                used_vehicle_initial_max_ship;         ///< maximum number of used ships offered at the start of the game
+	uint8_t                used_vehicle_initial_max_aircraft;     ///< maximum number of used aircraft offered at the start of the game
 	RoadVehicleDrivingSide road_side;                             ///< the side of the road vehicles drive on
 	uint8_t                plane_crashes;                         ///< number of plane crashes, 0 = none, 1 = reduced, 2 = normal
 	bool                   aircraft_range;                        ///< enable range limits for aircraft

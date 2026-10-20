@@ -6,11 +6,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from transport import Builder  # noqa: E402
-from used_vehicles import SELL_TO_USED_MARKET, listings  # noqa: E402
+from used_vehicles import FULL_MARKET, SELL_TO_USED_MARKET, buyable_listings, listings, refill_market_until  # noqa: E402
 
 
 def run(ctx):
-    cluster = ctx.cluster(clients=2, seed=4242, company="new")
+    cluster = ctx.cluster(clients=2, seed=4242, company="new", server_config={"vehicle": FULL_MARKET})
     server = cluster.server.bridge
     c1, c2 = (c.bridge for c in cluster.clients)
 
@@ -26,11 +26,14 @@ def run(ctx):
     txy.sort(key=lambda p: (p[0] - ox) ** 2 + (p[1] - oy) ** 2)
     route = builder.build_road_route(txy[0], txy[1], vehicles=1)
     depot = route.depot_tile
-    engine = server.obj("vehicle", route.vehicles[0], "engine_type")["engine_type"]
 
     company1 = c1.info()["local_company"]
+    refill_market_until(server, lambda _: len(buyable_listings(c1, depot)) >= 3, clients=(c1, c2))
     for _ in range(3):
-        listing = next(lst for lst in listings(server) if lst["engine"] == engine)
+        cands = buyable_listings(c1, depot)
+        if not ctx.check(len(cands) > 0, "client1 can buy a road listing"):
+            return
+        listing = cands[0]
         res = c1.docmd("BuyUsedVehicle", depot, listing["id"], 0)
         ctx.check(res["success"], f"client1 bought listing {listing['id']}")
         res = c1.docmd("SellVehicle", depot, int(res["result_data"]), SELL_TO_USED_MARKET, 0)

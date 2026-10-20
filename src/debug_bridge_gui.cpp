@@ -85,6 +85,7 @@ const std::map<std::string, Opener, std::less<>> &Openers()
 		return [fn](int64_t) { fn(); return true; };
 	};
 	static const std::map<std::string, Opener, std::less<>> openers = {
+		{ "game_options", plain(ShowGameOptions) },
 		{ "smallmap", plain(ShowSmallMap) },
 		{ "towns", plain(ShowTownDirectory) },
 		{ "industries", plain(ShowIndustryDirectory) },

@@ -43,7 +43,6 @@ static std::string DumpUsedVehicleListings()
 DEBUG_BRIDGE_WATCH("used_vehicles.count", _used_vehicle_market.listings.size());
 DEBUG_BRIDGE_WATCH("used_vehicles.listings", DumpUsedVehicleListings());
 
-static constexpr int32_t USED_VEHICLE_MAX_INITIAL_LISTINGS = 20; ///< Maximum number of listings per engine at the start of the game.
 static constexpr int32_t USED_VEHICLE_SLOW_DEPRECIATION_DAYS = 3 * DAYS_IN_YEAR; ///< Period in which the price drops only slightly.
 
 std::string VehicleOwnerRecord::GetCompanyName() const
@@ -179,12 +178,57 @@ static void GenerateUsedVehicleListing(const Engine *e)
 	l.age = CalTime::DateDelta{max_age > 0 ? static_cast<int32_t>(RandomRange(static_cast<uint32_t>(max_age) + 1)) : 0};
 }
 
+/**
+ * Get the maximum age in whole years of a generated used vehicle: it can't be older than its lifespan, nor built before the engine was introduced.
+ * @param life_length Lifespan of the engine.
+ * @param since_intro Time since the engine was introduced.
+ * @return The maximum age in years, 0 when the engine is less than a year old.
+ */
+int GetUsedVehicleMaxAgeYears(CalTime::DateDelta life_length, CalTime::DateDelta since_intro)
+{
+	return std::max<int32_t>(0, std::min(life_length.base(), since_intro.base()) / DAYS_IN_YEAR);
+}
+
+/** Get the setting with the maximum number of used vehicles of a vehicle type at the start of the game. */
+static uint GetUsedVehicleInitialMax(VehicleType type)
+{
+	switch (type) {
+		case VehicleType::Train: return _settings_game.vehicle.used_vehicle_initial_max_train;
+		case VehicleType::Road: return _settings_game.vehicle.used_vehicle_initial_max_road;
+		case VehicleType::Ship: return _settings_game.vehicle.used_vehicle_initial_max_ship;
+		case VehicleType::Aircraft: return _settings_game.vehicle.used_vehicle_initial_max_aircraft;
+		default: NOT_REACHED();
+	}
+}
+
+/**
+ * Fill the market: for each vehicle type add between 0 and the setting's maximum used vehicles,
+ * each a random engine type on sale aged a random number of whole years.
+ * The rolls use their own randomizer, seeded from the game's, so filling the market does not
+ * shift the game's random sequence (which e.g. the script regression tests depend on).
+ */
 static void SeedUsedVehicleMarket()
 {
-	for (const Engine *e : Engine::Iterate()) {
-		if (!CanGenerateUsedVehicleListings(e)) continue;
-		const uint count = 1 + RandomRange(USED_VEHICLE_MAX_INITIAL_LISTINGS);
-		for (uint i = 0; i < count; i++) GenerateUsedVehicleListing(e);
+	Randomizer rng;
+	rng.SetSeed(_random.state[0] ^ _random.state[1]);
+
+	for (VehicleType type : { VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft }) {
+		std::vector<std::pair<const Engine *, int>> candidates;
+		for (const Engine *e : Engine::IterateType(type)) {
+			if (!CanGenerateUsedVehicleListings(e)) continue;
+			const int max_years = GetUsedVehicleMaxAgeYears(e->GetLifeLengthInDays(), CalTime::CurDate() - e->intro_date);
+			if (max_years > 0) candidates.emplace_back(e, max_years);
+		}
+		if (candidates.empty()) continue;
+
+		const uint count = rng.Next(GetUsedVehicleInitialMax(type) + 1);
+		for (uint i = 0; i < count; i++) {
+			const auto &[e, max_years] = candidates[rng.Next(static_cast<uint32_t>(candidates.size()))];
+			UsedVehicleListing &l = _used_vehicle_market.listings.emplace_back();
+			l.id = _used_vehicle_market.next_id++;
+			l.engine = e->index;
+			l.age = CalTime::DateDelta{static_cast<int32_t>(1 + rng.Next(static_cast<uint32_t>(max_years))) * DAYS_IN_YEAR};
+		}
 	}
 	_used_vehicle_market.seeded = true;
 }
