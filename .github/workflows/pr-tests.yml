@@ -1,0 +1,124 @@
+name: PR tests
+
+# Lists the tests a pull request adds, changes and removes in one PR comment, updated in place: C++ unit tests (Catch2
+# test cases and sections), harness scenarios and their checks, full test profiles and checks, harness unit tests and
+# AI/GS regression tests (utils/debug_harness/pr_tests.py). On every push the list is posted at once, with results
+# pending; Game tests (game-tests.yml) calls this workflow again when its tests finished, which adds each test's result.
+
+on:
+  pull_request:
+    branches:
+    - main
+  workflow_call:
+    inputs:
+      results:
+        description: 'Add the results of the calling Game tests run'
+        type: boolean
+        default: false
+      expect:
+        description: 'Comma separated tests of the calling Game tests run'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: ${{ inputs.results && 'Results' || 'List tests' }}
+    runs-on: ubuntu-latest
+    # No workflow level concurrency: as a called workflow it would share the caller's group.
+    concurrency:
+      group: pr-tests-${{ github.event.pull_request.number }}-${{ inputs.results && 'results' || 'list' }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - name: Fetch merge base
+      id: base
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BASE: ${{ github.event.pull_request.base.sha }}
+        HEAD: ${{ github.event.pull_request.head.sha }}
+      run: |
+        # The PR's changes are the diff between its head and where it branched off, as GitHub shows them.
+        mb=$(gh api "repos/${{ github.repository }}/compare/$BASE...$HEAD" --jq .merge_base_commit.sha)
+        git fetch --no-tags --depth 1 origin "$mb"
+        echo "sha=$mb" >> "$GITHUB_OUTPUT"
+
+    - name: Download test results
+      if: inputs.results
+      continue-on-error: true   # a failed build leaves no results: the report says so
+      uses: actions/download-artifact@v8
+      with:
+        pattern: game-test-*
+        path: results
+
+    - name: Download unit test results
+      if: inputs.results
+      continue-on-error: true
+      uses: actions/download-artifact@v8
+      with:
+        name: pr-tests-unit
+        path: results/pr-tests-unit
+
+    - name: Render report
+      env:
+        RESULTS: ${{ inputs.results && 'results' || '' }}
+        EXPECT: ${{ inputs.expect }}
+        BASE: ${{ steps.base.outputs.sha }}
+        HEAD: ${{ github.event.pull_request.head.sha }}
+        REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        args=()
+        if [ -n "$RESULTS" ]; then
+          mkdir -p "$RESULTS"
+          args=(--results "$RESULTS" --expect "$EXPECT")
+        fi
+        python3 utils/debug_harness/pr_tests.py report --base "$BASE" --head "$HEAD" "${args[@]}" \
+          --repo-url "$REPO_URL" --run-url "$RUN_URL" --out pr-tests.md
+        cat pr-tests.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment on PR
+      # Pull requests from forks get a read-only token: the report is still in the run summary.
+      if: github.event.pull_request.head.repo.full_name == github.repository
+      uses: actions/github-script@v7
+      env:
+        WITH_RESULTS: ${{ inputs.results && 'true' || 'false' }}
+      with:
+        script: |
+          const fs = require('fs');
+          const { owner, repo } = context.repo;
+          const pr = context.payload.pull_request;
+          const issue_number = pr.number;
+          const head = pr.head.sha;
+          const withResults = process.env.WITH_RESULTS === 'true';
+          // A newer push replaced this commit: the runs of that push report.
+          const { data: current } = await github.rest.pulls.get({ owner, repo, pull_number: issue_number });
+          if (current.head.sha !== head) {
+            core.info(`PR head is now ${current.head.sha}, not updating the comment for ${head}`);
+            return;
+          }
+          const marker = '<!-- pr-tests-report -->';
+          const done = `<!-- pr-tests head=${head} results=1 -->`;
+          const body = [marker, withResults ? done : `<!-- pr-tests head=${head} results=0 -->`,
+                        fs.readFileSync('pr-tests.md', 'utf8')].join('\n');
+          const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+          const existing = comments.find(c => c.body && c.body.startsWith(marker));
+          if (existing && !withResults && existing.body.includes(done)) {
+            core.info('This commit already has a report with results (the list job was re-run), keeping it');
+            return;
+          }
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
