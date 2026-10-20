@@ -204,9 +204,14 @@ static uint GetUsedVehicleInitialMax(VehicleType type)
 /**
  * Fill the market: for each vehicle type add between 0 and the setting's maximum used vehicles,
  * each a random engine type on sale aged a random number of whole years.
+ * The rolls use their own randomizer, seeded from the game's, so filling the market does not
+ * shift the game's random sequence (which e.g. the script regression tests depend on).
  */
 static void SeedUsedVehicleMarket()
 {
+	Randomizer rng;
+	rng.SetSeed(_random.state[0] ^ _random.state[1]);
+
 	for (VehicleType type : { VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft }) {
 		std::vector<std::pair<const Engine *, int>> candidates;
 		for (const Engine *e : Engine::IterateType(type)) {
@@ -216,13 +221,13 @@ static void SeedUsedVehicleMarket()
 		}
 		if (candidates.empty()) continue;
 
-		const uint count = RandomRange(GetUsedVehicleInitialMax(type) + 1);
+		const uint count = rng.Next(GetUsedVehicleInitialMax(type) + 1);
 		for (uint i = 0; i < count; i++) {
-			const auto &[e, max_years] = candidates[RandomRange(static_cast<uint32_t>(candidates.size()))];
+			const auto &[e, max_years] = candidates[rng.Next(static_cast<uint32_t>(candidates.size()))];
 			UsedVehicleListing &l = _used_vehicle_market.listings.emplace_back();
 			l.id = _used_vehicle_market.next_id++;
 			l.engine = e->index;
-			l.age = CalTime::DateDelta{static_cast<int32_t>(1 + RandomRange(static_cast<uint32_t>(max_years))) * DAYS_IN_YEAR};
+			l.age = CalTime::DateDelta{static_cast<int32_t>(1 + rng.Next(static_cast<uint32_t>(max_years))) * DAYS_IN_YEAR};
 		}
 	}
 	_used_vehicle_market.seeded = true;
