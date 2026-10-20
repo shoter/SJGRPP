@@ -2,7 +2,9 @@ name: Game tests
 
 # Multiplayer full tests (stress / regression) driven by utils/debug_harness: a dedicated server and headless clients play
 # a generated map through real game commands. The game is built once, then every test runs as its own parallel job,
-# and a final job renders all results into the run summary (and a PR comment).
+# and a final job renders all results into the run summary (and a PR comment). The build job also runs the C++ unit
+# and AI/GS regression tests; on pull requests the PR tests workflow (pr-tests.yml) then adds the results of every new
+# and changed test to the PR's test list comment.
 
 on:
   push:
@@ -52,7 +54,8 @@ jobs:
         echo "expect=$list" >> "$GITHUB_OUTPUT"
 
     - name: Harness unit tests
-      run: python3 -m unittest discover -s utils/debug_harness/tests -v
+      # Also writes each test's result for the PR tests report.
+      run: python3 utils/debug_harness/pr_tests.py unittest --out results/pr-tests-unit/harness-unittests.json
 
     - name: Install dependencies
       env:
@@ -77,7 +80,7 @@ jobs:
         mv vcpkg.json vcpkg-disabled.json
         cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DOPTION_USE_ASSERTS=ON \
           -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-        cmake --build build --target openttd -j $(nproc)
+        cmake --build build --target openttd openttd_test regression_files -j $(nproc)
         ccache -s
 
     - name: Package
@@ -91,6 +94,30 @@ jobs:
         name: openttd-linux
         path: openttd-linux.tgz
         retention-days: 3
+
+    - name: Get OpenGFX for the regression tests
+      run: |
+        mkdir -p ~/.local/share/openttd/baseset
+        curl -sSL https://cdn.openttd.org/opengfx-releases/0.6.0/opengfx-0.6.0-all.zip -o opengfx-all.zip
+        unzip -q opengfx-all.zip -d ~/.local/share/openttd/baseset
+        rm opengfx-all.zip
+
+    - name: C++ unit and regression tests
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      run: |
+        # CI - Build gates on these; here they only feed the PR tests report, so a failure doesn't stop the game tests.
+        cd build
+        ctest -j $(nproc) --timeout 120 --output-junit "$GITHUB_WORKSPACE/results/pr-tests-unit/ctest-junit.xml"           || echo "::warning::C++ unit or regression tests failed, see the PR tests report"
+
+    - name: Upload unit test results
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: pr-tests-unit
+        path: results/pr-tests-unit
+        if-no-files-found: warn
+        retention-days: 14
 
   test:
     name: Test ${{ matrix.test }}
@@ -234,3 +261,16 @@ jobs:
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
           }
+
+  pr-tests:
+    name: PR tests
+    needs: [build, test]
+    # Not for superseded runs: the run of the newer push reports.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/pr-tests.yml
+    with:
+      results: true
+      expect: ${{ needs.build.outputs.expect }}

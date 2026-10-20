@@ -148,8 +148,22 @@ pull requests to `main` and pushes to `main` run `scenarios` (all `scenarios/*.p
 reported but only correctness (crashes, desyncs, state/cache mismatches, gameplay) fails a job. Each test job writes its
 own summary; the `Report` job combines all results with `utils/debug_harness/ci_report.py` into the run summary and a
 PR comment (updated in place). Artifacts `game-test-<name>` hold report.json, perf.csv, events.log, screenshots and the
-crash/desync bundle (`collected/`) of a failed test. The harness unit tests (`utils/debug_harness/tests/`) run in the
-build job.
+crash/desync bundle (`collected/`) of a failed test. The harness unit tests (`utils/debug_harness/tests/`), the C++ unit
+tests and the AI/GS regression tests run in the build job; their results (artifact `pr-tests-unit`) only feed the PR
+tests report, `CI - Build` is what gates on the C++ and regression tests.
+
+### PR tests report
+
+`.github/workflows/pr-tests.yml` keeps one PR comment, *Tests in this PR*, listing what the PR adds, changes, renames
+and removes: Catch2 test cases and sections (`src/tests/`), harness scenarios with each `ctx.check()` message, full
+test profiles (`PROFILES`) and `self.check()` names in `full_test.py`, harness unit tests and AI/GS regression tests
+(`regression/`), with totals per category and a link to each test. It runs on every PR push and posts the list at once
+(results pending); when `Game tests` finished it calls the same workflow, which fills in each new and changed test's
+result: ctest JUnit for C++ and regression tests, `scenario.py`'s `result.json` for scenarios and their checks (check
+messages are matched with their f-string placeholders as wildcards), `full_test.py`'s `report.json` per profile for full
+test checks. When the PR changes game code under `src/` but no game test (anything but harness unit tests), the report
+shows a warning; it never fails a check. Locally: `python utils/debug_harness/pr_tests.py report --base origin/main`
+(`--results <downloaded artifacts>` adds results, see `--help`).
 
 ### Performance history
 
