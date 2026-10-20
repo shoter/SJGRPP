@@ -508,7 +508,7 @@ void DrawTileSectorOverlay(const TileInfo *ti)
 			{ -31 + 34, -INF   , INF    , INF     }, // CORNER_E, clip 34 pixels from left
 			{ -INF    , -INF   , INF    , 30 - 8  }  // CORNER_N, clip  8 pixels from bottom
 		};
-		DrawSelectionSprite(sprite, colour, ti, 7 + TILE_HEIGHT, FoundationPart::Halftile, 0, 0, &(sub_sprites[GetHalftileSlopeCorner(ti->tileh)]));
+		DrawSelectionSprite(sprite, colour, ti, 7 + TILE_HEIGHT, FoundationPart::Halftile, 0, 0, &(sub_sprites[to_underlying(GetHalftileSlopeCorner(ti->tileh))]));
 	} else {
 		sprite += SlopeToSpriteOffset(ti->tileh);
 	}

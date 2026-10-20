@@ -8,6 +8,7 @@
 /** @file economy.cpp Handling of the economy. */
 
 #include "stdafx.h"
+#include "car_ferry.h"
 #include "company_cmd.h"
 #include "company_func.h"
 #include "command_func.h"
@@ -1960,6 +1961,11 @@ static void LoadUnloadVehicle(Vehicle *front)
 {
 	assert(front->current_order.IsType(OT_LOADING));
 
+	if (IsCarFerry(front)) {
+		LoadUnloadCarFerry(front);
+		return;
+	}
+
 	StationID last_visited = front->last_station_visited;
 	Station *st = Station::Get(last_visited);
 
@@ -2478,6 +2484,9 @@ void LoadUnloadStation(Station *st)
 		if (!v->vehstatus.Any({VehState::Stopped, VehState::Crashed}) && !v->current_order.IsType(OT_LOADING_ADVANCE)) LoadUnloadVehicle(v);
 		if (v == last_loading) break;
 	}
+
+	/* Road vehicles boarding car ferries leave the station, which must not happen while iterating over its loading vehicles. */
+	ProcessPendingFerryBoardings();
 
 	/* Call the production machinery of industries */
 	for (Industry *iid : _cargo_delivery_destinations) {

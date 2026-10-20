@@ -31,6 +31,7 @@ static_assert((SHIP_PATH_CACHE_LENGTH & SHIP_PATH_CACHE_MASK) == 0, ""); // Must
 /** Ship flags. */
 enum class VehicleShipFlag : uint8_t {
 	SecondEndFacingForward = 0, ///< Whether the other end is facing forward. Only applies to dual-ended ships.
+	CarFerry               = 1, ///< Ship is refitted to carry road vehicles instead of cargo.
 };
 /** Bitset of the %VehicleShipFlag elements. */
 using VehicleShipFlags = EnumBitSet<VehicleShipFlag, uint8_t>;
@@ -47,6 +48,7 @@ struct Ship final : public SpecializedVehicle<Ship, VehicleType::Ship, Vehicle> 
 	int16_t rotation_y_pos = 0;              ///< NOSAVE: Y Position before rotation.
 	uint8_t lost_count = 0;                  ///< Count of number of failed pathfinder attempts
 	uint8_t critical_breakdown_count = 0;    ///< Counter for the number of critical breakdowns since last service
+	std::vector<VehicleID> ferry_vehicles{}; ///< NOSAVE: Road vehicles aboard this car ferry, sorted by ID.
 
 	Ship(VehicleID index) : SpecializedVehicleBase(index) {}
 	/** We want to 'destruct' the right class. */

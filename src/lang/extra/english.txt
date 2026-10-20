@@ -2736,3 +2736,21 @@ STR_GRAPH_ECONOMY_KEY_CUMULATIVE_INCOME                         :{TINY_FONT}{BLA
 STR_GRAPH_ECONOMY_KEY_CURRENT_INCOME                            :{TINY_FONT}{BLACK}Current income inflation
 STR_GRAPH_ECONOMY_TOGGLE_KEY                                    :{BLACK}Click to toggle display of this line
 STR_GRAPH_ECONOMY_YEAR                                          :{NUM}
+
+STR_ERROR_ROAD_VEHICLE_IS_ABOARD_FERRY                          :{WHITE}... road vehicle is aboard a ship
+STR_ERROR_CAR_FERRY_CARRIES_ROAD_VEHICLES                       :{WHITE}... ship is carrying road vehicles
+STR_ERROR_CAR_FERRY_MULTI_PART_SHIP                             :{WHITE}... only single-part ships can carry road vehicles
+STR_ERROR_CAR_FERRY_NO_CAPACITY                                 :{WHITE}... ship has no cargo space
+STR_ORDER_FERRY_BOARD                                           :(board ship)
+STR_ORDER_FERRY_LEAVE                                           :(leave ship)
+STR_ORDER_FERRY_ACTION_NONE                                     :No ship transfer
+STR_ORDER_FERRY_ACTION_BOARD                                    :Board ship here
+STR_ORDER_FERRY_ACTION_LEAVE                                    :Leave ship here
+STR_REFIT_CAR_FERRY                                             :Road vehicles (car ferry)
+STR_REFIT_CAR_FERRY_NEW_CAPACITY                                :{BLACK}New capacity: {GOLD}{NUM} road vehicle{P "" s}
+STR_VEHICLE_DETAILS_CAR_FERRY                                   :{BLACK}Car ferry: {LTBLUE}{NUM} of {NUM} road vehicle{P 1 "" s} aboard
+STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE                           :{BLACK}{VEHICLE} {GRAY}to {STATION}: {BLACK}{RAW_STRING}
+STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE_ANY                       :{BLACK}{VEHICLE}: {RAW_STRING}
+STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE_EMPTY                     :Empty
+STR_VEHICLE_DETAILS_CAR_FERRY_MORE                              :{BLACK}... and {NUM} more
+STR_VEHICLE_STATUS_ABOARD_FERRY                                 :{LTBLUE}Aboard {VEHICLE}

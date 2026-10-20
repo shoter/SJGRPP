@@ -299,6 +299,7 @@ enum ModifyOrderFlags : uint8_t {
 	MOF_COLOUR,          ///< Change the colour value
 	MOF_LABEL_TEXT,      ///< Change the label text value
 	MOF_DEPARTURES_SUBTYPE, ///< Change the label departures subtype
+	MOF_FERRY_ACTION,    ///< Change the car ferry action of a road vehicle station order
 	MOF_END
 };
 
@@ -312,6 +313,16 @@ enum OrderDepotAction : uint8_t {
 	DA_UNBUNCH,   ///< Go to the depot and unbunch
 	DA_SELL,      ///< Go to the depot and sell vehicle
 	DA_END
+};
+
+/**
+ * What a road vehicle does with a car ferry at a station order.
+ */
+enum class FerryAction : uint8_t {
+	None  = 0, ///< Ordinary stop
+	Board = 1, ///< Wait at the stop and board a car ferry
+	Leave = 2, ///< Leave the car ferry at this station
+	End,
 };
 
 /**

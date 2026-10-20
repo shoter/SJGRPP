@@ -1967,7 +1967,7 @@ CommandCost CmdModifyOrder(DoCommandFlags flags, VehicleID veh, VehicleOrderID s
 	} else {
 		switch (order->GetType()) {
 			case OT_GOTO_STATION:
-				if (mof != MOF_NON_STOP && mof != MOF_STOP_LOCATION && mof != MOF_UNLOAD && mof != MOF_LOAD && mof != MOF_CARGO_TYPE_UNLOAD && mof != MOF_CARGO_TYPE_LOAD && mof != MOF_RV_TRAVEL_DIR) return CMD_ERROR;
+				if (mof != MOF_NON_STOP && mof != MOF_STOP_LOCATION && mof != MOF_UNLOAD && mof != MOF_LOAD && mof != MOF_CARGO_TYPE_UNLOAD && mof != MOF_CARGO_TYPE_LOAD && mof != MOF_RV_TRAVEL_DIR && mof != MOF_FERRY_ACTION) return CMD_ERROR;
 				break;
 
 			case OT_GOTO_DEPOT:
@@ -2295,6 +2295,12 @@ CommandCost CmdModifyOrder(DoCommandFlags flags, VehicleID veh, VehicleOrderID s
 		case MOF_RV_TRAVEL_DIR:
 			if (v->type != VehicleType::Road) return CMD_ERROR;
 			if (data >= to_underlying(DiagDirection::End) && data != to_underlying(DiagDirection::Invalid)) return CMD_ERROR;
+			break;
+
+		case MOF_FERRY_ACTION:
+			if (v->type != VehicleType::Road) return CMD_ERROR;
+			if (data >= to_underlying(FerryAction::End)) return CMD_ERROR;
+			if (data == to_underlying(order->GetFerryAction())) return CMD_ERROR;
 			break;
 
 		case MOF_COUNTER_ID:
@@ -2637,6 +2643,10 @@ CommandCost CmdModifyOrder(DoCommandFlags flags, VehicleID veh, VehicleOrderID s
 				order->SetRoadVehTravelDirection((DiagDirection)data);
 				break;
 
+			case MOF_FERRY_ACTION:
+				order->SetFerryAction(static_cast<FerryAction>(data));
+				break;
+
 			case MOF_COUNTER_OP:
 				order->SetCounterOperation(data);
 				break;
@@ -2709,6 +2719,9 @@ CommandCost CmdModifyOrder(DoCommandFlags flags, VehicleID veh, VehicleOrderID s
 			if (mof == MOF_RV_TRAVEL_DIR && sel_ord == u->cur_real_order_index &&
 					(u->current_order.IsType(OT_GOTO_STATION) || u->current_order.IsType(OT_GOTO_WAYPOINT))) {
 				u->current_order.SetRoadVehTravelDirection((DiagDirection)data);
+			}
+			if (mof == MOF_FERRY_ACTION && sel_ord == u->cur_real_order_index && u->current_order.IsType(OT_GOTO_STATION)) {
+				u->current_order.SetFerryAction(static_cast<FerryAction>(data));
 			}
 
 			/* Unbunching data is no longer valid. */
@@ -3216,7 +3229,8 @@ void CheckOrders(const Vehicle *v)
 		if (v->GetNumOrders() > 1 && v->orders->GetFirstOrder()->IsGotoOrder()) {
 			const Order *last = v->GetLastOrder();
 
-			if (v->orders->GetFirstOrder()->Equals(*last)) {
+			/* Leaving a car ferry and boarding the next one at the same stop are different orders. */
+			if (v->orders->GetFirstOrder()->Equals(*last) && v->orders->GetFirstOrder()->GetFerryAction() == last->GetFerryAction()) {
 				message = STR_NEWS_VEHICLE_HAS_DUPLICATE_ENTRY;
 			}
 		}

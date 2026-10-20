@@ -543,6 +543,7 @@ enum class Commands : uint8_t {
 	SellVehicle,                            ///< sell a vehicle
 	BuyUsedVehicle,                         ///< buy a vehicle on the used vehicle market
 	RefitVehicle,                           ///< refit the cargo space of a vehicle
+	SetCarFerry,                            ///< refit a ship to carry road vehicles (car ferry)
 	SendVehicleToDepot,                     ///< send a vehicle to a depot
 	MassSendVehicleToDepot,                 ///< mass send vehicles to depots
 	SetVehicleVisibility,                   ///< hide or unhide a vehicle in the build vehicle and autoreplace GUIs

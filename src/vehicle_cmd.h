@@ -28,6 +28,7 @@ DEF_CMD_TUPLE    (Commands::BuildVehicle,             CmdBuildVehicle,          
 DEF_CMD_TUPLE    (Commands::BuyUsedVehicle,           CmdBuyUsedVehicle,            CMD_CLIENT_ID, CommandType::VehicleConstruction, CmdDataT<uint32_t, ClientID>)
 DEF_CMD_TUPLE    (Commands::SellVehicle,              CmdSellVehicle,               CMD_CLIENT_ID, CommandType::VehicleConstruction, CmdDataT<VehicleID, SellVehicleFlags, ClientID>)
 DEF_CMD_TUPLE_LT (Commands::RefitVehicle,             CmdRefitVehicle,                         {}, CommandType::VehicleConstruction, CmdDataT<VehicleID, CargoType, uint8_t, bool, bool, uint8_t>)
+DEF_CMD_TUPLE_LT (Commands::SetCarFerry,              CmdSetCarFerry,                          {}, CommandType::VehicleConstruction, CmdDataT<VehicleID, bool>)
 DEF_CMD_TUPLE_NT (Commands::SendVehicleToDepot,       CmdSendVehicleToDepot,                   {}, CommandType::VehicleManagement,   CmdDataT<VehicleID, DepotCommandFlags, TileIndex>)
 DEF_CMD_TUPLE_NT (Commands::MassSendVehicleToDepot,   CmdMassSendVehicleToDepot,               {}, CommandType::VehicleManagement,   CmdDataT<DepotCommandFlags, VehicleListIdentifier, CargoType>)
 DEF_CMD_TUPLE_NT (Commands::ChangeServiceInterval,    CmdChangeServiceInt,                     {}, CommandType::VehicleManagement,   CmdDataT<VehicleID, uint16_t, bool, bool>)

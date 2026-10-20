@@ -13,6 +13,8 @@
 #include "command_func.h"
 #include "engine_func.h"
 #include "vehicle_func.h"
+#include "car_ferry.h"
+#include "ship.h"
 #include "autoreplace_cmd.h"
 #include "autoreplace_func.h"
 #include "autoreplace_gui.h"
@@ -904,6 +906,7 @@ static CommandCost ReplaceChain(Vehicle **chain, DoCommandFlags flags, bool wago
 				/* The new vehicle is constructed, now take over cargo */
 				if (flags.Test(DoCommandFlag::Execute)) {
 					TransferCargo(old_head, new_head, true);
+					if (IsCarFerry(old_head)) Ship::From(new_head)->flags.Set(VehicleShipFlag::CarFerry);
 					*chain = new_head;
 
 					AI::NewEvent(old_head->owner, new ScriptEventVehicleAutoReplaced(old_head->index, new_head->index));

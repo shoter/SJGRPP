@@ -29,6 +29,7 @@
 #include "zoom_func.h"
 #include "date_func.h"
 #include "vehicle_func.h"
+#include "car_ferry.h"
 #include "used_vehicle.h"
 #include "autoreplace_cmd.h"
 #include "autoreplace_func.h"
@@ -851,7 +852,7 @@ void UpdateVehicleTileHash(Vehicle *v, bool remove)
 	TileIndex old_hash_tile = v->hash_tile_current;
 	TileIndex new_hash_tile;
 
-	if (remove || HasBit(v->subtype, GVSF_VIRTUAL) || (v->tile == 0 && _settings_game.construction.freeform_edges)) {
+	if (remove || HasBit(v->subtype, GVSF_VIRTUAL) || (v->tile == 0 && _settings_game.construction.freeform_edges) || IsRoadVehicleAboardFerry(v)) {
 		new_hash_tile = INVALID_TILE;
 	} else {
 		new_hash_tile = v->tile;
@@ -903,6 +904,7 @@ bool ValidateVehicleTileHash(const Vehicle *v)
 			|| (v->type == VehicleType::Train && Train::From(v)->IsVirtual())
 			|| (v->type == VehicleType::Ship && HasBit(v->subtype, GVSF_VIRTUAL))
 			|| (v->type == VehicleType::Aircraft && v->tile == 0 && _settings_game.construction.freeform_edges)
+			|| IsRoadVehicleAboardFerry(v)
 			|| v->type >= VehicleType::CompanyEnd) {
 		return v->hash_tile_current == INVALID_TILE;
 	}
@@ -1193,6 +1195,11 @@ void Vehicle::PreDestructor()
 		}
 	}
 
+
+	if (this->type == VehicleType::Road && this->IsPrimaryVehicle() && RoadVehicle::From(this)->IsAboardFerry()) {
+		OnRoadVehicleAboardFerryDeleted(this);
+	}
+	if (IsCarFerry(this)) OnCarFerryDeleted(this);
 
 	if (this->type == VehicleType::Road && this->IsPrimaryVehicle()) {
 		RoadVehicle *v = RoadVehicle::From(this);
@@ -3383,6 +3390,9 @@ void Vehicle::DeleteUnreachedImplicitOrders()
  */
 static void VehicleIncreaseStats(const Vehicle *front)
 {
+	/* Car ferries carry no cargo of their own. */
+	if (IsCarFerry(front)) return;
+
 	for (const Vehicle *v = front; v != nullptr; v = v->Next()) {
 		StationID last_loading_station = front->vehicle_flags.Test(VehicleFlag::LastLoadStationSeparate) ? v->last_loading_station : front->last_loading_station;
 		StateTicks loading_tick = front->vehicle_flags.Test(VehicleFlag::LastLoadStationSeparate) ? v->last_loading_tick : front->last_loading_tick;
@@ -3813,7 +3823,7 @@ void Vehicle::HandleLoading(bool mode)
 			if (!mode && this->type != VehicleType::Train) PayStationSharingFee(this, Station::Get(this->last_station_visited));
 
 			/* Not the first call for this tick, or still loading */
-			if (mode || !this->vehicle_flags.Test(VehicleFlag::LoadingFinished) || (this->current_order_time < wait_time && this->current_order.GetLeaveType() != OLT_LEAVE_EARLY) || ShouldVehicleContinueWaiting(this)) {
+			if (mode || !this->vehicle_flags.Test(VehicleFlag::LoadingFinished) || (this->current_order_time < wait_time && this->current_order.GetLeaveType() != OLT_LEAVE_EARLY) || ShouldVehicleContinueWaiting(this) || IsRoadVehicleWaitingForFerry(this)) {
 				if (!mode && this->type == VehicleType::Train && Train::From(this)->flags.Test(VehicleRailFlag::AdvanceInPlatform)) this->AdvanceLoadingInStation();
 				return;
 			}
@@ -4010,6 +4020,7 @@ CommandCost Vehicle::SendToDepot(DoCommandFlags flags, DepotCommandFlags command
 	if (ret.Failed()) return ret;
 
 	if (this->vehstatus.Test(VehState::Crashed)) return CMD_ERROR;
+	if (IsRoadVehicleAboardFerry(this)) return CommandCost(STR_ERROR_ROAD_VEHICLE_IS_ABOARD_FERRY);
 	if (this->IsStoppedInDepot()) {
 		if (command.Test(DepotCommandFlag::Sell) && !command.Test(DepotCommandFlag::Cancel) && (!command.Test(DepotCommandFlag::Specific) || specific_depot == this->tile)) {
 			/* Sell vehicle immediately */
