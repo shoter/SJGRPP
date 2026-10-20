@@ -87,6 +87,7 @@ void ClearOrderDestinationRefcountMap();
  * OrderConditionVariable::CargoWaitingAmount: Bits 0-15: Station ID to test + 1
  * OrderConditionVariable::CargoWaitingAmountPercentage: Bits 0-15: Station ID to test + 1, Bit 16: Refit mode
  * OrderConditionVariable::DispatchSlot: OCDM_ROUTE_ID: Bits 0-15: Route ID
+ * OT_GOTO_STATION (road vehicles): Bits 0-1: GetFerryAction(): Car ferry action at this stop
  */
 
 struct OrderExtraInfo {
@@ -741,6 +742,19 @@ public:
 	inline void SetRoadVehTravelDirection(DiagDirection dir)
 	{
 		if (dir != this->GetRoadVehTravelDirection()) SB(this->GetXFlagsRef(), 5, 3, (to_underlying(dir) + 1) & 0x7);
+	}
+
+	/** Get what a road vehicle does with a car ferry at this station order. */
+	inline FerryAction GetFerryAction() const
+	{
+		if (!this->IsType(OT_GOTO_STATION)) return FerryAction::None;
+		return static_cast<FerryAction>(GB(this->GetXData2(), 0, 2));
+	}
+
+	/** Set what a road vehicle does with a car ferry at this station order. */
+	inline void SetFerryAction(FerryAction action)
+	{
+		if (action != this->GetFerryAction()) SB(this->GetXData2Ref(), 0, 2, to_underlying(action));
 	}
 
 	/**

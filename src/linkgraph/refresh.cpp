@@ -8,6 +8,7 @@
 /** @file refresh.cpp Definition of link refreshing utility. */
 
 #include "../stdafx.h"
+#include "../car_ferry.h"
 #include "../core/bitmath_func.hpp"
 #include "../station_func.h"
 #include "../engine_base.h"
@@ -28,6 +29,9 @@
 {
 	/* If there are no orders we can't predict anything.*/
 	if (v->orders == nullptr) return;
+
+	/* Car ferries carry road vehicles, not cargo. */
+	if (IsCarFerry(v)) return;
 
 	CargoTypes have_cargo_mask = v->GetLastLoadingStationValidCargoMask();
 

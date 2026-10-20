@@ -9,6 +9,7 @@
 
 #include "stdafx.h"
 #include "roadveh.h"
+#include "car_ferry.h"
 #include "command_func.h"
 #include "error_func.h"
 #include "news_func.h"
@@ -417,6 +418,7 @@ CommandCost CmdTurnRoadVeh(DoCommandFlags flags, VehicleID veh_id)
 			v->overtaking != 0 ||
 			v->state == RVSB_WORMHOLE ||
 			v->IsInDepot() ||
+			v->IsAboardFerry() ||
 			v->current_order.IsType(OT_LOADING)) {
 		return CMD_ERROR;
 	}
@@ -1359,6 +1361,100 @@ static bool RoadVehLeaveDepot(RoadVehicle *v, bool first)
 	return true;
 }
 
+/**
+ * Take a road vehicle off the map when it drives onto a car ferry.
+ * @param v The front of the road vehicle.
+ * @param ferry The ship it boards.
+ */
+void RoadVehBoardFerry(RoadVehicle *v, VehicleID ferry)
+{
+	assert(v->IsFrontEngine());
+	if ((IsInsideMM(v->state, RVSB_IN_DT_ROAD_STOP, RVSB_IN_DT_ROAD_STOP_END) || IsInsideMM(v->state, RVSB_IN_ROAD_STOP, RVSB_IN_ROAD_STOP_END)) && IsStationRoadStopTile(v->tile)) {
+		RoadStop::GetByTile(v->tile, GetRoadStopType(v->tile))->Leave(v);
+	}
+
+	for (RoadVehicle *u = v; u != nullptr; u = u->Next()) {
+		if (u->IsDrawn()) u->MarkAllViewportsDirty();
+		u->ferry_carrier = ferry;
+		u->vehstatus.Set(VehState::Hidden);
+		u->state = DiagDirToDiagTrackdir(DirToDiagDir(u->direction));
+		u->frame = RVC_DEFAULT_START_FRAME;
+		u->overtaking = 0;
+		u->UpdateIsDrawn();
+		u->UpdatePosition(); // Takes it out of the tile hash.
+	}
+
+	v->cur_speed = 0;
+	v->blocked_ctr = 0;
+	v->overtaking_ctr = 0;
+	v->reverse_ctr = 0;
+	ClrBit(v->rvflags, RVF_ON_LEVEL_CROSSING);
+	if (v->cached_path != nullptr) v->cached_path->clear();
+}
+
+/**
+ * Check whether a road vehicle can drive off a car ferry onto a tile.
+ * @param v The front of the road vehicle.
+ * @param tile Normal road tile next to a road stop.
+ * @param dir Direction the vehicle drives in, towards the road stop.
+ * @return True if the road on the tile is suitable, ignoring other vehicles.
+ */
+bool RoadVehCanLeaveFerryOnto(const RoadVehicle *v, TileIndex tile, DiagDirection dir)
+{
+	if (!IsValidTile(tile) || !IsNormalRoadTile(tile) || HasRoadWorks(tile)) return false;
+	if (!HasTileAnyRoadType(tile, v->compatible_roadtypes)) return false;
+	RoadTramType rtt = GetRoadTramType(v->roadtype);
+	RoadBits needed = AxisToRoadBits(DiagDirToAxis(dir));
+	if ((GetRoadBits(tile, rtt) & needed) != needed) return false;
+	if (rtt == RoadTramType::Road && GetDisallowedRoadDirections(tile) != DRD_NONE) return false;
+
+	std::vector<uint> lengths;
+	for (const RoadVehicle *u = v; u != nullptr; u = u->Next()) lengths.push_back(u->gcache.cached_veh_length);
+	return GetFerrySpawnFrames(lengths, TILE_SIZE - 1).has_value();
+}
+
+/**
+ * Put a road vehicle that drives off a car ferry back on the map.
+ * @param v The front of the road vehicle.
+ * @param tile Tile to put it on, see #RoadVehCanLeaveFerryOnto.
+ * @param dir Direction it drives in.
+ */
+void RoadVehLeaveFerry(RoadVehicle *v, TileIndex tile, DiagDirection dir)
+{
+	assert(v->IsFrontEngine());
+	std::vector<uint> lengths;
+	for (const RoadVehicle *u = v; u != nullptr; u = u->Next()) lengths.push_back(u->gcache.cached_veh_length);
+	std::optional<std::vector<uint>> frames = GetFerrySpawnFrames(lengths, TILE_SIZE - 1);
+	assert(frames.has_value());
+
+	Trackdir tdir = DiagDirToDiagTrackdir(dir);
+	const RoadDriveEntry *rdp = _road_drive_data[GetRoadTramType(v->roadtype)][(to_underlying(_settings_game.vehicle.road_side) << RVS_DRIVE_SIDE) + tdir];
+
+	size_t i = 0;
+	for (RoadVehicle *u = v; u != nullptr; u = u->Next(), i++) {
+		uint frame = (*frames)[i];
+		u->ferry_carrier = VehicleID::Invalid();
+		u->tile = tile;
+		u->state = tdir;
+		u->frame = frame;
+		u->overtaking = 0;
+		u->direction = DiagDirToDir(dir);
+		u->x_pos = TileX(tile) * TILE_SIZE + (rdp[frame].x & 0xF);
+		u->y_pos = TileY(tile) * TILE_SIZE + (rdp[frame].y & 0xF);
+		u->vehstatus.Reset(VehState::Hidden);
+		u->InvalidateImageCache();
+		u->UpdateIsDrawn();
+		u->UpdatePosition();
+		u->UpdateInclination(true, true);
+	}
+
+	v->ferry_dest = StationID::Invalid();
+	v->cur_speed = 0;
+	RoadVehUpdateCache(v);
+	v->CargoChanged();
+	StartRoadVehSound(v);
+}
+
 static Trackdir FollowPreviousRoadVehicle(const RoadVehicle *v, const RoadVehicle *prev, TileIndex tile, DiagDirection entry_dir, bool already_reversed)
 {
 	if (prev->tile == v->tile && !already_reversed) {
@@ -2245,6 +2341,9 @@ bool RoadVehicle::Tick()
 	UpdateStateChecksum((((uint64_t) this->x_pos) << 32) | this->y_pos);
 	DEBUG_UPDATESTATECHECKSUM("RoadVehicle::Tick 2: v: {}, state: {}, frame: {}", this->index, this->state, this->frame);
 	UpdateStateChecksum((((uint64_t) this->state) << 32) | this->frame);
+	/* Vehicles aboard a car ferry are carried along; they neither move nor cost running costs. */
+	if (this->IsAboardFerry()) return true;
+
 	if (this->IsFrontEngine()) {
 		if (!(this->IsRoadVehicleStopped() || this->IsWaitingInDepot())) this->running_ticks++;
 		return RoadVehController(this);
@@ -2312,7 +2411,7 @@ static void CheckIfRoadVehNeedsService(RoadVehicle *v)
 
 void RoadVehicle::OnNewDay()
 {
-	if (!this->IsFrontEngine()) return;
+	if (!this->IsFrontEngine() || this->IsAboardFerry()) return;
 
 	if (!EconTime::UsingWallclockUnits()) AgeVehicle(this);
 	EconomyAgeVehicle(this);
@@ -2322,7 +2421,7 @@ void RoadVehicle::OnNewDay()
 
 void RoadVehicle::OnPeriodic()
 {
-	if (!this->IsFrontEngine()) return;
+	if (!this->IsFrontEngine() || this->IsAboardFerry()) return;
 
 	if (this->blocked_ctr == 0) CheckVehicleBreakdown(this);
 

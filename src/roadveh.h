@@ -159,6 +159,8 @@ struct RoadVehicle final : public GroundVehicle<RoadVehicle, VehicleType::Road> 
 	uint8_t reverse_ctr = 0;
 	uint8_t critical_breakdown_count = 0;              ///< Counter for the number of critical breakdowns since last service
 	uint8_t rvflags = 0;                               ///< Road vehicle flags
+	VehicleID ferry_carrier = VehicleID::Invalid();    ///< Car ferry this part is aboard, if any.
+	StationID ferry_dest = StationID::Invalid();       ///< Front only: station where the vehicle leaves its car ferry.
 
 	RoadType roadtype{};                               ///< Roadtype of this vehicle.
 
@@ -178,6 +180,7 @@ struct RoadVehicle final : public GroundVehicle<RoadVehicle, VehicleType::Road> 
 	Money GetRunningCost() const override;
 	int GetDisplayImageWidth(Point *offset = nullptr) const;
 	bool IsInDepot() const override { return this->state == RVSB_IN_DEPOT; }
+	bool IsAboardFerry() const { return this->ferry_carrier != VehicleID::Invalid(); }
 	bool Tick() override;
 	void OnNewDay() override;
 	void OnPeriodic() override;

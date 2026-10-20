@@ -97,6 +97,7 @@
 
 #include "../sector_func.h"
 #include "../variable_inflation.h"
+#include "../car_ferry.h"
 
 #include "../safeguards.h"
 
@@ -4700,6 +4701,7 @@ bool AfterLoadGame()
 	AfterLoadCompanyStats();
 	AfterLoadStoryBook();
 	AfterLoadSectors();
+	AfterLoadCarFerries();
 
 	InitializeRailGUI(); // Needs to be after AfterLoadCompanyStats
 	InitializeRoadGUI(); // "

@@ -17,6 +17,9 @@
 #include "vehicle_func.h"
 #include "zoom_func.h"
 #include "ship.h"
+#include "car_ferry.h"
+#include "roadveh.h"
+#include "station_base.h"
 #include "core/format.hpp"
 
 #include "table/strings.h"
@@ -116,6 +119,37 @@ void DrawShipDetails(const Vehicle *v, const Rect &r)
 			} else {
 				DrawString(r.left, r.right, y, STR_VEHICLE_DETAILS_CARGO_EMPTY);
 			}
+			y += GetCharacterHeight(FontSize::Normal);
+		}
+		y += WidgetDimensions::scaled.vsep_normal;
+	} else if (IsCarFerry(v)) {
+		const Ship *ship = Ship::From(v);
+		DrawString(r.left, r.right, y, GetString(STR_VEHICLE_DETAILS_CAR_FERRY, ship->ferry_vehicles.size(), GetCarFerryCapacity(v)));
+		y += GetCharacterHeight(FontSize::Normal) + WidgetDimensions::scaled.vsep_normal;
+
+		if (ship->ferry_vehicles.empty()) {
+			DrawString(r.left, r.right, y, STR_VEHICLE_DETAILS_CARGO_EMPTY);
+			y += GetCharacterHeight(FontSize::Normal);
+		}
+		const size_t shown = std::min(ship->ferry_vehicles.size(), MAX_CAR_FERRY_DETAILS_LINES);
+		for (size_t i = 0; i < shown; i++) {
+			const RoadVehicle *rv = RoadVehicle::Get(ship->ferry_vehicles[i]);
+			format_buffer cargo;
+			for (const RoadVehicle *u = rv; u != nullptr; u = u->Next()) {
+				if (u->cargo.StoredCount() == 0) continue;
+				if (!cargo.empty()) cargo.append(GetListSeparator());
+				AppendStringInPlace(cargo, STR_JUST_CARGO, u->cargo_type, u->cargo.StoredCount());
+			}
+			if (cargo.empty()) AppendStringInPlace(cargo, STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE_EMPTY);
+			if (Station::IsValidID(rv->ferry_dest)) {
+				DrawString(r.left, r.right, y, GetString(STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE, rv->index, rv->ferry_dest, cargo));
+			} else {
+				DrawString(r.left, r.right, y, GetString(STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE_ANY, rv->index, cargo));
+			}
+			y += GetCharacterHeight(FontSize::Normal);
+		}
+		if (ship->ferry_vehicles.size() > shown) {
+			DrawString(r.left, r.right, y, GetString(STR_VEHICLE_DETAILS_CAR_FERRY_MORE, ship->ferry_vehicles.size() - shown));
 			y += GetCharacterHeight(FontSize::Normal);
 		}
 		y += WidgetDimensions::scaled.vsep_normal;

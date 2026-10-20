@@ -1248,6 +1248,8 @@ NamedSaveLoadTable GetVehicleDescription(VehicleType vt)
 		NSL("",                          SLE_CONDNULL(16,                                                            SLV_2, SLV_144)), // old reserved space
 		NSL("critical_breakdown_count", SLE_CONDVAR_X(RoadVehicle, critical_breakdown_count, SLE_UINT8,              SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_IMPROVED_BREAKDOWNS, 6))),
 		NSL("rvflags",                  SLE_CONDVAR_X(RoadVehicle, rvflags,                  SLE_UINT8,              SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_ROAD_VEH_FLAGS))),
+		NSL("ferry_carrier",            SLE_CONDVAR_X(RoadVehicle, ferry_carrier,            SLE_UINT32,             SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_CAR_FERRY))),
+		NSL("ferry_dest",               SLE_CONDVAR_X(RoadVehicle, ferry_dest,               SLE_UINT16,             SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_CAR_FERRY))),
 	};
 
 	static const NamedSaveLoad _ship_desc[] = {

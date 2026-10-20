@@ -17,6 +17,7 @@
 #include "aircraft.h"
 #include "newgrf_text.h"
 #include "vehicle_func.h"
+#include "car_ferry.h"
 #include "string_func.h"
 #include "depot_map.h"
 #include "vehiclelist.h"
@@ -340,6 +341,8 @@ CommandCost CmdSellVehicle(DoCommandFlags flags, TileIndex tile, VehicleID v_id,
 	/* Do this check only if the vehicle to be moved is non-virtual */
 	if (!HasFlag(sell_flags, SellVehicleFlags::VirtualOnly) && !front->IsStoppedInDepot()) return CommandCost(STR_ERROR_TRAIN_MUST_BE_STOPPED_INSIDE_DEPOT + to_underlying(front->type));
 
+	if (IsCarFerry(front) && !Ship::From(front)->ferry_vehicles.empty()) return CommandCost(STR_ERROR_CAR_FERRY_CARRIES_ROAD_VEHICLES);
+
 	std::vector<UsedVehicleSaleCandidate> used_vehicles;
 	if (flags.Test(DoCommandFlag::Execute) && HasFlag(sell_flags, SellVehicleFlags::ToUsedMarket) && !HasFlag(sell_flags, SellVehicleFlags::VirtualOnly) && IsUsedVehicleMarketEnabled()) {
 		CollectUsedVehicleSaleCandidates(v, HasFlag(sell_flags, SellVehicleFlags::SellChain), used_vehicles);
@@ -637,6 +640,9 @@ CommandCost CmdRefitVehicle(DoCommandFlags flags, VehicleID veh_id, CargoType ne
 
 	if (front->vehstatus.Test(VehState::Crashed)) return CommandCost(STR_ERROR_VEHICLE_IS_DESTROYED);
 
+	/* Refitting a car ferry to cargo puts the road vehicles off first. */
+	if (!flags.Test(DoCommandFlag::QueryCost) && IsCarFerry(front) && !Ship::From(front)->ferry_vehicles.empty()) return CommandCost(STR_ERROR_CAR_FERRY_CARRIES_ROAD_VEHICLES);
+
 	/* Check cargo */
 	if (new_cid >= NUM_CARGO) return CMD_ERROR;
 
@@ -660,6 +666,7 @@ CommandCost CmdRefitVehicle(DoCommandFlags flags, VehicleID veh_id, CargoType ne
 			case VehicleType::Ship:
 				v->InvalidateNewGRFCacheOfChain();
 				Ship::From(front)->UpdateCache();
+				Ship::From(front)->flags.Reset(VehicleShipFlag::CarFerry);
 				break;
 
 			case VehicleType::Aircraft:
@@ -687,6 +694,46 @@ CommandCost CmdRefitVehicle(DoCommandFlags flags, VehicleID veh_id, CargoType ne
 	}
 
 	return cost;
+}
+
+/**
+ * Refit a ship to carry road vehicles (car ferry), or back to carrying cargo.
+ * @param flags type of operation
+ * @param veh_id ship to refit
+ * @param enable true to make it a car ferry, false to carry cargo again
+ * @return the cost of this operation or an error
+ */
+CommandCost CmdSetCarFerry(DoCommandFlags flags, VehicleID veh_id, bool enable)
+{
+	Ship *v = Ship::GetIfValid(veh_id);
+	if (v == nullptr || !v->IsPrimaryVehicle()) return CMD_ERROR;
+
+	CommandCost ret = CheckVehicleControlAllowed(v);
+	if (ret.Failed()) return ret;
+
+	if (v->vehstatus.Test(VehState::Crashed)) return CommandCost(STR_ERROR_VEHICLE_IS_DESTROYED);
+	if (!v->IsStoppedInDepot()) return CommandCost(STR_ERROR_SHIP_MUST_BE_STOPPED_INSIDE_DEPOT);
+	if (enable == IsCarFerry(v)) return CommandCost();
+	if (enable) {
+		if (v->Next() != nullptr) return CommandCost(STR_ERROR_CAR_FERRY_MULTI_PART_SHIP);
+		if (!CanEngineBeCarFerry(v->engine_type)) return CommandCost(STR_ERROR_CAR_FERRY_NOT_GOODS_SHIP);
+		if (v->cargo_cap == 0) return CommandCost(STR_ERROR_CAR_FERRY_NO_CAPACITY);
+	}
+	if (!enable && !v->ferry_vehicles.empty()) return CommandCost(STR_ERROR_CAR_FERRY_CARRIES_ROAD_VEHICLES);
+
+	if (flags.Test(DoCommandFlag::Execute)) {
+		v->flags.Set(VehicleShipFlag::CarFerry, enable);
+		/* The cargo hold is used for road vehicles now. */
+		if (enable) v->cargo.Truncate();
+		v->MarkDirty();
+		InvalidateWindowData(WindowClass::VehicleDetails, v->index);
+		InvalidateWindowData(WindowClass::VehicleRefit, v->index);
+		SetWindowDirty(WindowClass::VehicleView, v->index);
+		InvalidateVehicleListWindows(VehicleType::Ship);
+		SetWindowDirty(WindowClass::VehicleDepot, v->tile.base());
+	}
+
+	return CommandCost();
 }
 
 /**
@@ -1613,6 +1660,9 @@ CommandCost CmdCloneVehicle(DoCommandFlags flags, TileIndex tile, VehicleID veh_
 
 		/* Now clone the vehicle's name, if it has one. */
 		if (!v_front->name.empty()) CloneVehicleName(v_front, w_front);
+
+		/* A clone of a car ferry is a car ferry too. */
+		if (IsCarFerry(v_front)) Ship::From(w_front)->flags.Set(VehicleShipFlag::CarFerry);
 
 		/* Since we can't estimate the cost of cloning a vehicle accurately we must
 		 * check whether the company has enough money manually. */

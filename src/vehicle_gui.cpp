@@ -8,6 +8,7 @@
 /** @file vehicle_gui.cpp The base GUI for all vehicles. */
 
 #include "stdafx.h"
+#include "car_ferry.h"
 #include "custom_colour.h"
 #include "debug.h"
 #include "company_func.h"
@@ -19,6 +20,7 @@
 #include "newgrf_text.h"
 #include "newgrf_debug.h"
 #include "roadveh.h"
+#include "ship.h"
 #include "train.h"
 #include "train_cmd.h"
 #include "aircraft.h"
@@ -788,7 +790,7 @@ using RefitOptions = std::map<CargoType, std::vector<RefitOption>, CargoTypeComp
  * @param delta Step height in caller window
  * @param r     Rectangle of the matrix widget.
  */
-static void DrawVehicleRefitWindow(const RefitOptions &refits, const RefitOption *sel, uint pos, uint rows, uint delta, const Rect &r)
+static void DrawVehicleRefitWindow(const RefitOptions &refits, const RefitOption *ferry, const RefitOption *sel, uint pos, uint rows, uint delta, const Rect &r)
 {
 	Rect ir = r.Shrink(WidgetDimensions::scaled.matrix);
 	uint current = 0;
@@ -803,6 +805,15 @@ static void DrawVehicleRefitWindow(const RefitOptions &refits, const RefitOption
 	int iconinner  = rtl ? ir.right - iconwidth     : ir.left + iconwidth;
 
 	Rect tr = ir.Indent(iconwidth + WidgetDimensions::scaled.hsep_wide, rtl);
+
+	/* The car ferry option comes first. */
+	if (ferry != nullptr) {
+		if (current >= pos && current < pos + rows) {
+			DrawString(tr, STR_REFIT_CAR_FERRY, sel == ferry ? TextColour::White : TextColour::Black);
+			tr.top += delta;
+		}
+		current++;
+	}
 
 	/* Draw the list of subtypes for each cargo, and find the selected refit option (by its position). */
 	for (const auto &pair : refits) {
@@ -845,6 +856,8 @@ static void DrawVehicleRefitWindow(const RefitOptions &refits, const RefitOption
 struct RefitWindow : public Window {
 	const RefitOption *selected_refit = nullptr; ///< Selected refit option.
 	RefitOptions refit_list{};                   ///< List of refit subtypes available for each sorted cargo.
+	RefitOption ferry_option{INVALID_CARGO, UINT8_MAX, STR_REFIT_CAR_FERRY}; ///< Option to refit a ship to carry road vehicles.
+	bool has_ferry_option = false;               ///< Whether #ferry_option is offered.
 	VehicleOrderID order = INVALID_VEH_ORDER_ID; ///< If not #INVALID_VEH_ORDER_ID, selection is part of a refit order (rather than execute directly).
 	uint information_width = 0;                  ///< Width required for correctly displaying all cargoes in the information panel.
 	Scrollbar *vscroll = nullptr;                ///< The main scrollbar.
@@ -964,8 +977,14 @@ struct RefitWindow : public Window {
 			}
 		} while (v->IsArticulatedCallbackVehicleType() && (v = v->Next()) != nullptr);
 
+		/* A single-part ship can carry road vehicles instead of cargo. */
+		const Vehicle *front = Vehicle::Get(this->window_number);
+		this->has_ferry_option = CanShipBeCarFerry(front) && this->order == INVALID_VEH_ORDER_ID && !this->auto_refit;
+
 		/* Restore the previously selected RefitOption. */
-		if (current_refit_option.has_value()) {
+		if (current_refit_option.has_value() && this->has_ferry_option && current_refit_option->string == STR_REFIT_CAR_FERRY && current_refit_option->cargo == INVALID_CARGO) {
+			this->selected_refit = &this->ferry_option;
+		} else if (current_refit_option.has_value()) {
 			for (const auto &pair : this->refit_list) {
 				for (const auto &refit : pair.second) {
 					if (refit.cargo == current_refit_option->cargo && refit.subtype == current_refit_option->subtype) {
@@ -986,8 +1005,8 @@ struct RefitWindow : public Window {
 	void RefreshScrollbar()
 	{
 		size_t scroll_row = 0;
-		size_t rows = 0;
-		CargoType cargo = this->selected_refit == nullptr ? INVALID_CARGO : this->selected_refit->cargo;
+		size_t rows = this->has_ferry_option ? 1 : 0;
+		CargoType cargo = this->selected_refit == nullptr || this->selected_refit == &this->ferry_option ? INVALID_CARGO : this->selected_refit->cargo;
 
 		for (const auto &pair : this->refit_list) {
 			if (pair.first == cargo) {
@@ -1010,6 +1029,14 @@ struct RefitWindow : public Window {
 	void SetSelection(uint click_row)
 	{
 		uint row = 0;
+
+		if (this->has_ferry_option) {
+			if (click_row == 0) {
+				this->selected_refit = &this->ferry_option;
+				return;
+			}
+			row++;
+		}
 
 		for (const auto &pair : refit_list) {
 			for (const RefitOption &refit : pair.second) {
@@ -1154,6 +1181,9 @@ struct RefitWindow : public Window {
 	std::string GetCapacityString(const RefitOption &option) const
 	{
 		assert(_current_company == _local_company);
+		if (&option == &this->ferry_option) {
+			return GetString(STR_REFIT_CAR_FERRY_NEW_CAPACITY, Vehicle::Get(this->window_number)->cargo_cap);
+		}
 		CommandCost cost = Command<Commands::RefitVehicle>::Do(DoCommandFlag::QueryCost, this->selected_vehicle, option.cargo, option.subtype, this->auto_refit, false, this->num_vehicles);
 
 		if (cost.Failed()) return {};
@@ -1256,7 +1286,7 @@ struct RefitWindow : public Window {
 			}
 
 			case WID_VR_MATRIX:
-				DrawVehicleRefitWindow(this->refit_list, this->selected_refit, this->vscroll->GetPosition(), this->vscroll->GetCapacity(), this->resize.step_height, r);
+				DrawVehicleRefitWindow(this->refit_list, this->has_ferry_option ? &this->ferry_option : nullptr, this->selected_refit, this->vscroll->GetPosition(), this->vscroll->GetCapacity(), this->resize.step_height, r);
 				break;
 
 			case WID_VR_INFO:
@@ -1437,7 +1467,9 @@ struct RefitWindow : public Window {
 				if (this->selected_refit != nullptr) {
 					const Vehicle *v = Vehicle::Get(this->window_number);
 
-					if (this->order == INVALID_VEH_ORDER_ID) {
+					if (this->selected_refit == &this->ferry_option) {
+						if (Command<Commands::SetCarFerry>::Post(GetCmdRefitVehMsg(v), v->tile, v->index, true)) this->Close();
+					} else if (this->order == INVALID_VEH_ORDER_ID) {
 						bool delete_window = this->selected_vehicle == v->index && this->num_vehicles == UINT8_MAX;
 						if (Command<Commands::RefitVehicle>::Post(GetCmdRefitVehMsg(v), v->tile, this->selected_vehicle, this->selected_refit->cargo,
 								this->selected_refit->subtype, false, false, this->num_vehicles) && delete_window) {
@@ -3191,6 +3223,12 @@ struct VehicleDetailsWindow : Window {
 			for (const Vehicle *u = v; u != nullptr; u = u->Next()) {
 				if (u->cargo_cap != 0) desired_height += GetCharacterHeight(FontSize::Normal);
 			}
+		} else if (IsCarFerry(v)) {
+			/* One line per road vehicle aboard, at least one line, plus a line for the vehicles that are not listed. */
+			const size_t aboard = Ship::From(v)->ferry_vehicles.size();
+			size_t lines = std::max<size_t>(1, std::min(aboard, MAX_CAR_FERRY_DETAILS_LINES));
+			if (aboard > MAX_CAR_FERRY_DETAILS_LINES) lines++;
+			desired_height = static_cast<uint>(4 + lines) * GetCharacterHeight(FontSize::Normal) + WidgetDimensions::scaled.vsep_normal * 2;
 		} else {
 			desired_height = 5 * GetCharacterHeight(FontSize::Normal) + WidgetDimensions::scaled.vsep_normal * 2;
 		}
@@ -3976,6 +4014,9 @@ static bool IsVehicleRefittable(const Vehicle *v)
 {
 	if (!v->IsStoppedInDepot()) return false;
 
+	/* A ship that can carry goods can be refitted to carry road vehicles. */
+	if (CanShipBeCarFerry(v)) return true;
+
 	do {
 		if (IsEngineRefittable(v->engine_type)) return true;
 	} while (v->IsArticulatedCallbackVehicleType() && (v = v->Next()) != nullptr);
@@ -4288,6 +4329,8 @@ public:
 
 		if (v->vehstatus.Test(VehState::Crashed)) {
 			AppendStringInPlace(buffer, STR_VEHICLE_STATUS_CRASHED);
+		} else if (IsRoadVehicleAboardFerry(v) && !mouse_over_start_stop) {
+			AppendStringInPlace(buffer, STR_VEHICLE_STATUS_ABOARD_FERRY, RoadVehicle::From(v)->ferry_carrier);
 		} else if ((v->breakdown_ctr == 1 || (v->type == VehicleType::Train && Train::From(v)->flags.Any(VehicleRailFlagsIsBroken))) && !mouse_over_start_stop) {
 			const Vehicle *w = (v->type == VehicleType::Train) ? GetMostSeverelyBrokenEngine(Train::From(v)) : v;
 

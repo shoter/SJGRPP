@@ -96,6 +96,8 @@ add_files(
     bridge_signal_map.h
     build_vehicle_gui.cpp
     cachecheck.cpp
+    car_ferry.cpp
+    car_ferry.h
     cargo_type.h
     cargoaction.cpp
     cargoaction.h

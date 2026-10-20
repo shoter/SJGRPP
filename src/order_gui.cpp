@@ -920,6 +920,10 @@ void DrawOrderString(const Vehicle *v, const Order *order, int order_index, int 
 					AppendStringInPlace(line, STR_ORDER_RV_DIR_NE + to_underlying(order->GetRoadVehTravelDirection()));
 				}
 			}
+			if (v->type == VehicleType::Road && order->GetFerryAction() != FerryAction::None) {
+				line.push_back(' ');
+				AppendStringInPlace(line, order->GetFerryAction() == FerryAction::Board ? STR_ORDER_FERRY_BOARD : STR_ORDER_FERRY_LEAVE);
+			}
 			break;
 		}
 
@@ -3112,6 +3116,14 @@ public:
 					}
 				}
 
+				if (this->vehicle->type == VehicleType::Road && order->IsType(OT_GOTO_STATION)) {
+					const FerryAction action = order->GetFerryAction();
+					list.push_back(MakeDropDownListDividerItem());
+					list.push_back(MakeDropDownListCheckedItem(action == FerryAction::None, STR_ORDER_FERRY_ACTION_NONE, 0x400 + to_underlying(FerryAction::None), false));
+					list.push_back(MakeDropDownListCheckedItem(action == FerryAction::Board, STR_ORDER_FERRY_ACTION_BOARD, 0x400 + to_underlying(FerryAction::Board), false));
+					list.push_back(MakeDropDownListCheckedItem(action == FerryAction::Leave, STR_ORDER_FERRY_ACTION_LEAVE, 0x400 + to_underlying(FerryAction::Leave), false));
+				}
+
 				if (!order->IsType(OT_IMPLICIT)) {
 					list.push_back(MakeDropDownListDividerItem());
 					const Colours current_colour = order->GetColour();
@@ -3942,6 +3954,11 @@ public:
 				}
 				if (index >= 0x300 && index <= 0x300 + to_underlying(DiagDirection::Invalid)) {
 					this->ModifyOrder(this->OrderGetSel(), MOF_RV_TRAVEL_DIR, index & 0xFF);
+					break;
+				}
+				if (index >= 0x400 && index < 0x400 + to_underlying(FerryAction::End)) {
+					const Order *order = this->vehicle->GetOrder(this->OrderGetSel());
+					if (order != nullptr && to_underlying(order->GetFerryAction()) != (index & 0xFF)) this->ModifyOrder(this->OrderGetSel(), MOF_FERRY_ACTION, index & 0xFF);
 					break;
 				}
 				switch (index) {

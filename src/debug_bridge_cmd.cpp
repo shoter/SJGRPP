@@ -8,6 +8,7 @@
 /** @file debug_bridge_cmd.cpp Issuing game commands through the debug bridge, exactly like the GUI does. */
 
 #include "stdafx.h"
+#include "car_ferry.h"
 #include "command_func.h"
 #include "company_func.h"
 #include "core/backup_type.hpp"
@@ -422,6 +423,8 @@ json DebugBridgeEngineList(std::string_view type)
 			} else if (vt == VehicleType::Road) {
 				j["roadtype"] = e->VehInfo<RoadVehicleInfo>().roadtype;
 				j["power"] = e->GetPower();
+			} else if (vt == VehicleType::Ship) {
+				j["car_ferry"] = CanEngineBeCarFerry(e->index);
 			} else if (vt == VehicleType::Aircraft) {
 				const AircraftVehicleInfo &avi = e->VehInfo<AircraftVehicleInfo>();
 				j["helicopter"] = avi.subtype == AIR_HELI;
@@ -455,7 +458,7 @@ json DebugBridgeTiles(uint x0, uint y0, uint w, uint h)
 			owner.push_back(has_owner ? static_cast<uint8_t>(GetTileOwner(t).base()) : 255);
 			uint8_t sub_value = 0, bits_value = 0;
 			switch (tt) {
-				case TileType::Water: sub_value = to_underlying(GetWaterTileType(t)); break;
+				case TileType::Water: sub_value = to_underlying(GetWaterTileType(t)); bits_value = to_underlying(GetWaterClass(t)); break;
 				case TileType::Station: sub_value = to_underlying(GetStationType(t)); break;
 				case TileType::Road:
 					sub_value = to_underlying(GetRoadTileType(t));
