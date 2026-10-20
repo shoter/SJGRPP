@@ -107,10 +107,10 @@ def run(ctx):
     ctx.check_eq(expense(b, 0, SHARING_REVENUE), -expense(b, payer, SHARING_COST), "owner's revenue equals the payer's cost")
 
     # Save and load: the setting and fees stay.
-    save = str(inst.dir / "sharing.sav")
-    b.console(f"save {save}")
-    b.console(f"load {save}")
-    b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=120, what="reload")
+    b.save_game("sharing")
+    b.console("setting sharing_fee_inflation false")
+    ctx.check_eq(sharing_fees(b)["road"], FEE << 8, "road fee changed after saving")
+    b.load_game("sharing")
     ctx.check_eq(sharing_fees(b)["road"], (FEE << 8) * 3 // 2, "road fee after save/load")
 
     # The info window: last entry of the Help menu.

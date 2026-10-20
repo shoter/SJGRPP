@@ -99,9 +99,8 @@ def run(ctx):
 
     # Save and load keeps sectors and rights.
     before = sectors(b)
-    b.console("save sectors_test")
-    b.console("load sectors_test")
-    b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=60, what="reload")
+    b.save_game("sectors_test")
+    b.load_game("sectors_test")
     b.step(5)
     ctx.check(sectors(b) == before, "sectors and rights survive save/load")
 

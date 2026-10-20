@@ -173,9 +173,8 @@ def run(ctx):
         close_windows(b, lambda name: name in ("VehicleView", "VehicleDetails", "VehicleOrders"))
 
     # Save and load while the bus is aboard.
-    b.console("save car_ferry_test")
-    b.console("load car_ferry_test")
-    b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=60, what="reload")
+    b.save_game("car_ferry_test")
+    b.load_game("car_ferry_test")
     after = veh(b, bus, "ferry_carrier", "ferry_dest", "vehstatus")
     ctx.check(after["ferry_carrier"] == ship and after["ferry_dest"] == s2 and after["vehstatus"] & VEH_HIDDEN,
               f"bus still aboard after save/load ({after})")
