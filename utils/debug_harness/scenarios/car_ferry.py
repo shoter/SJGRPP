@@ -5,11 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from ottd import BridgeError  # noqa: E402
-from transport import (AXIS_X, INVALID_CARGO, INVALID_TOWN, NE, NEW_STATION, NW, ROAD_X, ROAD_Y, ROADSTOP_BUS,  # noqa: E402
-                       ROADTYPE_ROAD, SE, SW, BuildError, Builder, spiral)
+from transport import FERRY_BOARD, INVALID_CARGO, MOF_FERRY_ACTION, BuildError, Builder  # noqa: E402
 
-MOF_FERRY_ACTION = 25           # ModifyOrderFlags::MOF_FERRY_ACTION
-FERRY_NONE, FERRY_BOARD, FERRY_LEAVE = 0, 1, 2
 SHIP_FLAG_CAR_FERRY = 1 << 1    # VehicleShipFlag::CarFerry
 VEH_HIDDEN = 1 << 0             # VehState::Hidden
 INVALID_VEHICLE = 0xFFFFF
@@ -28,66 +25,23 @@ def tile_xy(b, tile: int) -> tuple[int, int]:
     return tile % mx, tile // mx
 
 
-def build_terminal(builder: Builder, station: int) -> dict:
-    """A drive-through bus stop joined to a dock station, with a short straight road and a road depot behind it."""
-    b = builder.b
-    gmap = builder.fresh_map()
-    sx, sy = tile_xy(b, b.obj("station", station, "xy")["xy"])
-    for tx, ty in spiral(sx, sy, 1, 3):
-        for axis in (AXIS_X, 1 - AXIS_X):
-            ax, ay = (1, 0) if axis == AXIS_X else (0, 1)
-            along = SW if axis == AXIS_X else SE        # direction of +axis
-            back = NE if axis == AXIS_X else NW         # direction of -axis
-            bits = ROAD_X if axis == AXIS_X else ROAD_Y
-            stop = gmap.tile(tx, ty)
-            roads = [gmap.tile(tx - ax, ty - ay), gmap.tile(tx + ax, ty + ay), gmap.tile(tx + 2 * ax, ty + 2 * ay)]
-            depot = gmap.tile(tx + 3 * ax, ty + 3 * ay)
-            plan = [("BuildRoadStop", stop, 1, 1, ROADSTOP_BUS, True, along, ROADTYPE_ROAD, 0, 0, station, False)]
-            plan += [("BuildRoad", t, bits, ROADTYPE_ROAD, 0, INVALID_TOWN, 0) for t in roads]
-            plan.append(("BuildRoadDepot", depot, ROADTYPE_ROAD, back))
-            if all(r["success"] for r in builder.test_many(plan)):
-                for line in plan:
-                    builder.cmd(*line)
-                return {"stop": stop, "roads": roads, "depot": depot}
-    raise BuildError(f"no bus terminal site next to dock station {station}")
-
-
 def set_ferry_action(b, vehicle: int, order: int, action: int) -> dict:
     return b.docmd("ModifyOrder", 0, vehicle, order, MOF_FERRY_ACTION, action, INVALID_CARGO, "")
 
 
 def setup_car_ferry_line(b, wait, log=print) -> dict:
-    """Ship route between two docks with a car ferry on it, a bus terminal at each dock and a bus with orders: board at
-    dock 1, leave at dock 2, board at dock 2, leave at dock 1. The ferry is started once the bus waits at dock 1.
-    wait(pred, max_ticks) lets the game run until pred() holds."""
+    """Car ferry line with one bus (see Builder.build_car_ferry_route). The ferry is started once the bus waits at
+    dock 1. wait(pred, max_ticks) lets the game run until pred() holds."""
     b.docmd("MoneyCheat", 0, 50_000_000)
     builder = Builder(b, log=log)
     towns = [b.obj("town", t, "xy")["xy"] for t in sorted(b.objs("town"))]
-    route = builder.build_ship_route(tile_xy(b, towns[0]), vehicles=1, min_dist=12, max_dist=40)
+    route = builder.build_car_ferry_route(tile_xy(b, towns[0]), buses=1, start_ferry=False)
+    ship, bus = route.vehicles[0], route.buses[0]
     s1, s2 = route.stations
-    # The route's own ship stays a passenger ship; the car ferry is a second one, refitted in the depot.
-    engine = b.obj("vehicle", route.vehicles[0], "engine_type")["engine_type"]
-    ship = builder.build_vehicle(route.depot_tile, engine)
-    res = b.docmd("SetCarFerry", 0, ship, True)
-    if not res["success"]:
-        raise BuildError(f"SetCarFerry failed: {res.get('error')}")
-    builder.order(ship, "station", s1)
-    builder.order(ship, "station", s2)
-
-    t1 = build_terminal(builder, s1)
-    t2 = build_terminal(builder, s2)
-    bus_engine = builder.pick_engine("road", roadtype=ROADTYPE_ROAD)
-    bus = builder.build_vehicle(t1["depot"], bus_engine["id"])
-    for station in (s1, s2, s2, s1):
-        builder.order(bus, "station", station)
-    for order, action in enumerate((FERRY_BOARD, FERRY_LEAVE, FERRY_BOARD, FERRY_LEAVE)):
-        res = set_ferry_action(b, bus, order, action)
-        if not res["success"]:
-            raise BuildError(f"ModifyOrder ferry action failed: {res.get('error')}")
-    builder.start_vehicle(bus)
     if not wait(lambda: b.obj("vehicle", bus, "last_station_visited")["last_station_visited"] == s1, 20 * TICKS_PER_DAY):
         raise BuildError("bus did not reach dock 1")
     builder.start_vehicle(ship)
+    t1, t2 = route.terminals
     return {"ship": ship, "bus": bus, "s1": s1, "s2": s2, "t1": t1, "t2": t2, "ship_depot": route.depot_tile, "builder": builder}
 
 

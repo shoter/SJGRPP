@@ -52,6 +52,8 @@ NEW_STATION = 0xFFFD
 INVALID_TOWN = 0xFFFF
 INVALID_CARGO = 0xFF
 ROADSTOP_BUS = 0
+MOF_FERRY_ACTION = 25           # ModifyOrderFlags::MOF_FERRY_ACTION
+FERRY_NONE, FERRY_BOARD, FERRY_LEAVE = 0, 1, 2
 # Airport types tried in order (type, size): small, commuter, city. Small planes can use all of them.
 AIRPORT_TYPES = ((0, (4, 3)), (5, (5, 4)), (1, (6, 6)))
 RAILTYPE_RAIL = 0
@@ -248,6 +250,8 @@ class Route:
     engine: str = ""
     path_length: int = 0
     commands: int = 0
+    buses: list[int] = field(default_factory=list)       # ferry: road vehicles crossing on the car ferry
+    terminals: list[dict] = field(default_factory=list)  # ferry: bus stop, roads and depot at each dock
 
     def to_json(self) -> dict:
         return dict(self.__dict__)
@@ -664,7 +668,9 @@ class Builder:
 
     # ---- ships ----
 
-    def build_ship_route(self, near: tuple[int, int], vehicles: int = 2, min_dist: int = 16, max_dist: int = 60) -> Route:
+    def build_ship_route(self, near: tuple[int, int], vehicles: int = 2, min_dist: int = 16, max_dist: int = 60,
+                         car_ferry: bool = False, start: bool = True) -> Route:
+        """car_ferry: refit the ships to carry road vehicles. start: start the first ship."""
         start_cmds = self.commands_sent
         gmap = self.fresh_map()
         bodies = gmap.water_bodies()
@@ -692,9 +698,12 @@ class Builder:
         route.depot_tile = self._ship_depot(gmap, pair[0])
         ship = self.pick_engine("ship")
         first = self.build_vehicle(route.depot_tile, ship["id"])
+        if car_ferry:
+            self.cmd("SetCarFerry", 0, first, True)
         self.order(first, "station", route.stations[0])
         self.order(first, "station", route.stations[1])
-        self.start_vehicle(first)
+        if start:
+            self.start_vehicle(first)
         route.vehicles.append(first)
         route.template_vehicle = first
         route.engine = ship["name"]
@@ -702,6 +711,56 @@ class Builder:
         route.path_length = abs(pair[0][0] - pair[1][0]) + abs(pair[0][1] - pair[1][1])
         route.commands = self.commands_sent - start_cmds
         return route
+
+    # ---- car ferries ----
+
+    def build_car_ferry_route(self, near: tuple[int, int], buses: int = 2, start_ferry: bool = True) -> Route:
+        """
+        A car ferry between two docks, a bus terminal at each dock and buses with orders: board at dock 1, leave at
+        dock 2, board at dock 2, leave at dock 1. Route.vehicles is the ferry followed by the buses.
+        """
+        start_cmds = self.commands_sent
+        route = self.build_ship_route(near, vehicles=1, min_dist=12, max_dist=40, car_ferry=True, start=start_ferry)
+        route.kind = "ferry"
+        s1, s2 = route.stations
+        route.terminals = [self._ferry_terminal(s1), self._ferry_terminal(s2)]
+        bus_engine = self.pick_engine("road", roadtype=ROADTYPE_ROAD)
+        depot = route.terminals[0]["depot"]
+        bus = self.build_vehicle(depot, bus_engine["id"])
+        for station in (s1, s2, s2, s1):
+            self.order(bus, "station", station)
+        for index, action in enumerate((FERRY_BOARD, FERRY_LEAVE, FERRY_BOARD, FERRY_LEAVE)):
+            self.cmd("ModifyOrder", 0, bus, index, MOF_FERRY_ACTION, action, INVALID_CARGO, "")
+        self.start_vehicle(bus)
+        route.buses = [bus] + [self.clone_vehicle(depot, bus) for _ in range(buses - 1)]
+        route.vehicles += route.buses
+        route.engine += f" + {buses} x {bus_engine['name']}"
+        route.commands = self.commands_sent - start_cmds
+        return route
+
+    def _ferry_terminal(self, station: int) -> dict:
+        """A drive-through bus stop joined to a dock station, a short straight road and a road depot behind it."""
+        gmap = self.fresh_map()
+        sx, sy = gmap.xy(self.b.obj("station", station, "xy")["xy"])
+        for tx, ty in spiral(sx, sy, 1, 3):
+            for axis in (AXIS_X, AXIS_Y):
+                ax, ay = (1, 0) if axis == AXIS_X else (0, 1)
+                along = SW if axis == AXIS_X else SE        # direction of +axis
+                back = NE if axis == AXIS_X else NW         # direction of -axis
+                bits = ROAD_X if axis == AXIS_X else ROAD_Y
+                if not gmap.inside(tx - ax, ty - ay) or not gmap.inside(tx + 3 * ax, ty + 3 * ay):
+                    continue
+                stop = gmap.tile(tx, ty)
+                roads = [gmap.tile(tx - ax, ty - ay), gmap.tile(tx + ax, ty + ay), gmap.tile(tx + 2 * ax, ty + 2 * ay)]
+                depot = gmap.tile(tx + 3 * ax, ty + 3 * ay)
+                plan = [("BuildRoadStop", stop, 1, 1, ROADSTOP_BUS, True, along, ROADTYPE_ROAD, 0, 0, station, False)]
+                plan += [("BuildRoad", t, bits, ROADTYPE_ROAD, 0, INVALID_TOWN, 0) for t in roads]
+                plan.append(("BuildRoadDepot", depot, ROADTYPE_ROAD, back))
+                if all(r["success"] for r in self.test_many(plan)):
+                    for line in plan:
+                        self.cmd(*line)
+                    return {"station": station, "stop": stop, "roads": roads, "depot": depot}
+        raise BuildError(f"no bus terminal site next to dock station {station}")
 
     def _dock_sites(self, gmap: GameMap, bodies: dict[int, int]) -> list[tuple[int, int, int, int]]:
         """(x, y, water_dir, water_body) of sloped free land tiles with open water in front."""
