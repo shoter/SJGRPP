@@ -8,6 +8,7 @@
 /** @file debug_bridge_cmd.cpp Issuing game commands through the debug bridge, exactly like the GUI does. */
 
 #include "stdafx.h"
+#include "car_ferry.h"
 #include "command_func.h"
 #include "company_func.h"
 #include "core/backup_type.hpp"
@@ -422,6 +423,8 @@ json DebugBridgeEngineList(std::string_view type)
 			} else if (vt == VehicleType::Road) {
 				j["roadtype"] = e->VehInfo<RoadVehicleInfo>().roadtype;
 				j["power"] = e->GetPower();
+			} else if (vt == VehicleType::Ship) {
+				j["car_ferry"] = CanEngineBeCarFerry(e->index);
 			} else if (vt == VehicleType::Aircraft) {
 				const AircraftVehicleInfo &avi = e->VehInfo<AircraftVehicleInfo>();
 				j["helicopter"] = avi.subtype == AIR_HELI;

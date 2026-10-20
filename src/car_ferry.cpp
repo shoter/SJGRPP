@@ -9,6 +9,8 @@
 
 #include "stdafx.h"
 #include "car_ferry.h"
+#include "cargotype.h"
+#include "engine_base.h"
 #include "order_base.h"
 #include "roadstop_base.h"
 #include "roadveh.h"
@@ -62,6 +64,30 @@ std::optional<std::vector<uint>> GetFerrySpawnFrames(std::span<const uint> lengt
 		if (i + 1 < lengths.size()) frame -= lengths[i];
 	}
 	return frames;
+}
+
+/**
+ * Can ships of this engine be refitted to carry road vehicles? Only ships that can carry goods can.
+ * @param engine The engine.
+ * @return True if it is a ship engine that carries goods or can be refitted to goods.
+ */
+bool CanEngineBeCarFerry(EngineID engine)
+{
+	const Engine *e = Engine::GetIfValid(engine);
+	if (e == nullptr || e->type != VehicleType::Ship || !e->CanCarryCargo()) return false;
+	const CargoType goods = GetCargoTypeByLabel(CT_GOODS);
+	if (!IsValidCargoType(goods)) return false;
+	return e->GetDefaultCargoType() == goods || e->info.refit_mask.Test(goods);
+}
+
+/**
+ * Can this ship be refitted to a car ferry?
+ * @param v The ship.
+ * @return True if it is a single-part ship with cargo space whose engine can carry goods.
+ */
+bool CanShipBeCarFerry(const Vehicle *v)
+{
+	return v->type == VehicleType::Ship && v->Next() == nullptr && v->cargo_cap > 0 && CanEngineBeCarFerry(v->engine_type);
 }
 
 bool IsCarFerry(const Vehicle *v)

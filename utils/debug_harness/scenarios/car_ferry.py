@@ -116,6 +116,15 @@ def run(ctx):
     res = b.docmd("RefitVehicle", 0, ship2, cargo, 0, False, False, 1)
     ctx.check(res["success"] and not (veh(b, ship2, "flags")["flags"] & SHIP_FLAG_CAR_FERRY),
               "refitting a car ferry to cargo makes it a cargo ship again")
+    passenger = builder.pick_engine("ship")
+    ctx.check(not passenger.get("car_ferry"), f"passenger ship {passenger['name']} cannot carry goods")
+    pship = builder.build_vehicle(line["ship_depot"], passenger["id"])
+    res = b.docmd("SetCarFerry", 0, pship, True)
+    ctx.check(not res["success"] and "goods" in str(res.get("error")),
+              f"a ship that cannot carry goods cannot become a car ferry ({res.get('error')})")
+    b.docmd("SellVehicle", line["ship_depot"], pship, 0, 0)
+    ferry_engine = builder.pick_car_ferry_engine()
+    ctx.note(f"car ferry engine: {ferry_engine['name']} ({ferry_engine['cargo_label']}, capacity {ferry_engine['capacity']})")
     res = b.docmd("SetCarFerry", 0, ship, False, test=True)
     ctx.check(not res["success"], f"a running ship cannot be refitted ({res.get('error')})")
     show_vehicle(b, ship2, WID_VV_REFIT)

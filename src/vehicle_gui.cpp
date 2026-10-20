@@ -979,8 +979,7 @@ struct RefitWindow : public Window {
 
 		/* A single-part ship can carry road vehicles instead of cargo. */
 		const Vehicle *front = Vehicle::Get(this->window_number);
-		this->has_ferry_option = front->type == VehicleType::Ship && front->Next() == nullptr && front->cargo_cap > 0 &&
-				this->order == INVALID_VEH_ORDER_ID && !this->auto_refit;
+		this->has_ferry_option = CanShipBeCarFerry(front) && this->order == INVALID_VEH_ORDER_ID && !this->auto_refit;
 
 		/* Restore the previously selected RefitOption. */
 		if (current_refit_option.has_value() && this->has_ferry_option && current_refit_option->string == STR_REFIT_CAR_FERRY && current_refit_option->cargo == INVALID_CARGO) {
@@ -4015,8 +4014,8 @@ static bool IsVehicleRefittable(const Vehicle *v)
 {
 	if (!v->IsStoppedInDepot()) return false;
 
-	/* Any single-part ship with cargo space can be refitted to carry road vehicles. */
-	if (v->type == VehicleType::Ship && v->Next() == nullptr && v->cargo_cap > 0) return true;
+	/* A ship that can carry goods can be refitted to carry road vehicles. */
+	if (CanShipBeCarFerry(v)) return true;
 
 	do {
 		if (IsEngineRefittable(v->engine_type)) return true;

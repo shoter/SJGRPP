@@ -328,6 +328,13 @@ class Builder:
         # Newest, then fastest.
         return max(cands, key=lambda e: (e["intro_year"], e["max_speed"]))
 
+    def pick_car_ferry_engine(self) -> dict:
+        """Newest ship that can be refitted to a car ferry (one that can carry goods)."""
+        cands = [e for e in self.engines() if e["type"] == "ship" and e.get("car_ferry") and e["capacity"] > 0]
+        if not cands:
+            raise BuildError("no buildable ship that can carry goods")
+        return max(cands, key=lambda e: (e["intro_year"], e["max_speed"]))
+
     def fresh_map(self) -> GameMap:
         return GameMap.fetch(self.b)
 
@@ -699,7 +706,7 @@ class Builder:
             res = self.cmd("BuildDock", gmap.tile(x, y), NEW_STATION, False)
             route.stations.append(self._station_of(res))
         route.depot_tile = self._ship_depot(gmap, pair[0])
-        ship = self.pick_engine("ship")
+        ship = self.pick_car_ferry_engine() if car_ferry else self.pick_engine("ship")
         first = self.build_vehicle(route.depot_tile, ship["id"])
         if car_ferry:
             self.cmd("SetCarFerry", 0, first, True)

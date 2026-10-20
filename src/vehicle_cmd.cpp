@@ -713,9 +713,12 @@ CommandCost CmdSetCarFerry(DoCommandFlags flags, VehicleID veh_id, bool enable)
 
 	if (v->vehstatus.Test(VehState::Crashed)) return CommandCost(STR_ERROR_VEHICLE_IS_DESTROYED);
 	if (!v->IsStoppedInDepot()) return CommandCost(STR_ERROR_SHIP_MUST_BE_STOPPED_INSIDE_DEPOT);
-	if (v->Next() != nullptr) return CommandCost(STR_ERROR_CAR_FERRY_MULTI_PART_SHIP);
-	if (v->cargo_cap == 0) return CommandCost(STR_ERROR_CAR_FERRY_NO_CAPACITY);
 	if (enable == IsCarFerry(v)) return CommandCost();
+	if (enable) {
+		if (v->Next() != nullptr) return CommandCost(STR_ERROR_CAR_FERRY_MULTI_PART_SHIP);
+		if (!CanEngineBeCarFerry(v->engine_type)) return CommandCost(STR_ERROR_CAR_FERRY_NOT_GOODS_SHIP);
+		if (v->cargo_cap == 0) return CommandCost(STR_ERROR_CAR_FERRY_NO_CAPACITY);
+	}
 	if (!enable && !v->ferry_vehicles.empty()) return CommandCost(STR_ERROR_CAR_FERRY_CARRIES_ROAD_VEHICLES);
 
 	if (flags.Test(DoCommandFlag::Execute)) {

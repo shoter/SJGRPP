@@ -10,6 +10,7 @@
 #ifndef CAR_FERRY_H
 #define CAR_FERRY_H
 
+#include "engine_type.h"
 #include "order_type.h"
 #include "station_type.h"
 #include "vehicle_type.h"
@@ -64,6 +65,8 @@ inline uint GetFerryFreeSpaces(uint capacity, size_t carried)
 /** Maximum number of road vehicles listed in a car ferry's details window. */
 static constexpr size_t MAX_CAR_FERRY_DETAILS_LINES = 8;
 
+bool CanEngineBeCarFerry(EngineID engine);
+bool CanShipBeCarFerry(const Vehicle *v);
 bool IsCarFerry(const Vehicle *v);
 uint GetCarFerryCapacity(const Vehicle *v);
 bool IsRoadVehicleAboardFerry(const Vehicle *v);

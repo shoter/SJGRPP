@@ -2741,6 +2741,7 @@ STR_ERROR_ROAD_VEHICLE_IS_ABOARD_FERRY                          :{WHITE}... road
 STR_ERROR_CAR_FERRY_CARRIES_ROAD_VEHICLES                       :{WHITE}... ship is carrying road vehicles
 STR_ERROR_CAR_FERRY_MULTI_PART_SHIP                             :{WHITE}... only single-part ships can carry road vehicles
 STR_ERROR_CAR_FERRY_NO_CAPACITY                                 :{WHITE}... ship has no cargo space
+STR_ERROR_CAR_FERRY_NOT_GOODS_SHIP                              :{WHITE}... only ships that can carry goods can carry road vehicles
 STR_ORDER_FERRY_BOARD                                           :(board ship)
 STR_ORDER_FERRY_LEAVE                                           :(leave ship)
 STR_ORDER_FERRY_ACTION_NONE                                     :No ship transfer
