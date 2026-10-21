@@ -30,6 +30,8 @@
 
 #include "safeguards.h"
 
+extern void ResizeVehicleTileOccupancy();
+
 uint _map_log_x;     ///< 2^_map_log_x == _map_size_x
 uint _map_log_y;     ///< 2^_map_log_y == _map_size_y
 uint _map_size_x;    ///< Size of the map along the X
@@ -146,6 +148,7 @@ void AllocateMap(uint size_x, uint size_y)
 
 	InitializeWaterRegions();
 	InitializeSectorMap();
+	ResizeVehicleTileOccupancy();
 }
 
 /** For use in the tests */
@@ -166,6 +169,7 @@ void DeallocateMap()
 
 	InitializeWaterRegions();
 	InitializeSectorMap();
+	ResizeVehicleTileOccupancy();
 }
 
 void CountLandTiles()

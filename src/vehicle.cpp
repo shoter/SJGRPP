@@ -528,15 +528,16 @@ Vehicle::Vehicle(VehicleID index, VehicleType type) : VehiclePool::PoolItem<&_ve
 
 using VehicleTypeTileHash = robin_hood::unordered_map<TileIndex, VehicleID>;
 static VehicleTypeIndexArray<VehicleTypeTileHash> _vehicle_tile_hashes;
+/** NOSAVE: per vehicle type, one bit per tile which is set while #_vehicle_tile_hashes has a key for the tile. */
+VehicleTypeIndexArray<VehicleTileOccupancy> _vehicle_tile_occupancy;
 
 /**
- * Returns the first vehicle on a specific location, this should be iterated using Vehicle::HashTileNext.
- * @note Use #GetFirstVehicleOnPos when you have the intention that all vehicles should be iterated over using Vehicle::HashTileNext. The iteration order is non-deterministic.
+ * Returns the first vehicle on a specific location by probing the tile hash, use #GetFirstVehicleOnTile instead.
  * @param tile The location on the map
  * @param type The vehicle type
  * @return First vehicle or nullptr.
  */
-Vehicle *GetFirstVehicleOnTile(TileIndex tile, VehicleType type)
+Vehicle *GetFirstVehicleOnTileFromHash(TileIndex tile, VehicleType type)
 {
 	VehicleTypeTileHash &vhash = _vehicle_tile_hashes[type];
 
@@ -569,14 +570,8 @@ VehiclesNearTileXYBaseIterator::VehiclesNearTileXYBaseIterator(int32_t x, int32_
 	this->hymin = this->hy = this->pos_rect.top / TILE_SIZE;
 	this->hymax = this->pos_rect.bottom / TILE_SIZE;
 
-	VehicleTypeTileHash &vhash = _vehicle_tile_hashes[this->veh_type];
-	auto iter = vhash.find(TileXY(this->hx, this->hy));
-	if (iter != vhash.end()) {
-		this->current_veh = Vehicle::Get(iter->second);
-	} else {
-		this->current_veh = nullptr;
-		this->SkipEmptyBuckets();
-	}
+	this->current_veh = GetFirstVehicleOnTile(TileXY(this->hx, this->hy), this->veh_type);
+	if (this->current_veh == nullptr) this->SkipEmptyBuckets();
 	this->SkipFalseMatches();
 }
 
@@ -604,13 +599,7 @@ void VehiclesNearTileXYBaseIterator::SkipEmptyBuckets()
 		} else {
 			return;
 		}
-		VehicleTypeTileHash &vhash = _vehicle_tile_hashes[this->veh_type];
-		auto iter = vhash.find(TileXY(this->hx, this->hy));
-		if (iter != vhash.end()) {
-			this->current_veh = Vehicle::Get(iter->second);
-		} else {
-			this->current_veh = nullptr;
-		}
+		this->current_veh = GetFirstVehicleOnTile(TileXY(this->hx, this->hy), this->veh_type);
 	}
 }
 
@@ -875,6 +864,7 @@ void UpdateVehicleTileHash(Vehicle *v, bool remove)
 				vhash[old_hash_tile] = v->hash_tile_next->index;
 			} else {
 				vhash.erase(old_hash_tile);
+				_vehicle_tile_occupancy[v->type].Clear(old_hash_tile);
 			}
 		}
 	}
@@ -884,6 +874,7 @@ void UpdateVehicleTileHash(Vehicle *v, bool remove)
 		auto res = vhash.insert({ new_hash_tile, v->index });
 		if (res.second) {
 			/* Insert took place */
+			_vehicle_tile_occupancy[v->type].Set(new_hash_tile);
 			v->hash_tile_next = nullptr;
 			v->hash_tile_prev = nullptr;
 		} else {
@@ -1006,6 +997,58 @@ void ResetVehicleHash()
 	for (VehicleTypeTileHash &vhash : _vehicle_tile_hashes) {
 		vhash.clear();
 	}
+	for (VehicleTileOccupancy &occupancy : _vehicle_tile_occupancy) {
+		occupancy.Reset(Map::Size());
+	}
+}
+
+/**
+ * Size the occupancy bitmaps for the current map, called whenever the map is (re)allocated.
+ * The bits are rebuilt from the tile hashes, which are normally empty at this point.
+ */
+void ResizeVehicleTileOccupancy()
+{
+	for (VehicleType type : EnumRange(VehicleType::CompanyEnd)) {
+		VehicleTileOccupancy &occupancy = _vehicle_tile_occupancy[type];
+		occupancy.Reset(Map::Size());
+		for (const auto &it : _vehicle_tile_hashes[type]) {
+			occupancy.Set(it.first);
+		}
+	}
+}
+
+/**
+ * Check that the occupancy bitmaps match the tile hashes, by rebuilding them from the hash keys.
+ * @param log Called with a description of each mismatch.
+ * @return true if all bitmaps match.
+ */
+bool ValidateVehicleTileOccupancy(std::function<void(std::string_view)> log)
+{
+	bool ok = true;
+	for (VehicleType type : EnumRange(VehicleType::CompanyEnd)) {
+		const VehicleTileOccupancy &occupancy = _vehicle_tile_occupancy[type];
+		if (occupancy.Size() != Map::Size()) {
+			log(fmt::format("vehicle tile occupancy size mismatch: type {}, size {}, map size {}", type, occupancy.Size(), Map::Size()));
+			ok = false;
+			continue;
+		}
+		VehicleTileOccupancy rebuilt;
+		rebuilt.Reset(occupancy.Size());
+		for (const auto &it : _vehicle_tile_hashes[type]) {
+			rebuilt.Set(it.first);
+		}
+		if (rebuilt != occupancy) {
+			uint logged = 0;
+			for (TileIndex tile(0); tile < Map::Size() && logged < 16; ++tile) {
+				if (rebuilt.MayBeOccupied(tile) != occupancy.MayBeOccupied(tile)) {
+					logged++;
+					log(fmt::format("vehicle tile occupancy mismatch: type {}, tile {}, hash {}, bitmap {}", type, tile, rebuilt.MayBeOccupied(tile), occupancy.MayBeOccupied(tile)));
+				}
+			}
+			ok = false;
+		}
+	}
+	return ok;
 }
 
 void ResetVehicleColourMap()

@@ -699,6 +699,7 @@ add_files(
     vehicle_gui.cpp
     vehicle_gui.h
     vehicle_gui_base.h
+    vehicle_tile_occupancy.h
     vehicle_type.h
     vehiclelist.cpp
     vehiclelist.h
