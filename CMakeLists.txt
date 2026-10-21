@@ -371,9 +371,21 @@ if(HAIKU)
 endif()
 
 if(IPO_FOUND AND NOT OPTION_NO_LTO)
-    set_target_properties(openttd PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELEASE True)
-    set_target_properties(openttd PROPERTIES INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL True)
-    set_target_properties(openttd PROPERTIES INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO True)
+    # The game code is compiled in openttd_lib, so it needs IPO too; with it only on openttd, MSVC compiled the
+    # library without /GL and link-time code generation covered none of the game code.
+    foreach(IPO_TARGET openttd_lib openttd openttd_test)
+        if(TARGET ${IPO_TARGET})
+            set_target_properties(${IPO_TARGET} PROPERTIES
+                INTERPROCEDURAL_OPTIMIZATION_RELEASE True
+                INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL True
+                INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO True
+            )
+        endif()
+    endforeach()
+    if(MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.51 AND TARGET openttd_lib)
+        # MSVC 19.50 crashes during link-time code generation of this file (C1001); it holds no hot code.
+        set_source_files_properties(src/settings_table.cpp TARGET_DIRECTORY openttd_lib PROPERTIES COMPILE_OPTIONS /GL-)
+    endif()
 endif()
 set_target_properties(openttd PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 process_compile_flags()
