@@ -5,10 +5,11 @@ perf-vehicle-bitmap workflow).
 
 One headless single player game on a generated map with fixed seed: the local company builds many rail shuttle routes
 (one train each) and many bus routes (many buses each) between town pairs, then the game runs in real time while the
-'fps' console command is sampled. The same seed and commands give the same game on every build, so two builds can be
-compared on identical work.
+'fps' console command is sampled. To compare two builds on identical work, build and save the game once, then measure
+the same savegame with each build.
 
-  python utils/debug_harness/perf_vehicle_bitmap.py --exe build/openttd --out bench.json
+  python utils/debug_harness/perf_vehicle_bitmap.py --exe build/openttd --out build.json --save bench.sav
+  python utils/debug_harness/perf_vehicle_bitmap.py --exe build/openttd --out bench.json --load bench.sav
 """
 
 from __future__ import annotations
@@ -101,6 +102,38 @@ def town_pairs(towns: list[tuple[int, int]], lo: int, hi: int, count: int, rng: 
     return out
 
 
+def build(a: argparse.Namespace, b, result: dict) -> None:
+    """Build the rail and road routes of the benchmark game."""
+    b.docmd("MoneyCheat", 0, 2_000_000_000)
+    t0 = time.monotonic()
+    builder = WindowBuilder(b, log=lambda s: None)
+    print(f"map fetched in {time.monotonic() - t0:.1f}s", flush=True)
+    mx = builder.sx
+    towns = [(xy % mx, xy // mx) for xy in (b.obj("town", t, "xy")["xy"] for t in sorted(b.objs("town")))]
+    rng = random.Random(a.seed)
+    used: set[int] = set()
+    built = {"rail": 0, "road": 0}
+    errors = 0
+    t0 = time.monotonic()
+    for kind, lo, hi, want in (("rail", 25, 70, a.rail_routes), ("road", 14, 40, a.road_routes)):
+        for ta, tb in town_pairs(towns, lo, hi, want, rng, used):
+            if built[kind] >= want:
+                break
+            builder.set_window(ta, tb)
+            try:
+                if kind == "rail":
+                    builder.build_rail_route(ta, tb, wagons=a.wagons)
+                else:
+                    builder.build_road_route(ta, tb, vehicles=a.buses)
+                built[kind] += 1
+            except BuildError as e:
+                errors += 1
+                print(f"{kind} {ta} -> {tb}: {e}", flush=True)
+    print(f"built {built} routes in {time.monotonic() - t0:.1f}s ({errors} failed)", flush=True)
+    result.update({"towns": len(towns), "rail_routes": built["rail"], "road_routes": built["road"],
+                   "trains": built["rail"], "buses": built["road"] * a.buses, "vehicles": len(b.objs("vehicle"))})
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exe", help="game binary (default: build/openttd of this checkout)")
@@ -108,13 +141,15 @@ def main() -> int:
     ap.add_argument("--name", default="perf_vehicle_bitmap", help="instance directory name")
     ap.add_argument("--seed", type=int, default=4242)
     ap.add_argument("--map-bits", type=int, default=11)
-    ap.add_argument("--rail-routes", type=int, default=40, help="rail shuttle routes (one train each)")
+    ap.add_argument("--rail-routes", type=int, default=150, help="rail shuttle routes (one train each)")
     ap.add_argument("--wagons", type=int, default=5)
-    ap.add_argument("--road-routes", type=int, default=20)
-    ap.add_argument("--buses", type=int, default=30, help="buses per road route")
+    ap.add_argument("--road-routes", type=int, default=60)
+    ap.add_argument("--buses", type=int, default=35, help="buses per road route")
     ap.add_argument("--warmup", type=float, default=30.0, help="seconds of game before sampling")
     ap.add_argument("--seconds", type=float, default=180.0, help="seconds of sampling")
     ap.add_argument("--interval", type=float, default=2.0, help="seconds between fps samples")
+    ap.add_argument("--save", help="build the game, save it to this file and exit without measuring")
+    ap.add_argument("--load", help="measure a game saved with --save instead of building one")
     a = ap.parse_args()
 
     config = {
@@ -128,38 +163,27 @@ def main() -> int:
                     config=config)
     result: dict = {"seed": a.seed, "map_bits": a.map_bits}
     try:
-        inst.start("-g", "-G", str(a.seed), wait=300)
+        if a.load:
+            inst.start("-g", str(Path(a.load).resolve()), wait=300)
+        else:
+            inst.start("-g", "-G", str(a.seed), wait=300)
         b = inst.bridge
-        b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=300, what="new game")
-        b.docmd("MoneyCheat", 0, 2_000_000_000)
-
-        t0 = time.monotonic()
-        builder = WindowBuilder(b, log=lambda s: None)
-        print(f"map fetched in {time.monotonic() - t0:.1f}s", flush=True)
-        mx = builder.sx
-        towns = [(xy % mx, xy // mx) for xy in (b.obj("town", t, "xy")["xy"] for t in sorted(b.objs("town")))]
-        rng = random.Random(a.seed)
-        used: set[int] = set()
-        built = {"rail": 0, "road": 0}
-        errors = 0
-        t0 = time.monotonic()
-        for kind, lo, hi, want in (("rail", 25, 70, a.rail_routes), ("road", 14, 40, a.road_routes)):
-            for ta, tb in town_pairs(towns, lo, hi, want, rng, used):
-                if built[kind] >= want:
-                    break
-                builder.set_window(ta, tb)
-                try:
-                    if kind == "rail":
-                        builder.build_rail_route(ta, tb, wagons=a.wagons)
-                    else:
-                        builder.build_road_route(ta, tb, vehicles=a.buses)
-                    built[kind] += 1
-                except BuildError as e:
-                    errors += 1
-                    print(f"{kind} {ta} -> {tb}: {e}", flush=True)
-        print(f"built {built} routes in {time.monotonic() - t0:.1f}s ({errors} failed)", flush=True)
-        result.update({"towns": len(towns), "rail_routes": built["rail"], "road_routes": built["road"],
-                       "trains": built["rail"], "buses": built["road"] * a.buses, "vehicles": len(b.objs("vehicle"))})
+        b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=300, what="game")
+        if a.load:
+            result["vehicles"] = len(b.objs("vehicle"))
+        else:
+            build(a, b, result)
+            if a.save:
+                b.save_game("perf_vehicle_bitmap")
+                sav = inst.dir / "save" / "perf_vehicle_bitmap.sav"
+                size = -1
+                for _ in range(120):  # saving finishes in a thread: wait until the file stops growing
+                    time.sleep(1)
+                    if sav.exists() and sav.stat().st_size == size and size > 0:
+                        break
+                    size = sav.stat().st_size if sav.exists() else -1
+                Path(a.save).write_bytes(sav.read_bytes())
+                return 0
 
         time.sleep(a.warmup)
         samples: dict[str, list[float]] = {k: [] for k in KEYS.values()}
@@ -184,7 +208,7 @@ def main() -> int:
         result["cache_mismatches"] = [l for l in b.console("check_caches") if "mismatch" in l.lower()][:10]
     finally:
         inst.stop()
-    Path(a.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
+        Path(a.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
     return 0
 

@@ -82,14 +82,19 @@ jobs:
       with:
         python-version: '3.13'
 
-    - name: Targeted benchmark (base, PR, base, PR)
+    - name: Build the benchmark game
       run: |
-        # The harness of the PR drives both binaries, so both play the same game.
+        # Built once by the PR binary and saved (no savegame change): every measurement loads the identical game.
         mkdir -p results
-        for round in 1 2; do
+        python pr/utils/debug_harness/perf_vehicle_bitmap.py --exe "$GITHUB_WORKSPACE/pr/build/openttd" \
+          --name bench_build --out results/bench_build.json --save bench.sav
+
+    - name: Targeted benchmark (base, PR) x 3
+      run: |
+        for round in 1 2 3; do
           for side in base pr; do
             python pr/utils/debug_harness/perf_vehicle_bitmap.py --exe "$GITHUB_WORKSPACE/$side/build/openttd" \
-              --name "bench_${side}_${round}" --out "results/bench_${side}_${round}.json"
+              --name "bench_${side}_${round}" --out "results/bench_${side}_${round}.json" --load bench.sav
           done
         done
 
@@ -110,7 +115,8 @@ jobs:
         def load(p):
             return json.loads(p.read_text()) if p.exists() else {}
         out = {"run": ${{ matrix.run }}, "metrics": {}}
-        bench = {side: [load(r / f"bench_{side}_{i}.json") for i in (1, 2)] for side in ("base", "pr")}
+        bench = {side: [load(r / f"bench_{side}_{i}.json") for i in (1, 2, 3)] for side in ("base", "pr")}
+        out["built"] = load(r / "bench_build.json")
         out["vehicles"] = {side: [b.get("vehicles") for b in bench[side]] for side in bench}
         out["cache_mismatches"] = {side: sum(len(b.get("cache_mismatches", [])) for b in bench[side]) for side in bench}
         for key in ("game_loop_ms_avg", "game_loop_ms_p95", "gl_train_ticks_ms_avg", "gl_train_ticks_ms_p95",
@@ -164,9 +170,10 @@ jobs:
         runs = [json.loads(p.read_text()) for p in sorted(Path("results").glob("*/diff-*.json"))]
         print("## Perf: vehicle tile occupancy bitmap (PR vs base)\n")
         print(f"{len(runs)} parallel runs; each run builds base and PR and runs both on the same runner. "
-              "Targeted benchmark: single player, 2048x2048, ~40 rail shuttle routes (one 6-car train each) and "
-              "~20 bus routes with 30 buses each, 3 minutes real time sampled every 2s, twice per side "
-              "(base, PR, base, PR). Quick: the standard quick full test. Lower is better; memory in MB.\n")
+              "Targeted benchmark: single player, 2048x2048, up to 150 rail shuttle routes (one 6-car train each) "
+              "and 60 bus routes with 35 buses each, built once and saved; each side loads the same save, 30s warmup, "
+              "3 minutes real time sampled every 2s, 3 times per side (base, PR, base, PR, base, PR). "
+              "Quick: the standard quick full test. Lower is better; memory in MB.\n")
         print("| metric | base | PR | PR - base | PR - base (%) | spread of % over runs |")
         print("|---|---:|---:|---:|---:|---|")
         keys = sorted({k for r in runs for k in r["metrics"]})
@@ -180,6 +187,9 @@ jobs:
             pct = statistics.mean(pcts) if pcts else 0.0
             spread = f"{min(pcts):+.1f}% .. {max(pcts):+.1f}%" if pcts else "-"
             print(f"| {key} | {base:.3f} | {pr:.3f} | {pr - base:+.3f} | {pct:+.1f}% | {spread} (n={len(rows)}) |")
+        print("\nBuilt per run: " + "; ".join(
+            f"run {r['run']}: {r['built'].get('rail_routes')} rail + {r['built'].get('road_routes')} road routes"
+            for r in runs if r.get("built")))
         print("\nVehicles per benchmark (base / PR): " +
               "; ".join(f"run {r['run']}: {r['vehicles']['base']} / {r['vehicles']['pr']}" for r in runs))
         print("\nCache check mismatches at the end of the benchmarks (base / PR): " +
