@@ -11,6 +11,8 @@
 #include "infrastructure_func.h"
 #include "train.h"
 #include "aircraft.h"
+#include "roadveh.h"
+#include "car_ferry.h"
 #include "error.h"
 #include "vehicle_func.h"
 #include "station_base.h"
@@ -84,6 +86,29 @@ void PayStationSharingFee(Vehicle *v, const Station *st)
 }
 
 /**
+ * Get the fee for a road vehicle boarding a car ferry: one day of the ship sharing fee when the ferry belongs to another company.
+ * @param rv_owner Owner of the road vehicle.
+ * @param ship_owner Owner of the car ferry.
+ * @return The fee as money fraction (shifted 8 bits to the left).
+ */
+Money GetCarFerrySharingFeeFract(Owner rv_owner, Owner ship_owner)
+{
+	if (rv_owner == ship_owner || ship_owner == OWNER_NONE) return 0;
+	return GetSharingFeeFract(VehicleType::Ship);
+}
+
+/**
+ * Pay the fee for boarding a car ferry of another company.
+ * @param rv The road vehicle that boards.
+ * @param ship_owner Owner of the car ferry.
+ */
+void PayCarFerrySharingFee(Vehicle *rv, Owner ship_owner)
+{
+	const Money cost = GetCarFerrySharingFeeFract(rv->owner, ship_owner);
+	if (cost != 0) PaySharingFee(rv, ship_owner, cost);
+}
+
+/**
  * Calculate the track toll of a train.
  * @param fee The track toll per tile of train length per day, as money fraction (shifted 8 bits to the left).
  * @param length The length of the train, in vehicle length units (TILE_SIZE units per tile).
@@ -127,6 +152,11 @@ static bool VehiclePositionIsAllowed(const Vehicle *v, Owner owner = INVALID_OWN
 			}
 			return true;
 		case VehicleType::Road:
+			if (RoadVehicle::From(v)->IsAboardFerry()) {
+				/* Aboard a car ferry it uses the ship, not the tiles it boarded from. */
+				const Vehicle *ship = Vehicle::GetIfValid(RoadVehicle::From(v)->ferry_carrier);
+				return ship == nullptr || (CanBoardCarFerryOf(v->owner, ship->owner) && ship->owner != owner);
+			}
 			for (const Vehicle *u = v; u != nullptr; u = u->Next()) {
 				if (!IsValidTile(u->tile)) continue;
 				if (IsRoadDepotTile(u->tile) || IsBayRoadStopTile(u->tile)) {
@@ -290,6 +320,16 @@ bool CheckSharingChangePossible(VehicleType type, bool new_value)
 		for(const Order *o : v->Orders()) {
 			if (!OrderDestinationIsAllowed(o, v)) {
 				error_message = STR_CONFIG_SETTING_SHARING_ORDERS_TO_OTHERS;
+			}
+		}
+	}
+
+	/* Road vehicles aboard a car ferry of another company use that company's ship. */
+	if (type == VehicleType::Ship) {
+		for (const RoadVehicle *v : RoadVehicle::IterateFrontOnly()) {
+			if (v->IsAboardFerry() && !VehiclePositionIsAllowed(v)) {
+				error_message = STR_CONFIG_SETTING_SHARING_USED_BY_VEHICLES;
+				break;
 			}
 		}
 	}

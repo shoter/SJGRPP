@@ -10,6 +10,7 @@
 #ifndef CAR_FERRY_H
 #define CAR_FERRY_H
 
+#include "company_type.h"
 #include "engine_type.h"
 #include "order_type.h"
 #include "station_type.h"
@@ -61,6 +62,15 @@ inline uint GetFerryFreeSpaces(uint capacity, size_t carried)
 {
 	return carried >= capacity ? 0 : capacity - static_cast<uint>(carried);
 }
+
+/**
+ * May road vehicles of a company board a car ferry of a company?
+ * Car ferries of another company can be used when infrastructure sharing for ships is on.
+ * @param rv_owner Owner of the road vehicle.
+ * @param ship_owner Owner of the car ferry.
+ * @return True if the road vehicle may board.
+ */
+bool CanBoardCarFerryOf(Owner rv_owner, Owner ship_owner);
 
 /** Maximum number of road vehicles listed in a car ferry's details window. */
 static constexpr size_t MAX_CAR_FERRY_DETAILS_LINES = 8;

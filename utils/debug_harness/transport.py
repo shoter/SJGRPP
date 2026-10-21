@@ -727,13 +727,16 @@ class Builder:
     def build_car_ferry_route(self, near: tuple[int, int], buses: int = 2, start_ferry: bool = True) -> Route:
         """
         A car ferry between two docks, a bus terminal at each dock and buses with orders: board at dock 1, leave at
-        dock 2, board at dock 2, leave at dock 1. Route.vehicles is the ferry followed by the buses.
+        dock 2, board at dock 2, leave at dock 1. Route.vehicles is the ferry followed by the buses (none if buses=0).
         """
         start_cmds = self.commands_sent
         route = self.build_ship_route(near, vehicles=1, min_dist=12, max_dist=40, car_ferry=True, start=start_ferry)
         route.kind = "ferry"
         s1, s2 = route.stations
         route.terminals = [self._ferry_terminal(s1), self._ferry_terminal(s2)]
+        if buses == 0:
+            route.commands = self.commands_sent - start_cmds
+            return route
         bus_engine = self.pick_engine("road", roadtype=ROADTYPE_ROAD)
         depot = route.terminals[0]["depot"]
         bus = self.build_vehicle(depot, bus_engine["id"])
