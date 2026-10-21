@@ -33,6 +33,7 @@ add_files(
     oldloader.h
     oldloader_sl.cpp
     order_sl.cpp
+    overseas_sl.cpp
     plans_sl.cpp
     sector_sl.cpp
     saveload.cpp

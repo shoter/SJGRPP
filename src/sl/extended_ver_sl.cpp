@@ -208,6 +208,7 @@ const std::initializer_list<SlxiSubChunkInfo> _sl_xv_sub_chunk_infos = {
 	{ XSLFI_SHARING_FEE_INFLATION,            XSCF_IGNORABLE_ALL,       1,   1, "sharing_fee_inflation",            nullptr, nullptr, nullptr          },
 	{ XSLFI_VARIABLE_INFLATION,               XSCF_IGNORABLE_ALL,       1,   1, "variable_inflation",               nullptr, nullptr, "INFL,INFH"      },
 	{ XSLFI_CAR_FERRY,                        XSCF_NULL,                1,   1, "car_ferry",                        nullptr, nullptr, nullptr          },
+	{ XSLFI_OVERSEAS_STATIONS,                XSCF_NULL,                1,   1, "overseas_stations",                nullptr, nullptr, "OVRS"           },
 	{ XSLFI_TRACK_TOLL_LENGTH,                XSCF_IGNORABLE_ALL,       1,   1, "track_toll_length",                nullptr, nullptr, nullptr          },
 
 	{ XSLFI_SCRIPT_INT64,                     XSCF_NULL,                1,   1, "script_int64",                     nullptr, nullptr, nullptr          },

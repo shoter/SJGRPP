@@ -28,6 +28,7 @@
 #include "town.h"
 #include "core/random_func.hpp"
 #include "linkgraph/linkgraph.h"
+#include "overseas.h"
 #include "linkgraph/linkgraphschedule.h"
 #include "tracerestrict.h"
 #include "newgrf_debug.h"
@@ -348,6 +349,7 @@ static uint GetTileCatchmentRadius(TileIndex tile, const Station *st)
 			case StationType::Buoy:
 			case StationType::RailWaypoint:
 			case StationType::RoadWaypoint:
+			case StationType::Overseas:
 				return CA_NONE;
 		}
 	} else {
@@ -358,6 +360,7 @@ static uint GetTileCatchmentRadius(TileIndex tile, const Station *st)
 			case StationType::Buoy:
 			case StationType::RailWaypoint:
 			case StationType::RoadWaypoint:
+			case StationType::Overseas:
 				return CA_NONE;
 		}
 	}
@@ -502,6 +505,13 @@ void Station::RecomputeCatchment(bool no_clear_nearby_lists)
 {
 	this->industries_near.clear();
 	if (!no_clear_nearby_lists) this->RemoveFromAllNearbyLists();
+
+	/* An overseas station serves no towns or industries on the map. */
+	if (this->IsOverseas()) {
+		this->catchment_tiles.Reset();
+		this->station_tiles = 1;
+		return;
+	}
 
 	if (this->rect.IsEmpty()) {
 		this->catchment_tiles.Reset();
@@ -772,7 +782,7 @@ Money AirportMaintenanceCost(Owner owner)
 	Money total_cost = 0;
 
 	for (const Station *st : Station::Iterate()) {
-		if (st->owner == owner && st->facilities.Test(StationFacility::Airport)) {
+		if (st->owner == owner && st->facilities.Test(StationFacility::Airport) && !st->IsOverseas()) {
 			total_cost += _price[Price::InfrastructureAirport] * st->airport.GetSpec()->maintenance_cost;
 		}
 	}

@@ -44,6 +44,8 @@
 
 #include "table/strings.h"
 
+#include "overseas.h"
+
 #include "safeguards.h"
 
 void Aircraft::UpdateDeltaXY()
@@ -491,10 +493,13 @@ void Aircraft::OnPeriodic()
 {
 	if (!this->IsNormalAircraft()) return;
 
-	CheckOrders(this);
+	/* No breakdowns or servicing while overseas. */
+	if (!this->IsOverseas()) {
+		CheckOrders(this);
 
-	CheckVehicleBreakdown(this);
-	CheckIfAircraftNeedsService(this);
+		CheckVehicleBreakdown(this);
+		CheckIfAircraftNeedsService(this);
+	}
 
 	if (this->running_ticks == 0) return;
 
@@ -1774,6 +1779,19 @@ static void AircraftEventHandler_Flying(Aircraft *v, const AirportFTAClass *apc)
 {
 	Station *st = Station::Get(v->targetairport);
 
+	/* At an overseas station the aircraft does not land, it flies on to the country. */
+	if (st->IsOverseas()) {
+		if (v->current_order.IsType(OT_GOTO_STATION) && v->current_order.GetDestination() == st->index) {
+			v->last_station_visited = st->index;
+			if (OverseasVehicleDepart(v, st)) return;
+			v->current_order.MakeLeaveStation();
+			v->IncrementRealOrderIndex();
+		}
+		v->state = FLYING;
+		v->pos = apc->layout[v->pos].next_position;
+		return;
+	}
+
 	/* Runway busy, not allowed to use this airstation or closed, circle. */
 	if (CanVehicleUseStation(v, st) && IsInfraUsageAllowed(VehicleType::Aircraft, v->owner, st->owner) && !st->airport.blocks.Test(AirportBlock::AirportClosed)) {
 		/* {32,FLYING,NOTHING_block,37}, {32,LANDING,N,33}, {32,HELILANDING,N,41},
@@ -2251,7 +2269,9 @@ static bool AircraftEventHandler(Aircraft *v, int loop)
 		Station *cur_st = Station::GetIfValid(v->targetairport);
 		Station *next_st = v->current_order.IsType(OT_GOTO_STATION) || v->current_order.IsType(OT_GOTO_DEPOT) ? Station::GetIfValid(v->current_order.GetDestination().ToStationID()) : nullptr;
 
-		if (cur_st != nullptr && cur_st->airport.tile != INVALID_TILE && next_st != nullptr && next_st->airport.tile != INVALID_TILE) {
+		/* Aircraft range does not apply to flights to or from overseas stations. */
+		if (cur_st != nullptr && cur_st->airport.tile != INVALID_TILE && next_st != nullptr && next_st->airport.tile != INVALID_TILE &&
+				!cur_st->IsOverseas() && !next_st->IsOverseas()) {
 			uint dist = DistanceSquare(cur_st->airport.tile, next_st->airport.tile);
 			AircraftHandleDestTooFar(v, dist > v->acache.cached_max_range_sqr);
 		}
@@ -2271,6 +2291,11 @@ bool Aircraft::Tick()
 	this->tick_counter++;
 
 	if (!(this->vehstatus.Test(VehState::Stopped) || this->IsWaitingInDepot())) this->running_ticks++;
+
+	if (this->IsOverseas()) {
+		OverseasVehicleTick(this);
+		return true;
+	}
 
 	if (this->subtype == AIR_HELICOPTER) HelicopterTickHandler(this);
 

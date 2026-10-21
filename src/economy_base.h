@@ -29,6 +29,8 @@ struct CargoPayment : CargoPaymentPool::PoolItem<&_cargo_payment_pool> {
 	Money route_profit = 0; ///< The amount of money to add/remove from the bank account
 	Money visual_profit = 0; ///< The visual profit to show
 	Money visual_transfer = 0; ///< The transfer credits to be shown
+	uint overseas_extra_distance = 0; ///< NOSAVE: Extra distance paid for, when delivering to an overseas country.
+	uint overseas_extra_periods = 0;  ///< NOSAVE: Extra transit time, when delivering to an overseas country.
 
 	CargoPayment(CargoPaymentID index) : PoolItemBase(index) {}
 	CargoPayment(CargoPaymentID index, Vehicle *front);

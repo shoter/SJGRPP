@@ -98,6 +98,7 @@
 #include "../sector_func.h"
 #include "../variable_inflation.h"
 #include "../car_ferry.h"
+#include "../overseas.h"
 
 #include "../safeguards.h"
 
@@ -1227,7 +1228,7 @@ bool AfterLoadGame()
 				BaseStation *bst = BaseStation::GetByTile(t);
 
 				/* Sanity check */
-				if (!IsBuoy(t) && bst->owner != GetTileOwner(t)) SlErrorCorrupt("Wrong owner for station tile");
+				if (!IsBuoy(t) && !IsOverseasStation(t) && bst->owner != GetTileOwner(t)) SlErrorCorrupt("Wrong owner for station tile");
 
 				/* Set up station spread */
 				bst->rect.BeforeAddTile(t, StationRect::ADD_FORCE);
@@ -4707,6 +4708,7 @@ bool AfterLoadGame()
 	AfterLoadStoryBook();
 	AfterLoadSectors();
 	AfterLoadCarFerries();
+	AfterLoadOverseasStations();
 
 	InitializeRailGUI(); // Needs to be after AfterLoadCompanyStats
 	InitializeRoadGUI(); // "

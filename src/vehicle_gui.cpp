@@ -65,6 +65,8 @@
 
 #include "table/strings.h"
 
+#include "overseas.h"
+
 #include "safeguards.h"
 
 
@@ -4345,6 +4347,8 @@ public:
 			AppendStringInPlace(buffer, STR_VEHICLE_STATUS_CRASHED);
 		} else if (IsRoadVehicleAboardFerry(v) && !mouse_over_start_stop) {
 			AppendStringInPlace(buffer, STR_VEHICLE_STATUS_ABOARD_FERRY, RoadVehicle::From(v)->ferry_carrier);
+		} else if (v->IsOverseas()) {
+			AppendStringInPlace(buffer, STR_VEHICLE_STATUS_OVERSEAS, v->overseas_station, GetOverseasDaysLeft(v));
 		} else if ((v->breakdown_ctr == 1 || (v->type == VehicleType::Train && Train::From(v)->flags.Any(VehicleRailFlagsIsBroken))) && !mouse_over_start_stop) {
 			const Vehicle *w = (v->type == VehicleType::Train) ? GetMostSeverelyBrokenEngine(Train::From(v)) : v;
 

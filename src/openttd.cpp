@@ -41,6 +41,7 @@
 #include "console_func.h"
 #include "screenshot.h"
 #include "sector_func.h"
+#include "overseas.h"
 #include "network/network.h"
 #include "network/network_func.h"
 #include "ai/ai.hpp"
@@ -1109,6 +1110,9 @@ static void OnStartScenario()
 
 	/* Divide the map into sectors if the scenario has none, or name the sectors it has. */
 	GenerateSectorsIfMissing();
+
+	/* Overseas stations are not part of scenarios, the game gets them when it starts. */
+	GenerateOverseasStations();
 }
 
 /**
