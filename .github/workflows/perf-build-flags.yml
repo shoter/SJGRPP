@@ -119,11 +119,13 @@ jobs:
     - name: Quick full test (alternating)
       shell: bash
       run: |
-        if [ $(( ${{ matrix.run }} % 2 )) -eq 1 ]; then order="base head"; else order="head base"; fi
-        for side in $order; do
+        # ABBA order (odd runners start with base, even runners with head), two runs per side.
+        if [ $(( ${{ matrix.run }} % 2 )) -eq 1 ]; then order="base:1 head:1 head:2 base:2"; else order="head:1 base:1 base:2 head:2"; fi
+        for item in $order; do
+          side=${item%:*}; n=${item#*:}
           OTTD_EXE="$(pwd -W)/bin-$side/openttd.exe" OTTD_CONTENT_DIR="$(pwd -W)/content" \
             python utils/debug_harness/full_test.py --profile quick --perf-report-only \
-              --out results --name "quick-$side-1" || echo "full test ($side) reported failures"
+              --out results --name "quick-$side-$n" || echo "full test ($side) reported failures"
         done
 
     - name: Compare
