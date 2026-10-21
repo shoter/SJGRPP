@@ -131,6 +131,12 @@ TEST_CASE("Overseas flags - instructions are parsed and drawn")
 	CHECK_FALSE(IsValidOverseasFlag("X 1 2 FFFFFF"));
 	CHECK_FALSE(IsValidOverseasFlag("C 60 40 FFFFFF"));
 	CHECK_FALSE(IsValidOverseasFlag("S 60 40 10 FFFFFF 2"));
+	/* Decimal and negative numbers; malformed numbers are rejected. */
+	CHECK(IsValidOverseasFlag("G 0 0 48 43 6 5 1.6 FFFFFF"));
+	CHECK(IsValidOverseasFlag("L -10 90 130 -10 30 F7D618"));
+	CHECK_FALSE(IsValidOverseasFlag("C 60 40 1.2.3 FFFFFF"));
+	CHECK_FALSE(IsValidOverseasFlag("C 60 - 10 FFFFFF"));
+	CHECK_FALSE(IsValidOverseasFlag("C 60 4x 10 FFFFFF"));
 
 	std::vector<uint32_t> px;
 	REQUIRE(RenderOverseasFlag("H FF0000 FFFFFF", 30, 20, px));

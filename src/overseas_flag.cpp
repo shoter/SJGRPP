@@ -69,10 +69,29 @@ bool ParseFlagColour(std::string_view token, uint32_t &colour)
 	return res.ec == std::errc{} && res.ptr == token.data() + token.size();
 }
 
+/** Parse a decimal number such as "-10", "40" or "1.6"; std::from_chars for floats is not available everywhere. */
 bool ParseFlagNumber(std::string_view token, float &value)
 {
-	auto res = std::from_chars(token.data(), token.data() + token.size(), value);
-	return res.ec == std::errc{} && res.ptr == token.data() + token.size();
+	size_t pos = 0;
+	const bool negative = !token.empty() && token[0] == '-';
+	if (negative) pos++;
+	float result = 0;
+	bool digits = false;
+	for (; pos < token.size() && token[pos] >= '0' && token[pos] <= '9'; pos++) {
+		result = result * 10 + (token[pos] - '0');
+		digits = true;
+	}
+	if (pos < token.size() && token[pos] == '.') {
+		float scale = 0.1f;
+		for (pos++; pos < token.size() && token[pos] >= '0' && token[pos] <= '9'; pos++) {
+			result += (token[pos] - '0') * scale;
+			scale /= 10;
+			digits = true;
+		}
+	}
+	if (!digits || pos != token.size()) return false;
+	value = negative ? -result : result;
+	return true;
 }
 
 /** Parse weighted or plain stripe colours and turn them into rectangles. */
