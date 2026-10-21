@@ -14,6 +14,7 @@ Written by the *Performance history* workflow after every full test run on `main
 
 | Commit | Date | Result | Game loop avg | Game loop p95 | Server memory max | Command round trip p95 | Vehicles (max) |
 |---|---|---|---|---|---|---|---|
+| [`087013d`](https://github.com/shoter/SJGRPP/commit/087013d5130731808e8a0a7068fd7bac17071e25) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39641639863) | 0.09 ms | 0.11 ms | 53.4 MB | 94 ms | 46 |
 | [`475a320`](https://github.com/shoter/SJGRPP/commit/475a320be9fa824f19abb15f96cec790bcb4ee81) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39585903214) | 0.11 ms | 0.13 ms | 52.0 MB | 88 ms | 40 |
 | [`6926091`](https://github.com/shoter/SJGRPP/commit/69260912eee77f47ee0467606da79344e8d0e8fc) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39573199057) | 0.06 ms | 0.08 ms | 52.2 MB | 95 ms | 40 |
 | [`6043884`](https://github.com/shoter/SJGRPP/commit/6043884a61c1f57e6d32ec368592e45fd488e0f4) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39518779315) | 0.09 ms | 0.11 ms | 54.9 MB | 84 ms | 40 |
@@ -28,6 +29,7 @@ Written by the *Performance history* workflow after every full test run on `main
 
 | Commit | Date | Result | Game loop avg | Game loop p95 | Server memory max | Command round trip p95 | Vehicles (max) |
 |---|---|---|---|---|---|---|---|
+| [`087013d`](https://github.com/shoter/SJGRPP/commit/087013d5130731808e8a0a7068fd7bac17071e25) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39641639863) | 0.10 ms | 0.13 ms | 57.6 MB | 93 ms | 64 |
 | [`475a320`](https://github.com/shoter/SJGRPP/commit/475a320be9fa824f19abb15f96cec790bcb4ee81) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39585903214) | 0.06 ms | 0.08 ms | 55.2 MB | 94 ms | 58 |
 | [`6926091`](https://github.com/shoter/SJGRPP/commit/69260912eee77f47ee0467606da79344e8d0e8fc) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39573199057) | 0.07 ms | 0.09 ms | 52.3 MB | 88 ms | 58 |
 | [`6043884`](https://github.com/shoter/SJGRPP/commit/6043884a61c1f57e6d32ec368592e45fd488e0f4) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39518779315) | 0.06 ms | 0.07 ms | 52.6 MB | 97 ms | 58 |
@@ -42,6 +44,7 @@ Written by the *Performance history* workflow after every full test run on `main
 
 | Commit | Date | Result | Game loop avg | Game loop p95 | Server memory max | Command round trip p95 | Vehicles (max) |
 |---|---|---|---|---|---|---|---|
+| [`087013d`](https://github.com/shoter/SJGRPP/commit/087013d5130731808e8a0a7068fd7bac17071e25) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39641639863) | 0.89 ms | 1.33 ms | 76.6 MB | 1002 ms | 862 |
 | [`475a320`](https://github.com/shoter/SJGRPP/commit/475a320be9fa824f19abb15f96cec790bcb4ee81) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39585903214) | 0.86 ms | 1.25 ms | 99.9 MB | 1000 ms | 876 |
 | [`6926091`](https://github.com/shoter/SJGRPP/commit/69260912eee77f47ee0467606da79344e8d0e8fc) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39573199057) | 1.15 ms | 2.20 ms | 102.6 MB | 613 ms | 1,190 |
 | [`6043884`](https://github.com/shoter/SJGRPP/commit/6043884a61c1f57e6d32ec368592e45fd488e0f4) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39518779315) | 0.81 ms | 1.11 ms | 77.8 MB | 842 ms | 946 |
@@ -56,6 +59,7 @@ Written by the *Performance history* workflow after every full test run on `main
 
 | Commit | Date | Result | Game loop avg | Game loop p95 | Server memory max | Command round trip p95 | Vehicles (max) |
 |---|---|---|---|---|---|---|---|
+| [`087013d`](https://github.com/shoter/SJGRPP/commit/087013d5130731808e8a0a7068fd7bac17071e25) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39641639863) | 0.07 ms | 0.08 ms | 57.5 MB | 92 ms | 59 |
 | [`475a320`](https://github.com/shoter/SJGRPP/commit/475a320be9fa824f19abb15f96cec790bcb4ee81) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39585903214) | 0.06 ms | 0.06 ms | 55.4 MB | 93 ms | 53 |
 | [`6926091`](https://github.com/shoter/SJGRPP/commit/69260912eee77f47ee0467606da79344e8d0e8fc) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39573199057) | 0.07 ms | 0.11 ms | 52.3 MB | 93 ms | 53 |
 | [`6043884`](https://github.com/shoter/SJGRPP/commit/6043884a61c1f57e6d32ec368592e45fd488e0f4) | 2026-10-21 | ✅ [run](https://github.com/shoter/SJGRPP/actions/runs/39518779315) | 0.05 ms | 0.05 ms | 55.1 MB | 88 ms | 50 |
