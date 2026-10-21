@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from transport import DELTA, NEW_STATION, Builder, BuildError  # noqa: E402
+from transport import Builder, BuildError  # noqa: E402
 
 STATION_TYPE_OVERSEAS = 9     # StationType::Overseas
 TILE_STATION = 5              # TileType::Station
@@ -88,28 +88,8 @@ def take_control(b, station: int, company: int | None = None) -> dict:
 def build_dock_near(builder: Builder, station_tile: int, towns: list[tuple[int, int]], avoid: tuple[int, int] | None = None,
                     town_range: int = 6) -> tuple[int, int]:
     """A dock next to a town on the water body of an overseas station and a ship depot; returns (dock station, depot tile)."""
-    gmap = builder.fresh_map()
-    bodies = gmap.water_bodies(sea_only=True)
-    sx, sy = gmap.xy(station_tile)
-    body = None
-    for dx, dy in DELTA.values():
-        body = bodies.get(gmap.tile(sx + dx, sy + dy), body)
-    if body is None:
-        raise BuildError("overseas station has no sea next to it")
-    def town_dist(s):
-        return min(abs(s[0] - tx) + abs(s[1] - ty) for tx, ty in towns)
-    sites = [s for s in builder._dock_sites(gmap, bodies, sea_only=True) if s[3] == body and town_dist(s) <= town_range]
-    sites = [s for s in sites if abs(s[0] - sx) + abs(s[1] - sy) >= 10]
-    if avoid is not None:
-        sites = [s for s in sites if abs(s[0] - avoid[0]) + abs(s[1] - avoid[1]) >= 12]
-    sites.sort(key=lambda s: (town_dist(s), abs(s[0] - sx) + abs(s[1] - sy)))
-    results = builder.test_many([("BuildDock", gmap.tile(x, y), NEW_STATION, False) for x, y, _, _ in sites[:200]])
-    for site, res in zip(sites, results):
-        if not res["success"]:
-            continue
-        dock = builder._station_of(builder.cmd("BuildDock", gmap.tile(site[0], site[1]), NEW_STATION, False))
-        return dock, builder._ship_depot(builder.fresh_map(), site)
-    raise BuildError("no dock site on the water of the overseas station")
+    sites = builder.overseas_dock_sites(station_tile, towns=towns, town_range=town_range, avoid=avoid)
+    return builder.build_overseas_dock(sites[0])
 
 
 def pick_reachable(b, builder: Builder, stations: dict[int, int]) -> tuple[int, int, int]:

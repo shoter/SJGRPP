@@ -202,3 +202,121 @@ STR_ERROR_CAN_T_BUY_SECTOR_RIGHTS                               :{WHITE}Nie moż
 STR_ERROR_CAN_T_CHANGE_SECTOR                                   :{WHITE}Nie można zmienić sektora...
 
 STR_LAI_SECTOR                                                  :{BLACK}Sektor: {GOLD}{RAW_STRING}
+
+STR_CONFIG_SETTING_ENVIRONMENT_OVERSEAS                         :Stacje zamorskie
+STR_CONFIG_SETTING_OVERSEAS_STATIONS                            :Liczba stacji zamorskich: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_STATIONS_HELPTEXT                   :Liczba stacji zamorskich tworzonych na nowej mapie, na polach morza przy granicy mapy. Każda handluje z innym krajem. Statki i samoloty, które odwiedzą stację zamorską, opuszczają mapę na czas podróży do jej kraju i wracają z pasażerami, pocztą i towarem stamtąd. Firma musi przejąć kontrolę nad stacją zamorską, zanim jej pojazdy będą mogły z niej korzystać
+STR_CONFIG_SETTING_OVERSEAS_STATIONS_VALUE                      :{COMMA}
+STR_CONFIG_SETTING_OVERSEAS_MAX_PER_COMPANY                     :Najwięcej stacji zamorskich pod kontrolą jednej firmy: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_MAX_PER_COMPANY_HELPTEXT            :Ile stacji zamorskich firma może kontrolować jednocześnie. Stację zamorską kontroluje najwyżej jedna firma
+STR_CONFIG_SETTING_OVERSEAS_FEE                                 :Cena pierwszej stacji zamorskiej: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_FEE_HELPTEXT                        :Cena, jaką firma płaci za przejęcie kontroli nad swoją pierwszą stacją zamorską. Firma, która kontroluje X stacji zamorskich, płaci za następną (X+1)! razy tę cenę: 2 razy za drugą, 6 razy za trzecią, 24 razy za czwartą. Ceny rosną wraz z inflacją
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS                       :Czas podróży statków do najbliższego kraju: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS_HELPTEXT              :Jak długo statek jest poza mapą, gdy odwiedza stację zamorską najbliższego kraju, w obie strony. Dalsze kraje zajmują więcej czasu, aż do czasu podróży do najdalszego kraju
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MAX_DAYS                       :Czas podróży statków do najdalszego kraju: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MAX_DAYS_HELPTEXT              :Jak długo statek jest poza mapą, gdy odwiedza stację zamorską najdalszego kraju (Australii), w obie strony
+STR_CONFIG_SETTING_OVERSEAS_AIRCRAFT_TRIP_PERCENT               :Czas podróży samolotów: {STRING2} czasu podróży statków
+STR_CONFIG_SETTING_OVERSEAS_AIRCRAFT_TRIP_PERCENT_HELPTEXT      :Samoloty docierają do krajów zamorskich szybciej niż statki. To jest ich czas podróży w procentach czasu podróży statków
+STR_CONFIG_SETTING_OVERSEAS_PASSENGERS                          :Pasażerowie ze stacji zamorskich: {STRING2} na miesiąc
+STR_CONFIG_SETTING_OVERSEAS_PASSENGERS_HELPTEXT                 :Liczba pasażerów, jaką stacja zamorska kraju o 100 milionach mieszkańców wytwarza w miesiącu. Kraje z większą liczbą ludności wytwarzają więcej (według pierwiastka z liczby ludności, od połowy do czterech razy więcej). Produkcja rośnie co roku i spada o połowę podczas recesji
+STR_CONFIG_SETTING_OVERSEAS_MAIL                                :Poczta ze stacji zamorskich: {STRING2} na miesiąc
+STR_CONFIG_SETTING_OVERSEAS_MAIL_HELPTEXT                       :Ilość poczty, jaką stacja zamorska kraju o 100 milionach mieszkańców wytwarza w miesiącu, skalowana jak pasażerowie
+STR_CONFIG_SETTING_OVERSEAS_CARGO                               :Towar ze stacji zamorskich: {STRING2} na miesiąc
+STR_CONFIG_SETTING_OVERSEAS_CARGO_HELPTEXT                      :Ilość towaru, jaką stacja zamorska kraju o 100 milionach mieszkańców wytwarza w miesiącu, skalowana jak pasażerowie. Każda stacja zamorska wytwarza jeden losowo wybrany towar
+STR_CONFIG_SETTING_OVERSEAS_GROWTH                              :Roczny wzrost produkcji zamorskiej: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_GROWTH_HELPTEXT                     :Produkcja stacji zamorskich rośnie co roku o ten procent, bo świat się powiększa
+STR_CONFIG_SETTING_OVERSEAS_STOCKPILE_MONTHS                    :Zapas stacji zamorskich: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_STOCKPILE_MONTHS_HELPTEXT           :Stacja zamorska przestaje wytwarzać ładunek, gdy czeka tyle miesięcy jego produkcji. Ten limit nie zależy od ustawień pojemności stacji
+STR_CONFIG_SETTING_OVERSEAS_DAYS                                :{COMMA} {P "dzień" "dni" "dni"}
+STR_CONFIG_SETTING_OVERSEAS_MONTHS                              :{COMMA} {P "miesiąc" "miesiące" "miesięcy"} produkcji
+
+STR_SV_STNAME_OVERSEAS                                          :{STRING} (zamorska)
+STR_LAI_STATION_DESCRIPTION_OVERSEAS                            :Stacja zamorska
+STR_OVERSEAS_COUNTRY_INDIA                                      :Indie
+STR_OVERSEAS_COUNTRY_CHINA                                      :Chiny
+STR_OVERSEAS_COUNTRY_USA                                        :Stany Zjednoczone
+STR_OVERSEAS_COUNTRY_INDONESIA                                  :Indonezja
+STR_OVERSEAS_COUNTRY_PAKISTAN                                   :Pakistan
+STR_OVERSEAS_COUNTRY_NIGERIA                                    :Nigeria
+STR_OVERSEAS_COUNTRY_BRAZIL                                     :Brazylia
+STR_OVERSEAS_COUNTRY_BANGLADESH                                 :Bangladesz
+STR_OVERSEAS_COUNTRY_RUSSIA                                     :Rosja
+STR_OVERSEAS_COUNTRY_ETHIOPIA                                   :Etiopia
+STR_OVERSEAS_COUNTRY_MEXICO                                     :Meksyk
+STR_OVERSEAS_COUNTRY_JAPAN                                      :Japonia
+STR_OVERSEAS_COUNTRY_PHILIPPINES                                :Filipiny
+STR_OVERSEAS_COUNTRY_EGYPT                                      :Egipt
+STR_OVERSEAS_COUNTRY_DR_CONGO                                   :Demokratyczna Republika Konga
+STR_OVERSEAS_COUNTRY_VIETNAM                                    :Wietnam
+STR_OVERSEAS_COUNTRY_IRAN                                       :Iran
+STR_OVERSEAS_COUNTRY_TURKEY                                     :Turcja
+STR_OVERSEAS_COUNTRY_GERMANY                                    :Niemcy
+STR_OVERSEAS_COUNTRY_THAILAND                                   :Tajlandia
+STR_OVERSEAS_COUNTRY_TANZANIA                                   :Tanzania
+STR_OVERSEAS_COUNTRY_UK                                         :Wielka Brytania
+STR_OVERSEAS_COUNTRY_FRANCE                                     :Francja
+STR_OVERSEAS_COUNTRY_SOUTH_AFRICA                               :Republika Południowej Afryki
+STR_OVERSEAS_COUNTRY_ITALY                                      :Włochy
+STR_OVERSEAS_COUNTRY_KENYA                                      :Kenia
+STR_OVERSEAS_COUNTRY_MYANMAR                                    :Mjanma
+STR_OVERSEAS_COUNTRY_COLOMBIA                                   :Kolumbia
+STR_OVERSEAS_COUNTRY_SOUTH_KOREA                                :Korea Południowa
+STR_OVERSEAS_COUNTRY_UGANDA                                     :Uganda
+STR_OVERSEAS_COUNTRY_SUDAN                                      :Sudan
+STR_OVERSEAS_COUNTRY_SPAIN                                      :Hiszpania
+STR_OVERSEAS_COUNTRY_ALGERIA                                    :Algieria
+STR_OVERSEAS_COUNTRY_IRAQ                                       :Irak
+STR_OVERSEAS_COUNTRY_ARGENTINA                                  :Argentyna
+STR_OVERSEAS_COUNTRY_AFGHANISTAN                                :Afganistan
+STR_OVERSEAS_COUNTRY_CANADA                                     :Kanada
+STR_OVERSEAS_COUNTRY_UKRAINE                                    :Ukraina
+STR_OVERSEAS_COUNTRY_MOROCCO                                    :Maroko
+STR_OVERSEAS_COUNTRY_SAUDI_ARABIA                               :Arabia Saudyjska
+STR_OVERSEAS_COUNTRY_ANGOLA                                     :Angola
+STR_OVERSEAS_COUNTRY_UZBEKISTAN                                 :Uzbekistan
+STR_OVERSEAS_COUNTRY_YEMEN                                      :Jemen
+STR_OVERSEAS_COUNTRY_PERU                                       :Peru
+STR_OVERSEAS_COUNTRY_MOZAMBIQUE                                 :Mozambik
+STR_OVERSEAS_COUNTRY_GHANA                                      :Ghana
+STR_OVERSEAS_COUNTRY_MALAYSIA                                   :Malezja
+STR_OVERSEAS_COUNTRY_NEPAL                                      :Nepal
+STR_OVERSEAS_COUNTRY_MADAGASCAR                                 :Madagaskar
+STR_OVERSEAS_COUNTRY_VENEZUELA                                  :Wenezuela
+STR_OVERSEAS_COUNTRY_IVORY_COAST                                :Wybrzeże Kości Słoniowej
+STR_OVERSEAS_COUNTRY_CAMEROON                                   :Kamerun
+STR_OVERSEAS_COUNTRY_NIGER                                      :Niger
+STR_OVERSEAS_COUNTRY_AUSTRALIA                                  :Australia
+STR_OVERSEAS_COUNTRY_NORTH_KOREA                                :Korea Północna
+STR_OVERSEAS_COUNTRY_TAIWAN                                     :Tajwan
+STR_OVERSEAS_COUNTRY_MALI                                       :Mali
+STR_OVERSEAS_COUNTRY_SYRIA                                      :Syria
+STR_OVERSEAS_COUNTRY_BURKINA_FASO                               :Burkina Faso
+STR_OVERSEAS_COUNTRY_SRI_LANKA                                  :Sri Lanka
+
+STR_OVERSEAS_COUNTRY                                            :{BLACK}Kraj: {WHITE}{STRING} {BLACK}({COMMA} km od Polski)
+STR_OVERSEAS_CONTROLLED_BY                                      :{BLACK}Kontrola: {WHITE}{COMPANY}
+STR_OVERSEAS_NOT_CONTROLLED                                     :{BLACK}Kontrola: {WHITE}nikt
+STR_OVERSEAS_TRIP                                               :{BLACK}Podróż w obie strony: {WHITE}{COMMA} {P "dzień" "dni" "dni"} {BLACK}statkiem, {WHITE}{COMMA} {P "dzień" "dni" "dni"} {BLACK}samolotem
+STR_OVERSEAS_PRODUCTION                                         :{BLACK}Produkcja na miesiąc (najwięcej czekających):
+STR_OVERSEAS_PRODUCTION_LINE                                    :{WHITE}  {CARGO_LONG} {BLACK}({CARGO_SHORT})
+STR_OVERSEAS_PRODUCTION_RECESSION                               :{ORANGE}  O połowę mniej z powodu recesji
+STR_OVERSEAS_GROWTH                                             :{BLACK}Produkcja rośnie o {WHITE}{COMMA}% {BLACK}rocznie
+STR_OVERSEAS_PRICE                                              :{BLACK}Cena kontroli dla ciebie: {WHITE}{CURRENCY_LONG}
+STR_OVERSEAS_TAKE_CONTROL                                       :{BLACK}Przejmij kontrolę
+STR_OVERSEAS_TAKE_CONTROL_TOOLTIP                               :{BLACK}Zapłać cenę i przejmij kontrolę nad tą stacją zamorską, aby twoje statki i samoloty mogły z niej korzystać
+STR_OVERSEAS_GIVE_UP_CONTROL                                    :{BLACK}Oddaj kontrolę
+STR_OVERSEAS_GIVE_UP_CONTROL_TOOLTIP                            :{BLACK}Oddaj kontrolę nad tą stacją zamorską. Cena nie jest zwracana
+STR_OVERSEAS_GIVE_UP_QUERY_CAPTION                              :{WHITE}Oddaj kontrolę
+STR_OVERSEAS_GIVE_UP_QUERY                                      :{YELLOW}Oddać kontrolę nad stacją {STATION}? Cena nie zostanie zwrócona, a twoje pojazdy nie będą mogły już z niej korzystać.
+STR_VEHICLE_STATUS_OVERSEAS                                     :{LTBLUE}Za morzem: {STATION}, powrót za {COMMA} {P "dzień" "dni" "dni"}
+STR_NEWS_OVERSEAS_CONTROL_TITLE                                 :{BIG_FONT}{BLACK}Handel zamorski!
+STR_NEWS_OVERSEAS_CONTROL                                       :{BIG_FONT}{BLACK}{RAW_STRING} przejmuje kontrolę nad stacją {STATION}!
+STR_ERROR_CAN_T_TAKE_CONTROL_OF_OVERSEAS                        :{WHITE}Nie można przejąć kontroli nad stacją zamorską...
+STR_ERROR_CAN_T_GIVE_UP_CONTROL_OF_OVERSEAS                     :{WHITE}Nie można oddać kontroli nad stacją zamorską...
+STR_ERROR_OVERSEAS_ALREADY_CONTROLLED                           :{WHITE}... już ją kontrolujesz
+STR_ERROR_OVERSEAS_CONTROLLED_BY_OTHER                          :{WHITE}... kontroluje ją inna firma
+STR_ERROR_OVERSEAS_TOO_MANY                                     :{WHITE}... kontrolujesz już najwięcej dozwolonych stacji zamorskich
+STR_ERROR_OVERSEAS_NOT_CONTROLLED                               :{WHITE}... nie kontrolujesz tej stacji zamorskiej
+STR_ERROR_OVERSEAS_STATION_IN_THE_WAY                           :{WHITE}... na drodze jest stacja zamorska
+STR_ERROR_VEHICLE_IS_OVERSEAS                                   :{WHITE}... pojazd jest za morzem
+STR_NEWS_OVERSEAS_CAR_FERRY_LOADED                              :{WHITE}{VEHICLE} nie może płynąć do stacji {STATION} z samochodami na pokładzie

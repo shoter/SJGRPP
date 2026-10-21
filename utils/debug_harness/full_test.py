@@ -3,7 +3,7 @@
 Multiplayer full test (stress / regression).
 
 A dedicated server and N headless clients (each its own company) on a generated vanilla map. Every client builds road,
-rail, air, ship and car ferry routes through real game commands (client -> server -> all clients, like GUI actions), then the
+rail, air, ship, car ferry and overseas routes through real game commands (client -> server -> all clients, like GUI actions), then the
 game runs for a period of game time while the test checks:
 
   - stability:    no crashed/exited process, no desync, kick, lost connection or other error in any log
@@ -11,7 +11,8 @@ game runs for a period of game time while the test checks:
   - performance:  server game speed vs real time, game loop / per-vehicle-type tick times (fps console), memory,
                   command round-trip latency, join (map download) time; optional comparison with a saved baseline
   - gameplay:     vehicles move and earn money, networks keep running, buses cross the water on car ferries
-                  (in the sharing profile also on other companies' car ferries)
+                  (in the sharing profile also on other companies' car ferries), ships and aircraft travel to an
+                  overseas station of their company and come back
   - churn:        a client leaves and rejoins its company, a spectator downloads the map, vehicles are added while
                   running, the server saves and the save loads back in a separate instance with the same content
 
@@ -77,11 +78,16 @@ SELL_IN_DEPOT = 1 << 4         # DepotCommandFlag::Sell
 MONEY_TOP_UP = 1_000_000_000   # given by the server to each company...
 MONEY_LOW = 300_000_000        # ...whenever its money is below this (checked every game month)
 
-KINDS = ["road", "rail", "air", "ship", "ferry"]
+KINDS = ["road", "rail", "air", "ship", "ferry", "overseas"]
 
 # Car ferries (route kind "ferry"): road vehicle fields compared between instances.
 FERRY_BUS_FIELDS = "ferry_carrier ferry_dest vehstatus last_station_visited cur_real_order_index"
 INVALID_VEHICLE = 0xFFFFF
+
+# Overseas routes: vehicle fields compared between instances, and the trip times (calendar days, there and back).
+OVERSEAS_VEHICLE_FIELDS = "overseas_station overseas_return overseas_trip_ticks vehstatus cur_real_order_index"
+OVERSEAS_TRIP_DAYS = (10, 30)
+INVALID_STATION = 0xFFFF
 
 # Lines in any log that mean something went wrong. Checked case-insensitively.
 PROBLEM_RE = re.compile(r"desync|lost connection|connection lost|kicked|server closed|assert|crash|corrupt|"
@@ -187,6 +193,7 @@ class FullTest:
         self.initial_fees: dict[str, int] = {}
         self.inflation_bumped = False
         self.ferry_seen: dict[int, set] = {}
+        self.overseas_seen: dict[int, set] = {}
 
     # ---- reporting ----
 
@@ -220,7 +227,9 @@ class FullTest:
             "station": {"never_expire_airports": "true"},
             "pf": {"forbid_90_deg": "false"},
             "vehicle": {"plane_crashes": 0},
-            "economy": {"inflation": "true" if self.profile.get("sharing") else "false"},
+            "economy": {"inflation": "true" if self.profile.get("sharing") else "false",
+                        "overseas_stations": 60, "overseas_trip_min_days": OVERSEAS_TRIP_DAYS[0],
+                        "overseas_trip_max_days": OVERSEAS_TRIP_DAYS[1]},
             "network": {"pause_on_join": "false", "max_clients": a.clients + 8,
                         "max_companies": min(28, max(15, a.clients + 1)), "autoclean_companies": "false"},
         }
@@ -450,17 +459,49 @@ class FullTest:
         ferry_ships, ferry_buses = self.ferry_vehicles()
         lines += [f"obj vehicle {v} flags cargo_cap" for v in ferry_ships]
         lines += [f"obj vehicle {v} {FERRY_BUS_FIELDS}" for v in ferry_buses]
+        overseas = self.overseas_vehicles()
+        lines += [f"obj vehicle {v} {OVERSEAS_VEHICLE_FIELDS}" for v in overseas]
+        lines.append("get overseas.stations")
         lines.append("obj globals tick_counter date")
         resp = bridge.batch(lines, timeout=120)
         vals = [r.get("result") if r.get("ok") else {"error": r.get("error")} for r in resp]
-        nc, nv, ns = len(companies), len(vehicles), len(stations)
+        nc, nv, ns, nf = len(companies), len(vehicles), len(stations), len(ferry_ships) + len(ferry_buses)
+        first_overseas = nc + nv + ns + nf
         return {
             "companies": dict(zip(companies, vals[:nc])),
             "vehicles": dict(zip(vehicles, vals[nc:nc + nv])),
             "stations": dict(zip(stations, vals[nc + nv:nc + nv + ns])),
-            "ferries": dict(zip(ferry_ships + ferry_buses, vals[nc + nv + ns:-1])),
+            "ferries": dict(zip(ferry_ships + ferry_buses, vals[nc + nv + ns:first_overseas])),
+            "overseas": dict(zip(overseas, vals[first_overseas:-2])),
+            "overseas_stations": {0: vals[-2]},
             "globals": vals[-1],
         }
+
+    def overseas_routes(self) -> list[Route]:
+        return [r for rs in list(self.routes.values()) for r in list(rs) if r.kind == "overseas"]
+
+    def overseas_vehicles(self) -> list[int]:
+        """Ships and aircraft of all overseas routes built so far."""
+        return [v for r in self.overseas_routes() for v in r.vehicles]
+
+    def sample_overseas(self, bridge) -> None:
+        """Record, per overseas route vehicle, whether it was seen away overseas and whether it came back."""
+        vehicles = [(r, v) for r in self.overseas_routes() for v in r.vehicles]
+        if not vehicles:
+            return
+        try:
+            resp = bridge.batch([f"obj vehicle {v} overseas_station" for _, v in vehicles])
+        except Exception as e:  # noqa: BLE001
+            self.log(f"overseas sample failed: {type(e).__name__}: {e}")
+            return
+        for (route, v), r in zip(vehicles, resp):
+            if not r.get("ok"):
+                continue
+            seen = self.overseas_seen.setdefault(v, set())
+            if r["result"]["overseas_station"] == route.overseas:
+                seen.add("away")
+            elif "away" in seen and r["result"]["overseas_station"] == INVALID_STATION:
+                seen.add("back")
 
     def ferry_routes(self) -> list[Route]:
         return [r for rs in list(self.routes.values()) for r in list(rs) if r.kind == "ferry"]
@@ -492,7 +533,7 @@ class FullTest:
     @staticmethod
     def diff_snapshots(a: dict, b: dict, limit: int = 6) -> list[str]:
         diffs = []
-        for section in ("globals", "companies", "stations", "vehicles", "ferries"):
+        for section in ("globals", "companies", "stations", "vehicles", "ferries", "overseas", "overseas_stations"):
             sa, sb = a.get(section, {}), b.get(section, {})
             if section == "globals":
                 if sa != sb:
@@ -526,6 +567,7 @@ class FullTest:
                 val = r["result"]
                 self.vehicle_history.setdefault(v, set()).add((val["tile"], val["x_pos"], val["y_pos"]))
         self.sample_ferries(self.mon(self.cluster.server))
+        self.sample_overseas(self.mon(self.cluster.server))
 
     def sync_check(self, label: str) -> None:
         assert self.cluster is not None
@@ -538,6 +580,7 @@ class FullTest:
         try:
             ref = self.state_snapshot(self.mon(self.cluster.server))
             self.sample_ferries(self.mon(self.cluster.server))
+            self.sample_overseas(self.mon(self.cluster.server))
             for vid, v in ref["vehicles"].items():
                 if isinstance(v, dict) and "tile" in v:
                     self.vehicle_history.setdefault(vid, set()).add((v["tile"], v.get("x_pos"), v.get("y_pos")))
@@ -674,7 +717,7 @@ class FullTest:
         """Town pairs (single towns for ships) for new routes, preferring towns least used for this kind."""
         txy = self.town_xy
         use = self.town_use.setdefault(kind, {})
-        if kind in ("ship", "ferry"):
+        if kind in ("ship", "ferry", "overseas"):
             idx = sorted(range(len(txy)), key=lambda i: (use.get(i, 0), rng.random()))[:count]
             for i in idx:
                 use[i] = use.get(i, 0) + 1
@@ -712,6 +755,8 @@ class FullTest:
                 r = builder.build_air_route(*target, vehicles=2 * a.scale)
             elif kind == "ferry":
                 r = builder.build_car_ferry_route(target, buses=2 * a.scale)
+            elif kind == "overseas":
+                r = builder.build_overseas_route(target, vehicles=a.scale, airport=self.client_airport(self.routes.get(ci, [])))
             else:
                 r = builder.build_ship_route(target, vehicles=2 * a.scale)
         except (BuildError, BridgeError, TimeoutError, ConnectionError) as e:
@@ -769,6 +814,7 @@ class FullTest:
                 plan[ci][kind] = [(txy[i], txy[j]) for i, j in chosen]
             plan[ci]["ship"] = [txy[rng.randrange(len(txy))] for _ in range(self.args.routes * 3)]
             plan[ci]["ferry"] = [txy[rng.randrange(len(txy))] for _ in range(self.args.routes * 3)]
+            plan[ci]["overseas"] = [txy[rng.randrange(len(txy))] for _ in range(self.args.routes * 3)]
         self.log(f"{len(txy)} towns; town pairs assigned per client")
         return plan
 
@@ -776,7 +822,7 @@ class FullTest:
         a = self.args
         routes: list[Route] = []
         errors: list[str] = []
-        counts = {"road": 4 * a.scale, "air": 2 * a.scale, "ship": 2 * a.scale, "ferry": 2 * a.scale}
+        counts = {"road": 4 * a.scale, "air": 2 * a.scale, "ship": 2 * a.scale, "ferry": 2 * a.scale, "overseas": a.scale}
         for kind in KINDS:
             built = 0
             for target in plan[kind]:
@@ -792,6 +838,8 @@ class FullTest:
                         r = builder.build_air_route(*target, vehicles=counts["air"])
                     elif kind == "ferry":
                         r = builder.build_car_ferry_route(target, buses=counts["ferry"])
+                    elif kind == "overseas":
+                        r = builder.build_overseas_route(target, vehicles=counts["overseas"], airport=self.client_airport(routes))
                     else:
                         r = builder.build_ship_route(target, vehicles=counts["ship"])
                     routes.append(r)
@@ -807,6 +855,12 @@ class FullTest:
                     break
         self.routes[ci] = routes
         self.build_errors[ci] = errors
+
+    @staticmethod
+    def client_airport(routes: list[Route]) -> tuple[int, int] | None:
+        """(airport station, hangar tile) of the first air route of a client, for its overseas aircraft."""
+        air = next((r for r in routes if r.kind == "air" and r.depot_tile is not None), None)
+        return (air.stations[0], air.depot_tile) if air is not None else None
 
     def build_phase(self) -> None:
         assert self.cluster is not None
@@ -1082,8 +1136,9 @@ class FullTest:
             self.check(len(moved) >= max(1, len(vids) // 2), f"{kind} vehicles move", f"{len(moved)}/{len(vids)} changed position or earned money")
             self.check(len(earning) > 0, f"{kind} vehicles earn money",
                        f"{len(earning)}/{len(vids)} with positive profit",
-                       severity="warn" if kind in ("ship", "ferry") or self.profile["months"] < 2 else "fail")
+                       severity="warn" if kind in ("ship", "ferry", "overseas") or self.profile["months"] < 2 else "fail")
         self.ferry_final_checks(server)
+        self.overseas_final_checks(server)
 
         # Save on the server and load it in a separate instance: same content, keeps running.
         tick = self.pause_synced()
@@ -1118,6 +1173,25 @@ class FullTest:
             self.check(False, "saved game loads", f"{type(e).__name__}: {e}")
         finally:
             loader.stop()
+
+    def overseas_final_checks(self, server) -> None:
+        """Ships and aircraft leave for their overseas station and come back; each station is controlled by its route's company."""
+        routes = self.overseas_routes()
+        if not routes:
+            return
+        self.sample_overseas(server)
+        vehicles = [v for r in routes for v in r.vehicles]
+        away = [v for v in vehicles if "away" in self.overseas_seen.get(v, ())]
+        back = [v for v in vehicles if "back" in self.overseas_seen.get(v, ())]
+        # A trip there and back takes up to OVERSEAS_TRIP_DAYS[1] days plus the sailing: short runs only report.
+        severity = "fail" if self.profile["months"] >= 6 else "warn"
+        self.check(len(away) > 0, "vehicles travel overseas", f"{len(away)}/{len(vehicles)} seen away, {len(routes)} overseas routes",
+                   severity=severity)
+        self.check(len(back) > 0, "vehicles come back from overseas", f"{len(back)}/{len(vehicles)} seen back", severity=severity)
+        resp = server.batch([f"obj station {r.overseas} owner" for r in routes])
+        wrong = [f"station {r.overseas}: owner {x['result']['owner'] if x.get('ok') else x.get('error')}, route of company {r.company}"
+                 for r, x in zip(routes, resp) if not x.get("ok") or x["result"]["owner"] != r.company]
+        self.check(not wrong, "overseas stations are controlled by their route's company", "; ".join(wrong[:4]))
 
     def ferry_final_checks(self, server) -> None:
         """Buses board the car ferries and cross the water; none is aboard a ship other than its route's ferry."""
