@@ -3,79 +3,83 @@
 <rect class="bg" width="900" height="420" rx="6"/>
 <text class="fg" x="20" y="26" font-size="15" font-weight="600">Server memory max (MB) on main</text>
 <rect class="panel" x="20" y="40" width="420" height="170" rx="4"/>
-<text class="fg" x="30" y="58" font-weight="600">quick - latest 52.2 MB</text>
+<text class="fg" x="30" y="58" font-weight="600">quick - latest 52.0 MB</text>
 <line class="grid" x1="72" x2="426" y1="184.0" y2="184.0"/>
-<text class="mute" x="66" y="188.0" text-anchor="end">51.9</text>
+<text class="mute" x="66" y="188.0" text-anchor="end">51.7</text>
 <line class="grid" x1="72" x2="426" y1="127.0" y2="127.0"/>
-<text class="mute" x="66" y="131.0" text-anchor="end">53.7</text>
+<text class="mute" x="66" y="131.0" text-anchor="end">53.6</text>
 <line class="grid" x1="72" x2="426" y1="70.0" y2="70.0"/>
 <text class="mute" x="66" y="74.0" text-anchor="end">55.5</text>
-<polyline class="line" fill="none" stroke-width="2" points="72.0,79.5 122.6,84.6 173.1,168.2 223.7,163.4 274.3,171.7 324.9,166.3 375.4,90.0 426.0,174.5"/>
+<polyline class="line" fill="none" stroke-width="2" points="72.0,79.5 116.2,84.3 160.5,163.9 204.8,159.4 249.0,167.3 293.2,162.1 337.5,89.5 381.8,170.0 426.0,174.5"/>
 <circle class="dot" cx="72.0" cy="79.5" r="2.5"><title>967acf9 2026-10-17: 55.2 MB</title></circle>
-<circle class="dot" cx="122.6" cy="84.6" r="2.5"><title>52efdca 2026-10-17: 55.0 MB</title></circle>
-<circle class="dot" cx="173.1" cy="168.2" r="2.5"><title>0e597f3 2026-10-20: 52.4 MB</title></circle>
-<circle class="dot" cx="223.7" cy="163.4" r="2.5"><title>f105be1 2026-10-20: 52.5 MB</title></circle>
-<circle class="dot" cx="274.3" cy="171.7" r="2.5"><title>149357f 2026-10-20: 52.3 MB</title></circle>
-<circle class="dot" cx="324.9" cy="166.3" r="2.5"><title>630dd28 2026-10-20: 52.5 MB</title></circle>
-<circle class="dot" cx="375.4" cy="90.0" r="2.5"><title>6043884 2026-10-21: 54.9 MB</title></circle>
-<circle class="dot" cx="426.0" cy="174.5" r="2.5"><title>6926091 2026-10-21: 52.2 MB</title></circle>
+<circle class="dot" cx="116.2" cy="84.3" r="2.5"><title>52efdca 2026-10-17: 55.0 MB</title></circle>
+<circle class="dot" cx="160.5" cy="163.9" r="2.5"><title>0e597f3 2026-10-20: 52.4 MB</title></circle>
+<circle class="dot" cx="204.8" cy="159.4" r="2.5"><title>f105be1 2026-10-20: 52.5 MB</title></circle>
+<circle class="dot" cx="249.0" cy="167.3" r="2.5"><title>149357f 2026-10-20: 52.3 MB</title></circle>
+<circle class="dot" cx="293.2" cy="162.1" r="2.5"><title>630dd28 2026-10-20: 52.5 MB</title></circle>
+<circle class="dot" cx="337.5" cy="89.5" r="2.5"><title>6043884 2026-10-21: 54.9 MB</title></circle>
+<circle class="dot" cx="381.8" cy="170.0" r="2.5"><title>6926091 2026-10-21: 52.2 MB</title></circle>
+<circle class="dot" cx="426.0" cy="174.5" r="2.5"><title>475a320 2026-10-21: 52.0 MB</title></circle>
 <text class="mute" x="72" y="202">967acf9 2026-10-17</text>
-<text class="mute" x="426" y="202" text-anchor="end">6926091 2026-10-21</text>
+<text class="mute" x="426" y="202" text-anchor="end">475a320 2026-10-21</text>
 <rect class="panel" x="460" y="40" width="420" height="170" rx="4"/>
-<text class="fg" x="470" y="58" font-weight="600">normal - latest 52.3 MB</text>
+<text class="fg" x="470" y="58" font-weight="600">normal - latest 55.2 MB</text>
 <line class="grid" x1="512" x2="866" y1="184.0" y2="184.0"/>
 <text class="mute" x="506" y="188.0" text-anchor="end">51.7</text>
 <line class="grid" x1="512" x2="866" y1="127.0" y2="127.0"/>
 <text class="mute" x="506" y="131.0" text-anchor="end">54.7</text>
 <line class="grid" x1="512" x2="866" y1="70.0" y2="70.0"/>
 <text class="mute" x="506" y="74.0" text-anchor="end">57.7</text>
-<polyline class="line" fill="none" stroke-width="2" points="512.0,121.4 562.6,117.0 613.1,79.5 663.7,174.5 714.3,170.5 764.9,118.2 815.4,166.2 866.0,171.3"/>
+<polyline class="line" fill="none" stroke-width="2" points="512.0,121.4 556.2,117.0 600.5,79.5 644.8,174.5 689.0,170.5 733.2,118.2 777.5,166.2 821.8,171.3 866.0,117.6"/>
 <circle class="dot" cx="512.0" cy="121.4" r="2.5"><title>967acf9 2026-10-17: 55.0 MB</title></circle>
-<circle class="dot" cx="562.6" cy="117.0" r="2.5"><title>52efdca 2026-10-17: 55.2 MB</title></circle>
-<circle class="dot" cx="613.1" cy="79.5" r="2.5"><title>0e597f3 2026-10-20: 57.2 MB</title></circle>
-<circle class="dot" cx="663.7" cy="174.5" r="2.5"><title>f105be1 2026-10-20: 52.2 MB</title></circle>
-<circle class="dot" cx="714.3" cy="170.5" r="2.5"><title>149357f 2026-10-20: 52.4 MB</title></circle>
-<circle class="dot" cx="764.9" cy="118.2" r="2.5"><title>630dd28 2026-10-20: 55.1 MB</title></circle>
-<circle class="dot" cx="815.4" cy="166.2" r="2.5"><title>6043884 2026-10-21: 52.6 MB</title></circle>
-<circle class="dot" cx="866.0" cy="171.3" r="2.5"><title>6926091 2026-10-21: 52.3 MB</title></circle>
+<circle class="dot" cx="556.2" cy="117.0" r="2.5"><title>52efdca 2026-10-17: 55.2 MB</title></circle>
+<circle class="dot" cx="600.5" cy="79.5" r="2.5"><title>0e597f3 2026-10-20: 57.2 MB</title></circle>
+<circle class="dot" cx="644.8" cy="174.5" r="2.5"><title>f105be1 2026-10-20: 52.2 MB</title></circle>
+<circle class="dot" cx="689.0" cy="170.5" r="2.5"><title>149357f 2026-10-20: 52.4 MB</title></circle>
+<circle class="dot" cx="733.2" cy="118.2" r="2.5"><title>630dd28 2026-10-20: 55.1 MB</title></circle>
+<circle class="dot" cx="777.5" cy="166.2" r="2.5"><title>6043884 2026-10-21: 52.6 MB</title></circle>
+<circle class="dot" cx="821.8" cy="171.3" r="2.5"><title>6926091 2026-10-21: 52.3 MB</title></circle>
+<circle class="dot" cx="866.0" cy="117.6" r="2.5"><title>475a320 2026-10-21: 55.2 MB</title></circle>
 <text class="mute" x="512" y="202">967acf9 2026-10-17</text>
-<text class="mute" x="866" y="202" text-anchor="end">6926091 2026-10-21</text>
+<text class="mute" x="866" y="202" text-anchor="end">475a320 2026-10-21</text>
 <rect class="panel" x="20" y="230" width="420" height="170" rx="4"/>
-<text class="fg" x="30" y="248" font-weight="600">max-28 - latest 102.6 MB</text>
+<text class="fg" x="30" y="248" font-weight="600">max-28 - latest 99.9 MB</text>
 <line class="grid" x1="72" x2="426" y1="374.0" y2="374.0"/>
 <text class="mute" x="66" y="378.0" text-anchor="end">74.7</text>
 <line class="grid" x1="72" x2="426" y1="317.0" y2="317.0"/>
 <text class="mute" x="66" y="321.0" text-anchor="end">89.9</text>
 <line class="grid" x1="72" x2="426" y1="260.0" y2="260.0"/>
 <text class="mute" x="66" y="264.0" text-anchor="end">105</text>
-<polyline class="line" fill="none" stroke-width="2" points="72.0,278.9 122.6,276.7 173.1,318.5 223.7,307.5 274.3,364.5 324.9,363.3 375.4,362.4 426.0,269.5"/>
+<polyline class="line" fill="none" stroke-width="2" points="72.0,278.9 116.2,276.7 160.5,318.5 204.8,307.5 249.0,364.5 293.2,363.3 337.5,362.4 381.8,269.5 426.0,279.6"/>
 <circle class="dot" cx="72.0" cy="278.9" r="2.5"><title>967acf9 2026-10-17: 100.1 MB</title></circle>
-<circle class="dot" cx="122.6" cy="276.7" r="2.5"><title>52efdca 2026-10-17: 100.7 MB</title></circle>
-<circle class="dot" cx="173.1" cy="318.5" r="2.5"><title>0e597f3 2026-10-20: 89.5 MB</title></circle>
-<circle class="dot" cx="223.7" cy="307.5" r="2.5"><title>f105be1 2026-10-20: 92.5 MB</title></circle>
-<circle class="dot" cx="274.3" cy="364.5" r="2.5"><title>149357f 2026-10-20: 77.2 MB</title></circle>
-<circle class="dot" cx="324.9" cy="363.3" r="2.5"><title>630dd28 2026-10-20: 77.5 MB</title></circle>
-<circle class="dot" cx="375.4" cy="362.4" r="2.5"><title>6043884 2026-10-21: 77.8 MB</title></circle>
-<circle class="dot" cx="426.0" cy="269.5" r="2.5"><title>6926091 2026-10-21: 102.6 MB</title></circle>
+<circle class="dot" cx="116.2" cy="276.7" r="2.5"><title>52efdca 2026-10-17: 100.7 MB</title></circle>
+<circle class="dot" cx="160.5" cy="318.5" r="2.5"><title>0e597f3 2026-10-20: 89.5 MB</title></circle>
+<circle class="dot" cx="204.8" cy="307.5" r="2.5"><title>f105be1 2026-10-20: 92.5 MB</title></circle>
+<circle class="dot" cx="249.0" cy="364.5" r="2.5"><title>149357f 2026-10-20: 77.2 MB</title></circle>
+<circle class="dot" cx="293.2" cy="363.3" r="2.5"><title>630dd28 2026-10-20: 77.5 MB</title></circle>
+<circle class="dot" cx="337.5" cy="362.4" r="2.5"><title>6043884 2026-10-21: 77.8 MB</title></circle>
+<circle class="dot" cx="381.8" cy="269.5" r="2.5"><title>6926091 2026-10-21: 102.6 MB</title></circle>
+<circle class="dot" cx="426.0" cy="279.6" r="2.5"><title>475a320 2026-10-21: 99.9 MB</title></circle>
 <text class="mute" x="72" y="392">967acf9 2026-10-17</text>
-<text class="mute" x="426" y="392" text-anchor="end">6926091 2026-10-21</text>
+<text class="mute" x="426" y="392" text-anchor="end">475a320 2026-10-21</text>
 <rect class="panel" x="460" y="230" width="420" height="170" rx="4"/>
-<text class="fg" x="470" y="248" font-weight="600">sharing - latest 52.3 MB</text>
+<text class="fg" x="470" y="248" font-weight="600">sharing - latest 55.4 MB</text>
 <line class="grid" x1="512" x2="866" y1="374.0" y2="374.0"/>
 <text class="mute" x="506" y="378.0" text-anchor="end">51.8</text>
 <line class="grid" x1="512" x2="866" y1="317.0" y2="317.0"/>
-<text class="mute" x="506" y="321.0" text-anchor="end">53.6</text>
+<text class="mute" x="506" y="321.0" text-anchor="end">53.8</text>
 <line class="grid" x1="512" x2="866" y1="260.0" y2="260.0"/>
-<text class="mute" x="506" y="264.0" text-anchor="end">55.4</text>
-<polyline class="line" fill="none" stroke-width="2" points="512.0,273.9 562.6,272.0 613.1,364.5 663.7,269.8 714.3,275.2 764.9,353.4 815.4,269.5 866.0,360.4"/>
-<circle class="dot" cx="512.0" cy="273.9" r="2.5"><title>967acf9 2026-10-17: 55.0 MB</title></circle>
-<circle class="dot" cx="562.6" cy="272.0" r="2.5"><title>52efdca 2026-10-17: 55.0 MB</title></circle>
-<circle class="dot" cx="613.1" cy="364.5" r="2.5"><title>0e597f3 2026-10-20: 52.1 MB</title></circle>
-<circle class="dot" cx="663.7" cy="269.8" r="2.5"><title>f105be1 2026-10-20: 55.1 MB</title></circle>
-<circle class="dot" cx="714.3" cy="275.2" r="2.5"><title>149357f 2026-10-20: 55.0 MB</title></circle>
-<circle class="dot" cx="764.9" cy="353.4" r="2.5"><title>630dd28 2026-10-20: 52.5 MB</title></circle>
-<circle class="dot" cx="815.4" cy="269.5" r="2.5"><title>6043884 2026-10-21: 55.1 MB</title></circle>
-<circle class="dot" cx="866.0" cy="360.4" r="2.5"><title>6926091 2026-10-21: 52.3 MB</title></circle>
+<text class="mute" x="506" y="264.0" text-anchor="end">55.7</text>
+<polyline class="line" fill="none" stroke-width="2" points="512.0,281.4 556.2,279.7 600.5,364.5 644.8,277.7 689.0,282.6 733.2,354.3 777.5,277.4 821.8,360.7 866.0,269.5"/>
+<circle class="dot" cx="512.0" cy="281.4" r="2.5"><title>967acf9 2026-10-17: 55.0 MB</title></circle>
+<circle class="dot" cx="556.2" cy="279.7" r="2.5"><title>52efdca 2026-10-17: 55.0 MB</title></circle>
+<circle class="dot" cx="600.5" cy="364.5" r="2.5"><title>0e597f3 2026-10-20: 52.1 MB</title></circle>
+<circle class="dot" cx="644.8" cy="277.7" r="2.5"><title>f105be1 2026-10-20: 55.1 MB</title></circle>
+<circle class="dot" cx="689.0" cy="282.6" r="2.5"><title>149357f 2026-10-20: 55.0 MB</title></circle>
+<circle class="dot" cx="733.2" cy="354.3" r="2.5"><title>630dd28 2026-10-20: 52.5 MB</title></circle>
+<circle class="dot" cx="777.5" cy="277.4" r="2.5"><title>6043884 2026-10-21: 55.1 MB</title></circle>
+<circle class="dot" cx="821.8" cy="360.7" r="2.5"><title>6926091 2026-10-21: 52.3 MB</title></circle>
+<circle class="dot" cx="866.0" cy="269.5" r="2.5"><title>475a320 2026-10-21: 55.4 MB</title></circle>
 <text class="mute" x="512" y="392">967acf9 2026-10-17</text>
-<text class="mute" x="866" y="392" text-anchor="end">6926091 2026-10-21</text>
+<text class="mute" x="866" y="392" text-anchor="end">475a320 2026-10-21</text>
 </svg>
