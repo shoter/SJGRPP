@@ -75,6 +75,18 @@ macro(compile_flags)
                 "$<$<CONFIG:Debug>:/bigobj>" # Switch to bigobj as x64 Debug builds run into error C1128: number of sections exceeded object file format limit
             )
         endif()
+
+        # CMake's default RelWithDebInfo flags for MSVC use /Ob1, which only inlines functions marked inline.
+        # Release builds are RelWithDebInfo (for the PDB), so allow the compiler to inline any suitable function,
+        # as Release (/Ob2) and the GCC/Clang -O2/-O3 builds do. This does not change floating-point semantics.
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+            set(MSVC_RELWITHDEBINFO_INLINE "/Ob3") # More aggressive than /Ob2, MSVC 2019+
+        else()
+            set(MSVC_RELWITHDEBINFO_INLINE "/Ob2")
+        endif()
+        foreach(LANG C CXX)
+            string(REGEX REPLACE "/Ob[0-3]" "${MSVC_RELWITHDEBINFO_INLINE}" CMAKE_${LANG}_FLAGS_RELWITHDEBINFO "${CMAKE_${LANG}_FLAGS_RELWITHDEBINFO}")
+        endforeach()
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         add_compile_options(
             -W
