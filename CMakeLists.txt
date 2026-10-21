@@ -387,6 +387,8 @@ if(IPO_FOUND AND NOT OPTION_NO_LTO)
         set_source_files_properties(src/settings_table.cpp TARGET_DIRECTORY openttd_lib PROPERTIES COMPILE_OPTIONS /GL-)
     endif()
 endif()
+include(PGO)
+setup_pgo()
 set_target_properties(openttd PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
 process_compile_flags()
 

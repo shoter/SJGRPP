@@ -7,6 +7,11 @@ on:
         required: false
         type: string
         default: ""
+      pgo:
+        description: "Profile-guided optimisation: instrumented build, training run, optimised build"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   linux:
@@ -132,6 +137,8 @@ jobs:
           -DOPTION_TRIM_PATH_PREFIX=ON \
           -DOPTION_SURVEY_KEY=${{ inputs.survey_key }} \
           -DOPTION_PACKAGE_DEPENDENCIES=ON \
+          -DOPTION_PGO=${{ inputs.pgo && 'GENERATE' || '' }} \
+          -DOPTION_PGO_DIR=${GITHUB_WORKSPACE}/pgo \
           # EOF
         echo "::endgroup::"
 
@@ -139,6 +146,27 @@ jobs:
         echo "Running on $(nproc) cores"
         cmake --build . -j $(nproc) --target openttd
         echo "::endgroup::"
+
+    # Profile-guided optimisation (cmake/PGO.cmake): the build above is instrumented; run the training workload
+    # with it and build again with the profile (GCC applies the profile when compiling, so this rebuilds everything).
+    - name: PGO training run
+      if: inputs.pgo
+      run: |
+        yum install -y unzip
+        mkdir -p pgo-content/baseset
+        curl -fsSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d pgo-content/baseset
+        rm opengfx.zip
+        # The harness needs Python 3.10 or newer; take the newest one the image provides.
+        PYTHON=$(ls -d /opt/python/cp31[0-9]-cp31[0-9]/bin/python3 | sort -V | tail -1)
+        ${PYTHON} utils/debug_harness/pgo_train.py --exe build/openttd --pgo-dir pgo --content pgo-content
+
+    - name: Build (PGO optimised)
+      if: inputs.pgo
+      run: |
+        cd build
+        cmake . -DOPTION_PGO=USE
+        cmake --build . -j $(nproc) --target openttd
 
     - name: Create bundles
       run: |
