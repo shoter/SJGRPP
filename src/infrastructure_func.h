@@ -19,6 +19,8 @@
 Money ScaleSharingFeeFract(uint fee, uint64_t inflation_prices, bool scale_with_inflation);
 Money GetSharingFeeFract(VehicleType type);
 void PayStationSharingFee(Vehicle *v, const Station *st);
+Money GetCarFerrySharingFeeFract(Owner rv_owner, Owner ship_owner);
+void PayCarFerrySharingFee(Vehicle *rv, Owner ship_owner);
 void PayDailyTrackSharingFee(Train *v);
 
 bool CheckSharingChangePossible(VehicleType type, bool new_value);

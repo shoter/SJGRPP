@@ -12,6 +12,9 @@
 #include "../3rdparty/catch2/catch.hpp"
 
 #include "../car_ferry.h"
+#include "../economy_func.h"
+#include "../infrastructure_func.h"
+#include "../settings_type.h"
 
 #include "../safeguards.h"
 
@@ -128,4 +131,73 @@ TEST_CASE("GetFerrySpawnFrames - vehicle must fit on one tile")
 	/* The length of the last part does not matter, it starts at the edge. */
 	CHECK(GetFerrySpawnFrames(std::vector<uint>{15, 16}, 15).has_value());
 	CHECK_FALSE(GetFerrySpawnFrames(std::vector<uint>{}, 15).has_value());
+}
+
+/** Sets the infrastructure sharing settings for one test and restores them afterwards. */
+struct SharingSettings {
+	EconomySettings saved_settings = _settings_game.economy;
+	uint64_t saved_inflation = _economy.inflation_prices;
+
+	SharingSettings(bool road, bool ship)
+	{
+		std::fill(std::begin(_settings_game.economy.infrastructure_sharing), std::end(_settings_game.economy.infrastructure_sharing), false);
+		_settings_game.economy.infrastructure_sharing[to_underlying(VehicleType::Road)] = road;
+		_settings_game.economy.infrastructure_sharing[to_underlying(VehicleType::Ship)] = ship;
+	}
+
+	~SharingSettings()
+	{
+		_settings_game.economy = this->saved_settings;
+		_economy.inflation_prices = this->saved_inflation;
+	}
+};
+
+static const Owner COMPANY_A{0};
+static const Owner COMPANY_B{1};
+
+TEST_CASE("CanBoardCarFerryOf - own car ferries always")
+{
+	SharingSettings sharing(false, false);
+	CHECK(CanBoardCarFerryOf(COMPANY_A, COMPANY_A));
+	CHECK(CanBoardCarFerryOf(COMPANY_B, COMPANY_B));
+}
+
+TEST_CASE("CanBoardCarFerryOf - another company's car ferry only with ship sharing")
+{
+	{
+		SharingSettings sharing(false, false);
+		CHECK_FALSE(CanBoardCarFerryOf(COMPANY_B, COMPANY_A));
+	}
+	{
+		/* Sharing road stops is not enough: the road vehicle uses the other company's ship. */
+		SharingSettings sharing(true, false);
+		CHECK_FALSE(CanBoardCarFerryOf(COMPANY_B, COMPANY_A));
+	}
+	{
+		SharingSettings sharing(false, true);
+		CHECK(CanBoardCarFerryOf(COMPANY_B, COMPANY_A));
+		CHECK(CanBoardCarFerryOf(COMPANY_A, COMPANY_B));
+	}
+}
+
+TEST_CASE("GetCarFerrySharingFeeFract - one day of the ship sharing fee per boarding")
+{
+	SharingSettings sharing(false, true);
+	_settings_game.economy.sharing_fee[to_underlying(VehicleType::Ship)] = 300;
+	_settings_game.economy.sharing_fee[to_underlying(VehicleType::Road)] = 7;
+	_settings_game.economy.sharing_fee_inflation = true;
+	_economy.inflation_prices = 1 << 16;
+
+	CHECK(GetCarFerrySharingFeeFract(COMPANY_B, COMPANY_A) == 300 << 8);
+	/* Own car ferries are free. */
+	CHECK(GetCarFerrySharingFeeFract(COMPANY_A, COMPANY_A) == 0);
+
+	/* The fee scales with inflation like the other sharing fees. */
+	_economy.inflation_prices = 2 << 16;
+	CHECK(GetCarFerrySharingFeeFract(COMPANY_B, COMPANY_A) == 600 << 8);
+	_settings_game.economy.sharing_fee_inflation = false;
+	CHECK(GetCarFerrySharingFeeFract(COMPANY_B, COMPANY_A) == 300 << 8);
+
+	_settings_game.economy.sharing_fee[to_underlying(VehicleType::Ship)] = 0;
+	CHECK(GetCarFerrySharingFeeFract(COMPANY_B, COMPANY_A) == 0);
 }

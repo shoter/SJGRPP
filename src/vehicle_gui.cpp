@@ -3075,6 +3075,7 @@ extern int GetTrainDetailsWndVScroll(VehicleID veh_id, TrainDetailsWindowTabs de
 extern void DrawTrainDetails(const Train *v, const Rect &r, int vscroll_pos, uint16_t vscroll_cap, TrainDetailsWindowTabs det_tab);
 extern void DrawRoadVehDetails(const Vehicle *v, const Rect &r);
 extern void DrawShipDetails(const Vehicle *v, const Rect &r);
+extern uint GetCarFerryVehicleLinesWidth(const Vehicle *v);
 extern void DrawAircraftDetails(const Aircraft *v, const Rect &r);
 
 static const StringID _service_interval_dropdown_calendar[] = {
@@ -3195,8 +3196,9 @@ struct VehicleDetailsWindow : Window {
 		if (v->type == VehicleType::Road || v->type == VehicleType::Ship) {
 			const NWidgetBase *nwid_info = this->GetWidget<NWidgetBase>(WID_VD_MIDDLE_DETAILS);
 			uint aimed_height = this->GetRoadOrShipVehDetailsHeight(v);
-			/* If the number of articulated parts changes, the size of the window must change too. */
-			if (aimed_height != nwid_info->current_y) {
+			/* If the number of articulated parts changes, the size of the window must change too.
+			 * A car ferry also needs room for the lines of the road vehicles aboard. */
+			if (aimed_height != nwid_info->current_y || (IsCarFerry(v) && this->GetCarFerryDetailsWidth(v) > nwid_info->current_x)) {
 				this->ReInit();
 			}
 		}
@@ -3233,6 +3235,17 @@ struct VehicleDetailsWindow : Window {
 			desired_height = 5 * GetCharacterHeight(FontSize::Normal) + WidgetDimensions::scaled.vsep_normal * 2;
 		}
 		return desired_height;
+	}
+
+	/**
+	 * Gets the width the details panel of a car ferry needs for the road vehicles aboard.
+	 * @param v Car ferry being shown.
+	 * @return Desired width in pixels, including the vehicle sprite and the frame.
+	 */
+	uint GetCarFerryDetailsWidth(const Vehicle *v)
+	{
+		const uint sprite_width = GetSingleVehicleWidth(v, EngineImageType::InDetails) + WidgetDimensions::scaled.framerect.Horizontal();
+		return WidgetDimensions::scaled.framerect.Horizontal() + sprite_width + GetCarFerryVehicleLinesWidth(v);
 	}
 
 	bool ShouldShowGroupLine(const Vehicle *v) const
@@ -3347,6 +3360,7 @@ struct VehicleDetailsWindow : Window {
 					case VehicleType::Road:
 					case VehicleType::Ship:
 						size.height = this->GetRoadOrShipVehDetailsHeight(v) + padding.height;
+						if (IsCarFerry(v)) size.width = std::max(size.width, this->GetCarFerryDetailsWidth(v));
 						break;
 
 					case VehicleType::Aircraft:

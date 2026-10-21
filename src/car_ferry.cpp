@@ -10,7 +10,9 @@
 #include "stdafx.h"
 #include "car_ferry.h"
 #include "cargotype.h"
+#include "company_func.h"
 #include "engine_base.h"
+#include "infrastructure_func.h"
 #include "order_base.h"
 #include "roadstop_base.h"
 #include "roadveh.h"
@@ -64,6 +66,11 @@ std::optional<std::vector<uint>> GetFerrySpawnFrames(std::span<const uint> lengt
 		if (i + 1 < lengths.size()) frame -= lengths[i];
 	}
 	return frames;
+}
+
+bool CanBoardCarFerryOf(Owner rv_owner, Owner ship_owner)
+{
+	return IsInfraUsageAllowed(VehicleType::Ship, rv_owner, ship_owner);
 }
 
 /**
@@ -262,6 +269,7 @@ static void BoardFerry(Ship *ship, RoadVehicle *rv)
 
 	RoadVehBoardFerry(rv, ship->index);
 	rv->ferry_dest = dest;
+	PayCarFerrySharingFee(rv, ship->owner);
 
 	auto it = std::ranges::lower_bound(ship->ferry_vehicles, rv->index);
 	ship->ferry_vehicles.insert(it, rv->index);
@@ -312,7 +320,7 @@ void LoadUnloadCarFerry(Vehicle *front)
 	if (!transferred && !unload_pending && GetFerryFreeSpaces(capacity, ship->ferry_vehicles.size() + CountPendingFerryBoardings(ship->index)) > 0) {
 		const std::vector<FerryOrderStop> ship_stops = GetFerryOrderStops(ship);
 		for (const Vehicle *v : st->loading_vehicles) {
-			if (v->type != VehicleType::Road || !v->IsFrontEngine() || v->owner != ship->owner) continue;
+			if (v->type != VehicleType::Road || !v->IsFrontEngine() || !CanBoardCarFerryOf(v->owner, ship->owner)) continue;
 			if (v->vehstatus.Any({VehState::Stopped, VehState::Crashed})) continue;
 			if (!v->vehicle_flags.Test(VehicleFlag::LoadingFinished)) continue;
 			if (!IsRoadVehicleWaitingForFerry(v) || IsPendingFerryBoarding(v->index)) continue;
@@ -354,6 +362,7 @@ void ProcessPendingFerryBoardings()
 
 /**
  * A car ferry is deleted: the road vehicles aboard go down with it.
+ * Road vehicles of other companies are sold, their owners get their value back.
  * @param ship The ship.
  */
 void OnCarFerryDeleted(Vehicle *ship)
@@ -363,7 +372,12 @@ void OnCarFerryDeleted(Vehicle *ship)
 	for (VehicleID id : aboard) {
 		RoadVehicle *rv = RoadVehicle::GetIfValid(id);
 		if (rv != nullptr && rv->ferry_carrier == ship->index) {
-			for (RoadVehicle *u = rv; u != nullptr; u = u->Next()) u->ferry_carrier = VehicleID::Invalid();
+			Money value = 0;
+			for (RoadVehicle *u = rv; u != nullptr; u = u->Next()) {
+				u->ferry_carrier = VehicleID::Invalid();
+				value += u->value;
+			}
+			if (rv->owner != ship->owner) SubtractMoneyFromCompany(rv->owner, CommandCost(ExpensesType::NewVehicles, -value));
 			delete rv;
 		}
 	}

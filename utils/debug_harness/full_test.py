@@ -11,6 +11,7 @@ game runs for a period of game time while the test checks:
   - performance:  server game speed vs real time, game loop / per-vehicle-type tick times (fps console), memory,
                   command round-trip latency, join (map download) time; optional comparison with a saved baseline
   - gameplay:     vehicles move and earn money, networks keep running, buses cross the water on car ferries
+                  (in the sharing profile also on other companies' car ferries)
   - churn:        a client leaves and rejoins its company, a spectator downloads the map, vehicles are added while
                   running, the server saves and the save loads back in a separate instance with the same content
 
@@ -46,7 +47,7 @@ from collect import collect  # noqa: E402
 from gui_exercise import GuiExerciser  # noqa: E402
 from mp import Cluster  # noqa: E402
 from ottd import Bridge, BridgeError, DEFAULT_RUN_ROOT, Instance  # noqa: E402
-from transport import BuildError, Builder, Route  # noqa: E402
+from transport import FERRY_BOARD, FERRY_LEAVE, INVALID_CARGO, MOF_FERRY_ACTION, ROADTYPE_ROAD, BuildError, Builder, Route  # noqa: E402
 
 PROFILES = {
     # months of game time after the build phase, seconds between checks, state comparison every n checks
@@ -58,7 +59,8 @@ PROFILES = {
                "monthly_growth": True, "monthly_join": True, "resolution": (640, 480),
                "churn": ["save", "rejoin", "spectator", "rejoin", "save", "spectator"]},
     # Infrastructure sharing for every transport type with inflation: companies run vehicles on each other's networks
-    # and pay fees; halfway the server doubles the price inflation. Fees must follow inflation on every instance.
+    # (buses also cross on each other's car ferries) and pay fees; halfway the server doubles the price inflation.
+    # Fees must follow inflation on every instance.
     "sharing": {"months": 12, "check_interval": 45, "sync_every": 2, "sharing": True,
                 "churn": ["save", "rejoin", "spectator"]},
 }
@@ -181,6 +183,7 @@ class FullTest:
         self._monitors: dict[str, Bridge] = {}
         self.spectators_started = 0
         self.foreign_vehicles: list[dict] = []
+        self.foreign_ferry_buses: list[dict] = []
         self.initial_fees: dict[str, int] = {}
         self.inflation_bumped = False
         self.ferry_seen: dict[int, set] = {}
@@ -298,6 +301,7 @@ class FullTest:
                 self.log(f"sharing: client{ci + 1} runs bus {bus} on client{owner + 1}'s road route")
             except (BuildError, BridgeError) as e:
                 self.check(False, f"client{ci + 1} runs a bus on client{owner + 1}'s road route", str(e))
+        self.add_foreign_ferry_buses()
         # A shuttle line has a single track: the owner's train is sold before the foreign train enters.
         rail = next((r for r in self.routes.get(1, []) if r.kind == "rail"), None)
         if rail is None:
@@ -321,6 +325,32 @@ class FullTest:
         except (BuildError, BridgeError, TimeoutError) as e:
             self.check(False, "client1 runs a train on client2's rail route", str(e))
 
+    def add_foreign_ferry_buses(self) -> None:
+        """Every client runs a bus across the water on the next client's car ferry (ship sharing)."""
+        n = len(self.builders)
+        for ci in range(n):
+            owner = (ci + 1) % n
+            ferry = next((r for r in self.routes.get(owner, []) if r.kind == "ferry"), None)
+            if ferry is None:
+                continue
+            try:
+                builder = self.builders[ci]
+                bus = builder.build_vehicle(ferry.terminals[0]["depot"], builder.pick_engine("road", roadtype=ROADTYPE_ROAD)["id"])
+                s1, s2 = ferry.stations
+                for station in (s1, s2, s2, s1):
+                    builder.order(bus, "station", station)
+                for index, action in enumerate((FERRY_BOARD, FERRY_LEAVE, FERRY_BOARD, FERRY_LEAVE)):
+                    builder.cmd("ModifyOrder", 0, bus, index, MOF_FERRY_ACTION, action, INVALID_CARGO, "")
+                builder.start_vehicle(bus)
+                # Tracked with the route's own buses: sampled aboard/crossed and compared between instances.
+                ferry.buses.append(bus)
+                self.foreign_ferry_buses.append({"vehicle": bus, "payer": ci, "owner": owner, "ferry": ferry.vehicles[0]})
+                self.log(f"sharing: client{ci + 1} runs bus {bus} across the water on client{owner + 1}'s car ferry {ferry.vehicles[0]}")
+            except (BuildError, BridgeError) as e:
+                self.check(False, f"client{ci + 1} runs a bus on client{owner + 1}'s car ferry", str(e))
+        if not self.foreign_ferry_buses:
+            self.check(False, "a car ferry route to share", "no client has a car ferry route", severity="warn")
+
     def sharing_final_checks(self) -> None:
         server = self.mon(self.cluster.server)
         fees = self.sharing_fees(server)
@@ -334,6 +364,15 @@ class FullTest:
             self.check(totals[payer][0] > 0 and totals[owner][1] < 0,
                        f"client{fv['payer'] + 1} pays client{fv['owner'] + 1} sharing fees ({fv['kind']})",
                        f"cost {totals[payer][0]:,}, revenue {-totals[owner][1]:,}")
+        # Buses on other companies' car ferries: waiting for the ferry and a crossing take game months.
+        self.sample_ferries(server)
+        severity = "fail" if self.profile["months"] >= 6 else "warn"
+        for fb in self.foreign_ferry_buses:
+            seen = self.ferry_seen.get(fb["vehicle"], set())
+            self.check("aboard" in seen, f"client{fb['payer'] + 1}'s bus boards client{fb['owner'] + 1}'s car ferry",
+                       f"bus {fb['vehicle']}, ferry {fb['ferry']}: seen {sorted(seen) or 'never aboard'}", severity=severity)
+            self.check("crossed" in seen, f"client{fb['payer'] + 1}'s bus crosses on client{fb['owner'] + 1}'s car ferry",
+                       f"bus {fb['vehicle']}", severity=severity)
 
     def instances_for_collect(self) -> dict:
         insts = (self.cluster.instances if self.cluster else []) + self.extra_instances
