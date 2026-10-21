@@ -16,6 +16,7 @@ add_test_files(
     overseas.cpp
     serialisation.cpp
     sharing_fee.cpp
+    station_near_cache.cpp
     variable_inflation.cpp
     vehicle_colour_override.cpp
     string_consumer.cpp

@@ -36,6 +36,8 @@
 #include "tunnelbridge.h"
 #include "vehicle_base.h"
 
+#include <optional>
+
 #include "safeguards.h"
 
 extern void AfterLoadCompanyStats();
@@ -172,10 +174,18 @@ void CheckCaches(bool force_check, std::function<void(std::string_view)> log, Ch
 		/* Check the town caches. */
 		std::vector<TownCache> old_town_caches;
 		std::vector<StationList> old_town_stations_nears;
+		std::vector<std::optional<std::vector<StationNearCacheEntry>>> old_town_stations_near_caches;
 		std::vector<std::vector<IndustryLocationCacheEntry>> old_town_industry_caches;
 		for (Town *t : Town::Iterate()) {
 			old_town_caches.push_back(t->cache);
 			old_town_stations_nears.push_back(t->stations_near);
+			/* Only a valid cache can be compared, an invalid one is rebuilt before its next use. */
+			if (t->IsStationsNearCacheValid()) {
+				std::span<const StationNearCacheEntry> cache = t->GetStationsNearCache();
+				old_town_stations_near_caches.emplace_back(std::vector<StationNearCacheEntry>(cache.begin(), cache.end()));
+			} else {
+				old_town_stations_near_caches.emplace_back(std::nullopt);
+			}
 
 			SortIndustryCacheEntries(t->industry_cache);
 			old_town_industry_caches.emplace_back(std::move(t->industry_cache));
@@ -241,6 +251,12 @@ void CheckCaches(bool force_check, std::function<void(std::string_view)> log, Ch
 			}
 			if (old_town_stations_nears[i] != t->stations_near) {
 				cclog("town stations_near mismatch: town {}, (old size: {}, new size: {})", t->index, old_town_stations_nears[i].size(), t->stations_near.size());
+			}
+			if (old_town_stations_near_caches[i].has_value()) {
+				std::span<const StationNearCacheEntry> cache = t->GetStationsNearCache();
+				if (!std::ranges::equal(*old_town_stations_near_caches[i], cache)) {
+					cclog("town stations_near_cache mismatch: town {}, (old size: {}, new size: {})", t->index, old_town_stations_near_caches[i]->size(), cache.size());
+				}
 			}
 			if (!check_industry_cache(old_town_industry_caches[i], t->industry_cache)) {
 				cclog("town industry_cache mismatch: town {}, (old size: {}, new size: {})", t->index, old_town_industry_caches[i].size(), t->industry_cache.size());

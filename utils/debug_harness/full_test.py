@@ -48,7 +48,7 @@ from collect import collect  # noqa: E402
 from gui_exercise import GuiExerciser  # noqa: E402
 from mp import Cluster  # noqa: E402
 from ottd import Bridge, BridgeError, DEFAULT_RUN_ROOT, Instance  # noqa: E402
-from transport import FERRY_BOARD, FERRY_LEAVE, INVALID_CARGO, MOF_FERRY_ACTION, ROADTYPE_ROAD, BuildError, Builder, Route  # noqa: E402
+from transport import FERRY_BOARD, FERRY_LEAVE, HOUSE, INVALID_CARGO, MOF_FERRY_ACTION, ROADTYPE_ROAD, BuildError, Builder, GameMap, Route  # noqa: E402
 
 PROFILES = {
     # months of game time after the build phase, seconds between checks, state comparison every n checks
@@ -59,6 +59,10 @@ PROFILES = {
     "max-28": {"months": 24, "check_interval": 60, "sync_every": 3, "clients": 28, "map_bits": 10,
                "monthly_growth": True, "monthly_join": True, "resolution": (640, 480),
                "churn": ["save", "rejoin", "spectator", "rejoin", "save", "spectator"]},
+    # Large cities with many stations near each of them, for the house tile loop: every town is a city at 10x the size
+    # and each client scatters separate bus stations over the town roads of the largest towns.
+    "towns": {"months": 6, "check_interval": 45, "sync_every": 2, "map_bits": 10, "big_towns": True,
+              "town_stops": 100, "town_stop_towns": 3, "churn": ["save", "spectator", "rejoin"]},
     # Infrastructure sharing for every transport type with inflation: companies run vehicles on each other's networks
     # (buses also cross on each other's car ferries) and pay fees; halfway the server doubles the price inflation.
     # Fees must follow inflation on every instance.
@@ -175,6 +179,8 @@ class FullTest:
         self.checks: list[dict] = []
         self.perf: list[dict] = []
         self.routes: dict[int, list[Route]] = {}
+        self.town_stops: dict[int, list[int]] = {}
+        self._largest_towns: list[tuple[int, int]] | None = None
         self.build_errors: dict[int, list[str]] = {}
         self.builders: list[Builder] = []
         self.join_seconds: dict[str, float] = {}
@@ -219,7 +225,7 @@ class FullTest:
 
     def server_config(self) -> dict:
         a = self.args
-        return {
+        cfg = {
             "game_creation": {"map_x": a.map_bits, "map_y": a.map_bits, "starting_year": a.start_year,
                               "landscape": "temperate", "variety": 0},
             "difficulty": {"terrain_type": 0, "quantity_sea_lakes": 2, "number_towns": 2, "industry_density": 3,
@@ -233,6 +239,9 @@ class FullTest:
             "network": {"pause_on_join": "false", "max_clients": a.clients + 8,
                         "max_companies": min(28, max(15, a.clients + 1)), "autoclean_companies": "false"},
         }
+        if self.profile.get("big_towns"):
+            cfg["economy"].update({"larger_towns": 1, "initial_city_size": 10, "town_growth_rate": 4})
+        return cfg
 
     # ---- infrastructure sharing ----
 
@@ -853,8 +862,31 @@ class FullTest:
                     errors.append(f"{kind} {target}: {type(e).__name__}: {e}")
                     self.log(f"client{ci + 1}: {kind} route {target} crashed:\n{traceback.format_exc()}")
                     break
+        if self.profile.get("town_stops"):
+            towns = self.largest_towns(self.profile.get("town_stop_towns", 3))
+            t0 = time.monotonic()
+            try:
+                stops = builder.build_town_stops(towns, self.profile["town_stops"] * a.scale, seed=a.seed + ci)
+                self.town_stops[ci] = stops
+                self.log(f"client{ci + 1}: built {len(stops)} town bus stations around {towns} in {time.monotonic() - t0:.1f}s")
+            except (BuildError, BridgeError, TimeoutError) as e:
+                errors.append(f"town stops: {e}")
+                self.log(f"client{ci + 1}: town stops failed: {e}")
         self.routes[ci] = routes
         self.build_errors[ci] = errors
+
+    def largest_towns(self, n: int) -> list[tuple[int, int]]:
+        """Centres of the n towns with the most house tiles within 12 tiles of their centre."""
+        if self._largest_towns is None:
+            gmap = GameMap.fetch(self.cluster.server.bridge)
+            houses = {i for i, t in enumerate(gmap.type) if t == HOUSE}
+
+            def size(xy: tuple[int, int]) -> int:
+                return sum(gmap.tile(x, y) in houses for x in range(max(0, xy[0] - 12), min(gmap.sx, xy[0] + 13))
+                           for y in range(max(0, xy[1] - 12), min(gmap.sy, xy[1] + 13)))
+
+            self._largest_towns = sorted(self.town_xy, key=lambda xy: -size(xy))
+        return self._largest_towns[:n]
 
     @staticmethod
     def client_airport(routes: list[Route]) -> tuple[int, int] | None:
@@ -866,6 +898,8 @@ class FullTest:
         assert self.cluster is not None
         plan = self.assign_towns()
         self.top_up_money(force=True)
+        if self.profile.get("town_stops"):
+            self.largest_towns(1)  # rank the towns once, before the client threads use it
         self.builders = [Builder(c.bridge, log=lambda s, n=c.name: self.log(f"{n}: {s}")) for c in self.cluster.clients]
         t0 = time.monotonic()
         threads = [threading.Thread(target=self.build_for_client, args=(ci, self.builders[ci], plan[ci]), daemon=True)
@@ -1235,7 +1269,7 @@ class FullTest:
         if a.baseline:
             base = json.loads(Path(a.baseline).read_text(encoding="utf-8"))
             tol = a.perf_tolerance
-            for key in ("game_loop_ms_avg", "gl_train_ticks_ms_avg", "gl_road_vehicle_ticks_ms_avg", "gl_ship_ticks_ms_avg",
+            for key in ("game_loop_ms_avg", "gl_landscape_ticks_ms_avg", "gl_train_ticks_ms_avg", "gl_road_vehicle_ticks_ms_avg", "gl_ship_ticks_ms_avg",
                         "gl_aircraft_ticks_ms_avg", "command_ms_p95", "server_mem_mb_max"):
                 if key in base and key in summary:
                     limit = base[key] * (1 + tol) + (0.2 if key.endswith("ms_avg") else 0)
@@ -1316,7 +1350,8 @@ def main() -> int:
     ap.add_argument("--clients", type=int, help="number of client companies (default 3; max-28 profile: 28)")
     ap.add_argument("--profile", choices=sorted(PROFILES), default="normal",
                     help="quick = 3 game months, normal = 2 game years, max-28 = 28 companies on 1024x1024 growing monthly for 2 game years, "
-                         "sharing = 1 game year with infrastructure sharing, foreign vehicles and inflation")
+                         "sharing = 1 game year with infrastructure sharing, foreign vehicles and inflation, "
+                         "towns = 6 game months with large cities and many bus stations around them")
     ap.add_argument("--months", type=float, help="override the game months of the run phase")
     ap.add_argument("--check-interval", type=float, help="seconds between checks (default from profile)")
     ap.add_argument("--seed", type=int, default=4242, help="map generation seed")

@@ -17,6 +17,7 @@ from __future__ import annotations
 import heapq
 import itertools
 import math
+import random
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
 
@@ -600,6 +601,48 @@ class Builder:
             if r["success"]:
                 return i, s
         raise BuildError("no drive-through road stop site on the route")
+
+    def build_town_stops(self, towns: list[tuple[int, int]], count: int, radius: int = 16, spacing: int = 3,
+                         seed: int = 0) -> list[int]:
+        """
+        Scatter up to count separate drive-through bus stations over the town roads around the given town centres,
+        at least spacing tiles apart (Chebyshev). Gives towns many nearby stations with overlapping catchments.
+        Returns the new station IDs.
+        """
+        rng = random.Random(seed)
+        gmap = self.fresh_map()
+        cands = []
+        for cx, cy in towns:
+            for x in range(cx - radius, cx + radius + 1):
+                for y in range(cy - radius, cy + radius + 1):
+                    if not gmap.inside(x, y) or gmap.t(x, y) != ROAD or gmap.slope[gmap.tile(x, y)] != SLOPE_FLAT:
+                        continue
+                    bits = gmap.bits[gmap.tile(x, y)]
+                    if bits == ROAD_X:
+                        cands.append((x, y, NE))
+                    elif bits == ROAD_Y:
+                        cands.append((x, y, SE))
+        rng.shuffle(cands)
+        stations: list[int] = []
+        taken: list[tuple[int, int]] = []
+        for start in range(0, len(cands), 200):
+            if len(stations) >= count:
+                break
+            chunk = [c for c in cands[start:start + 200]
+                     if all(max(abs(c[0] - tx), abs(c[1] - ty)) >= spacing for tx, ty in taken)]
+            results = self.test_many([("BuildRoadStop", gmap.tile(x, y), 1, 1, ROADSTOP_BUS, True, d, ROADTYPE_ROAD,
+                                       0, 0, NEW_STATION, False) for x, y, d in chunk])
+            for (x, y, d), r in zip(chunk, results):
+                if len(stations) >= count:
+                    break
+                if not r["success"] or any(max(abs(x - tx), abs(y - ty)) < spacing for tx, ty in taken):
+                    continue
+                res = self.cmd("BuildRoadStop", gmap.tile(x, y), 1, 1, ROADSTOP_BUS, True, d, ROADTYPE_ROAD,
+                               0, 0, NEW_STATION, False, allow_fail=True)
+                if res["success"]:
+                    taken.append((x, y))
+                    stations.append(self._station_of(res))
+        return stations
 
     def _road_depot(self, gmap: GameMap, steps: list[PathStep], near: int) -> int:
         cands = []
