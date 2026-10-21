@@ -89,10 +89,12 @@ jobs:
         python pr/utils/debug_harness/perf_vehicle_bitmap.py --exe "$GITHUB_WORKSPACE/pr/build/openttd" \
           --name bench_build --out results/bench_build.json --save bench.sav
 
-    - name: Targeted benchmark (base, PR) x 3
+    - name: Targeted benchmark x 3 (base, PR, PR, base, base, PR)
       run: |
+        # The order alternates per round so that running first or second does not bias one side.
         for round in 1 2 3; do
-          for side in base pr; do
+          order="base pr"; [ "$round" = 2 ] && order="pr base"
+          for side in $order; do
             python pr/utils/debug_harness/perf_vehicle_bitmap.py --exe "$GITHUB_WORKSPACE/$side/build/openttd" \
               --name "bench_${side}_${round}" --out "results/bench_${side}_${round}.json" --load bench.sav
           done
@@ -172,7 +174,7 @@ jobs:
         print(f"{len(runs)} parallel runs; each run builds base and PR and runs both on the same runner. "
               "Targeted benchmark: single player, 2048x2048, up to 150 rail shuttle routes (one 6-car train each) "
               "and 60 bus routes with 35 buses each, built once and saved; each side loads the same save, 30s warmup, "
-              "3 minutes real time sampled every 2s, 3 times per side (base, PR, base, PR, base, PR). "
+              "3 minutes real time sampled every 2s, 3 times per side (base, PR, PR, base, base, PR). "
               "Quick: the standard quick full test. Lower is better; memory in MB.\n")
         print("| metric | base | PR | PR - base | PR - base (%) | spread of % over runs |")
         print("|---|---:|---:|---:|---:|---|")
