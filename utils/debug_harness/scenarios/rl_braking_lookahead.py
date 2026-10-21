@@ -87,6 +87,11 @@ def run(ctx):
     # Picture: the first train on its long reservation.
     b.console("setting gui.show_track_reservation 1")
     t = trains[0][0]
-    b.console(f"scrollto {b.obj('vehicle', t, 'tile')['tile']}")
-    b.step(2)
+    for _ in range(40 * DAY_TICKS // 8):
+        if train_state(b, t)["cur_speed"] >= 100:
+            break
+        b.step(8)
+    b.console(f"scrollto instant {b.obj('vehicle', t, 'tile')['tile']}")
+    b.call("show", "vehicle", 0)  # the first primary vehicle: the first train
+    b.step(1)
     ctx.screenshot(b, "long_reservation")
