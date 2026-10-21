@@ -9,7 +9,7 @@ TEMPORARY perf workload for the "realistic braking lookahead cutoff" PR, used by
   perf_rl_braking.py report --jobs <dir> [--comment <file.md>]  average of the jobs' differences, as markdown
 
 Targeted workload: a 512x512 hilly map with realistic braking; as many long rail routes as fit (unsignalled single track
-between distant towns, 200+ tiles), one train with 6 wagons on each. Without signals on the line each train reserves to
+between distant towns, 80-260 tiles apart, each town on at most two routes), one train with 6 wagons on each. Without signals on the line each train reserves to
 the far station, so its lookahead holds every curve, slope-crossing speed change and station of the whole line: long
 item lists, which is what the change shortens. The save is made once per job (with the base build) and both builds load
 the same save. After a warm-up the game runs WINDOWS x 512 ticks in lockstep; the console 'fps' averages over 512 ticks
@@ -29,7 +29,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-ROUTES = 32
+ROUTES = 64
+TOWN_ROUTES = 2      # routes per town at most
 WINDOWS = 24
 WINDOW_TICKS = 512
 CONFIG = {
@@ -76,21 +77,22 @@ def cmd_prepare(a) -> int:
         mx = b.info()["map"]["x"]
         towns = [(xy % mx, xy // mx) for xy in (b.obj("town", t, "xy")["xy"] for t in sorted(b.objs("town")))]
         dist = lambda p: abs(p[0][0] - p[1][0]) + abs(p[0][1] - p[1][1])  # noqa: E731
-        pairs = sorted(((x, y) for i, x in enumerate(towns) for y in towns[i + 1:] if 120 <= dist((x, y)) <= 260),
+        pairs = sorted(((x, y) for i, x in enumerate(towns) for y in towns[i + 1:] if 80 <= dist((x, y)) <= 260),
                        key=dist, reverse=True)
-        used: set = set()
+        used: dict = {}
         lengths = []
         for x, y in pairs:
             if len(lengths) >= ROUTES:
                 break
-            if x in used or y in used:
+            if used.get(x, 0) >= TOWN_ROUTES or used.get(y, 0) >= TOWN_ROUTES:
                 continue
             try:
                 route = builder.build_rail_route(x, y, wagons=6)
             except Exception as e:  # noqa: BLE001
                 print(f"route {x} -> {y} failed: {e}", flush=True)
                 continue
-            used.update((x, y))
+            used[x] = used.get(x, 0) + 1
+            used[y] = used.get(y, 0) + 1
             lengths.append(route.path_length)
             print(f"route {len(lengths)}: {dist((x, y))} tiles apart, track {route.path_length}", flush=True)
         b.step(74 * 20)   # warm-up: every train has left its depot and runs on its line
