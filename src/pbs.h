@@ -103,6 +103,11 @@ struct TrainReservationLookAhead {
 	jgr::ring_buffer<TrainReservationLookAheadCurve> curves;
 	int32_t cached_zpos = 0;              ///< Cached z position as used in TrainDecelerationStats
 
+	/* Bounds over all items, used to stop the realistic braking speed limit loop early. Not saved, rebuilt on demand by UpdateItemsBounds(). */
+	bool items_bounds_valid = false;      ///< Whether items_min_z and items_start_dip are up to date with items
+	int16_t items_min_z = 0;              ///< Lowest z_pos of any item
+	int32_t items_start_dip = 0;          ///< Largest amount by which an item starts before an earlier item: for items i < j, items[j].start >= items[i].start - items_start_dip
+
 	int32_t RealEndPosition() const
 	{
 		return this->reservation_end_position - (this->tunnel_bridge_reserved_tiles * TILE_SIZE);
@@ -112,24 +117,28 @@ struct TrainReservationLookAhead {
 	{
 		int32_t end = this->RealEndPosition();
 		this->items.push_back({ end, end + (((int32_t)TILE_SIZE) * tiles), z_pos, id.base(), 0, TRLIT_STATION });
+		this->InvalidateItemsBounds();
 	}
 
 	void AddReverse(int16_t z_pos)
 	{
 		int32_t end = this->RealEndPosition();
 		this->items.push_back({ end, end, z_pos, 0, 0, TRLIT_REVERSE });
+		this->InvalidateItemsBounds();
 	}
 
 	void AddTrackSpeedLimit(uint16_t speed, int offset, int duration, int16_t z_pos)
 	{
 		int32_t end = this->RealEndPosition();
 		this->items.push_back({ end + offset, end + offset + duration, z_pos, speed, 0, TRLIT_TRACK_SPEED });
+		this->InvalidateItemsBounds();
 	}
 
 	void AddSpeedRestriction(uint16_t speed, int offset, int duration, int16_t z_pos)
 	{
 		int32_t end = this->RealEndPosition();
 		this->items.push_back({ end + offset, end + offset + duration, z_pos, speed, 0, TRLIT_SPEED_RESTRICTION });
+		this->InvalidateItemsBounds();
 		this->speed_restriction = speed;
 	}
 
@@ -137,21 +146,32 @@ struct TrainReservationLookAhead {
 	{
 		int32_t end = this->RealEndPosition();
 		this->items.push_back({ end + offset, end + offset, z_pos, target_speed, flags, TRLIT_SIGNAL });
+		this->InvalidateItemsBounds();
 	}
 
 	void AddCurveSpeedLimit(uint16_t target_speed, int offset, int16_t z_pos)
 	{
 		int32_t end = this->RealEndPosition();
 		this->items.push_back({ end + offset, end + offset, z_pos, target_speed, 0, TRLIT_CURVE_SPEED });
+		this->InvalidateItemsBounds();
 	}
 
 	void AddSpeedAdaptation(TileIndex signal_tile, uint16_t signal_track, int offset, int16_t z_pos)
 	{
 		int32_t end = this->RealEndPosition();
 		this->items.push_back({ end + offset, end + offset, z_pos, signal_tile.base(), signal_track, TRLIT_SPEED_ADAPTATION });
+		this->InvalidateItemsBounds();
 	}
 
 	void SetNextExtendPosition();
+
+	/** Call after changing items in any way other than the Add* functions (which call it themselves). */
+	void InvalidateItemsBounds()
+	{
+		this->items_bounds_valid = false;
+	}
+
+	void UpdateItemsBounds();
 
 	void SetNextExtendPositionIfUnset()
 	{
