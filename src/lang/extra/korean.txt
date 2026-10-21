@@ -524,7 +524,6 @@ STR_CONFIG_SETTING_SHARING_RAIL                                 :철도 공유: 
 STR_CONFIG_SETTING_SHARING_ROAD                                 :도로 시설 공유: {STRING}
 STR_CONFIG_SETTING_SHARING_WATER                                :항구/정박소 공유: {STRING}
 STR_CONFIG_SETTING_SHARING_AIR                                  :공항 공유: {STRING}
-STR_CONFIG_SETTING_SHARING_FEE_RAIL                             :선로 시설 사용료: 1일당 {STRING}/1000톤
 STR_CONFIG_SETTING_SHARING_FEE_ROAD                             :도로 시설 사용료: 1일당 {STRING}
 STR_CONFIG_SETTING_SHARING_FEE_WATER                            :항만 시설 사용료: 1일당 {STRING}
 STR_CONFIG_SETTING_SHARING_FEE_AIR                              :공항 시설 사용료: 1일당 {STRING}

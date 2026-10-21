@@ -16,8 +16,12 @@
 #include "company_func.h"
 #include "tile_map.h"
 
+/** Default track toll for trains, per tile of train length per day. */
+static constexpr uint DEF_TRACK_TOLL = 20;
+
 Money ScaleSharingFeeFract(uint fee, uint64_t inflation_prices, bool scale_with_inflation);
 Money GetSharingFeeFract(VehicleType type);
+Money GetTrackTollFract(Money fee, uint length, uint running_ticks);
 void PayStationSharingFee(Vehicle *v, const Station *st);
 Money GetCarFerrySharingFeeFract(Owner rv_owner, Owner ship_owner);
 void PayCarFerrySharingFee(Vehicle *rv, Owner ship_owner);

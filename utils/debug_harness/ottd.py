@@ -36,6 +36,7 @@ DEFAULT_CONTENT = Path(os.environ.get("OTTD_CONTENT_DIR", _PLATFORM_CONTENT))
 # Shared content folders, linked (junctions) into every instance so base sets/NewGRFs/scripts are found,
 # while saves, autosaves, screenshots, crash logs and configs stay per instance.
 SHARED_CONTENT_DIRS = ["content_download", "baseset", "newgrf", "ai", "game"]
+DAY_TICKS = 74  # ticks per (unscaled) day
 
 
 class BridgeError(Exception):
@@ -221,6 +222,33 @@ class Bridge:
         if not resp.get("ok"):
             raise BridgeError(resp.get("error"))
         return resp["result"]
+
+    def save_game(self, name: str, timeout: float | None = 120.0) -> None:
+        """Save the game as <personal dir>/save/<name>.sav; load_game(name) loads it again."""
+        out = self.console(f"save {name}", timeout=timeout)
+        if not any("successfully saved" in line for line in out):
+            raise BridgeError(f"save {name}: {out}")
+
+    def load_game(self, name: str, timeout: float = 120.0) -> None:
+        """
+        Load a savegame from <personal dir>/save and return once it is loaded.
+
+        The console 'load' finds files by name in the save directory only (a path is "cannot be found"), and only
+        queues the load: the game switches a little later, and game_mode is "normal" before and after. So this rescans
+        the save directory (for files copied there), checks the file was found, and waits until the tick counter went
+        back to the time of the save. The current game first runs one more day, so that a save made just now is older.
+        """
+        if self.info().get("lockstep"):
+            self.step(DAY_TICKS)
+        else:
+            self.wait_ticks(DAY_TICKS)
+        before = self.info()["tick_counter"]
+        self.console("list_saves")
+        out = self.console(f"load {name}")
+        if out:
+            raise BridgeError(f"load {name}: {out}")
+        self.wait_until(lambda b: b.info()["game_mode"] == "normal" and b.info()["tick_counter"] < before,
+                        timeout=timeout, what=f"load {name}")
 
     def log(self, since: int = 0, max_lines: int = 500) -> dict:
         return self.call("log", since, max_lines)

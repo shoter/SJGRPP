@@ -511,7 +511,6 @@ STR_CONFIG_SETTING_SHARING_RAIL                                 :Habilitar a com
 STR_CONFIG_SETTING_SHARING_ROAD                                 :Habilitar a compartición de paradas e depósitos de estrada: {STRING}
 STR_CONFIG_SETTING_SHARING_WATER                                :Habilitar a compartición de portos e depósitos de barcos: {STRING}
 STR_CONFIG_SETTING_SHARING_AIR                                  :Habilitar a compartición de aeroportos: {STRING}
-STR_CONFIG_SETTING_SHARING_FEE_RAIL                             :Peaxe diario das vías para trens: {STRING} por 1000 toneladas
 STR_CONFIG_SETTING_SHARING_FEE_ROAD                             :Taxa de parada para vehículos de estrada: {STRING} por día
 STR_CONFIG_SETTING_SHARING_FEE_WATER                            :Taxa de amarre para barcos: {STRING} por día
 STR_CONFIG_SETTING_SHARING_FEE_AIR                              :Taxa aeroportuaria: {STRING} por día

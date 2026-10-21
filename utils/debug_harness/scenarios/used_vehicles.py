@@ -137,9 +137,8 @@ def run(ctx):
 
     # Save/load round trip.
     before = listings(b)
-    b.console("save used_vehicles_test")
-    b.console("load used_vehicles_test")
-    b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=60, what="reload")
+    b.save_game("used_vehicles_test")
+    b.load_game("used_vehicles_test")
     ctx.check(listings(b) == before, f"listings survive save/load ({len(before)} listings)")
 
     # Yearly ageing: run past the next 1 January.

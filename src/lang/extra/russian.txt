@@ -471,7 +471,6 @@ STR_CONFIG_SETTING_SHARING_RAIL                                 :Включит�
 STR_CONFIG_SETTING_SHARING_ROAD                                 :Включить совместное использование остановок и депо: {STRING}
 STR_CONFIG_SETTING_SHARING_WATER                                :Включить совместное использование доков и пристаней: {STRING}
 STR_CONFIG_SETTING_SHARING_AIR                                  :Включить совместное использование аэропортов: {STRING}
-STR_CONFIG_SETTING_SHARING_FEE_RAIL                             :Ежедневная плата за проезд поездов: {STRING} на 1000 тонн
 STR_CONFIG_SETTING_SHARING_FEE_ROAD                             :Плата за остановку автотранспорта: {STRING} в день
 STR_CONFIG_SETTING_SHARING_FEE_WATER                            :Плата за причаливание: {STRING} в день
 STR_CONFIG_SETTING_SHARING_FEE_AIR                              :Плата за использование терминала для воздушных транспортных средств: {STRING} в день

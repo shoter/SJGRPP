@@ -366,7 +366,6 @@ STR_CONFIG_SETTING_SHARING_RAIL                                 :Aktiviere Shari
 STR_CONFIG_SETTING_SHARING_ROAD                                 :Aktiviere Sharing für Haltestellen, Ladeplätze und Depots: {STRING}
 STR_CONFIG_SETTING_SHARING_WATER                                :Aktiviere Sharing für Häfen und Werften: {STRING}
 STR_CONFIG_SETTING_SHARING_AIR                                  :Aktiviere Sharing für Flughäfen: {STRING}
-STR_CONFIG_SETTING_SHARING_FEE_RAIL                             :Tägliche Gleisnutzungsgebür für Züge: {STRING} pro 1000 Tonnen
 STR_CONFIG_SETTING_SHARING_FEE_ROAD                             :Anhaltegebühr für Straßenfahrzeuge: {STRING} pro Tag
 STR_CONFIG_SETTING_SHARING_FEE_WATER                            :Anlegegebühr in Häfen für Schiffe: {STRING} pro Tag
 STR_CONFIG_SETTING_SHARING_FEE_AIR                              :Terminalnutzungsgebühr für Flugzeuge: {STRING} pro Tag
