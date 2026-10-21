@@ -786,6 +786,8 @@ enum class Commands : uint8_t {
 	SectorRemoveEmpty,                      ///< scenario editor: remove sectors without tiles
 	SectorSetLocked,                        ///< scenario editor: protect the tiles of a sector from painting
 
+	SetCompanySharingFee,                   ///< change the fee a company charges for the use of its infrastructure
+
 	End,                                    ///< Must ALWAYS be on the end of this list!! (period)
 };
 

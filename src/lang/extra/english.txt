@@ -596,6 +596,15 @@ STR_CONFIG_SETTING_INFLATION_INCOME_MIN_HELPTEXT                :Lowest yearly i
 STR_CONFIG_SETTING_INFLATION_INCOME_MAX                         :Maximum income inflation: {STRING2}
 STR_CONFIG_SETTING_INFLATION_INCOME_MAX_HELPTEXT                :Highest yearly inflation of cargo payments when the inflation rates can change
 STR_CONFIG_SETTING_SHARING_PAYMENT_IN_DEBT                      :Allow companies in debt to pay sharing fees: {STRING2}
+STR_CONFIG_SETTING_SHARING_FEE_MAX_RAIL                         :Maximum own track toll of companies: {STRING2} per tile of train length
+STR_CONFIG_SETTING_SHARING_FEE_MAX_ROAD                         :Maximum own stopping fee of companies: {STRING2} per day
+STR_CONFIG_SETTING_SHARING_FEE_MAX_WATER                        :Maximum own docking fee of companies: {STRING2} per day
+STR_CONFIG_SETTING_SHARING_FEE_MAX_AIR                          :Maximum own terminal fee of companies: {STRING2} per day
+STR_CONFIG_SETTING_SHARING_FEE_MAX_HELPTEXT                     :Companies can charge their own fee for the use of their infrastructure instead of the fee above, in the company settings window. This is the highest fee they can set. It rises with inflation when "Sharing fees rise with inflation" is enabled. Own fees are fixed amounts that do not rise with inflation.
+STR_CONFIG_SETTING_SHARING_FEE_NOTICE_DAYS                      :Notice period before raised own fees of companies take effect: {STRING2}
+STR_CONFIG_SETTING_SHARING_FEE_NOTICE_DAYS_HELPTEXT             :When a company raises the fee it charges for the use of its infrastructure, the new fee takes effect after this many days, so that other companies can react. Lower fees take effect immediately.
+STR_CONFIG_SETTING_SHARING_FEE_NOTICE_DAYS_VALUE                :{COMMA}{NBSP}day{P "" s}
+STR_CONFIG_SETTING_SHARING_FEE_NOTICE_DAYS_IMMEDIATELY          :None, immediately
 STR_CONFIG_SETTING_SHARING_USED_BY_VEHICLES                     :Can't change this setting, vehicles are using shared infrastructure.
 STR_CONFIG_SETTING_SHARING_ORDERS_TO_OTHERS                     :Can't change this setting, vehicles have orders to destinations of others.
 
@@ -2769,3 +2778,33 @@ STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE_DEST_ANY                  :{BLACK}: {RAW_S
 STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE_EMPTY                     :Empty
 STR_VEHICLE_DETAILS_CAR_FERRY_MORE                              :{BLACK}... and {NUM} more
 STR_VEHICLE_STATUS_ABOARD_FERRY                                 :{LTBLUE}Aboard {VEHICLE}
+
+STR_COMPANY_VIEW_SETTINGS_BUTTON                                :{BLACK}Settings
+STR_COMPANY_VIEW_SETTINGS_TOOLTIP                               :{BLACK}View the company settings, such as the fees for the use of its infrastructure by other companies
+STR_COMPANY_SETTINGS_CAPTION                                    :{WHITE}{COMPANY} - Settings
+STR_COMPANY_SETTINGS_SHARING_TITLE                              :{WHITE}Infrastructure sharing fees
+STR_COMPANY_SETTINGS_SHARING_RAIL                               :{BLACK}Track toll for trains
+STR_COMPANY_SETTINGS_SHARING_ROAD                               :{BLACK}Stopping fee for road vehicles
+STR_COMPANY_SETTINGS_SHARING_WATER                              :{BLACK}Docking fee for ships
+STR_COMPANY_SETTINGS_SHARING_AIR                                :{BLACK}Terminal fee for aircraft
+STR_COMPANY_SETTINGS_SHARING_SERVER_FEE                         :{GRAY}{CURRENCY_LONG} {STRING} (server fee)
+STR_COMPANY_SETTINGS_SHARING_OWN_FEE                            :{LTBLUE}{CURRENCY_LONG}{BLACK} {STRING}
+STR_COMPANY_SETTINGS_SHARING_PENDING_OWN                        :{BLACK}Rises to {LTBLUE}{CURRENCY_LONG}{BLACK} in {COMMA} day{P "" s}
+STR_COMPANY_SETTINGS_SHARING_PENDING_SERVER                     :{BLACK}Rises to the server fee in {COMMA} day{P "" s}
+STR_COMPANY_SETTINGS_SHARING_DISABLED                           :{GRAY}(sharing disabled)
+STR_COMPANY_SETTINGS_SHARING_UNIT_RAIL                          :per tile of train length per day
+STR_COMPANY_SETTINGS_SHARING_UNIT_OTHER                         :per day
+STR_COMPANY_SETTINGS_SHARING_NOTE                               :{BLACK}Tick a fee to charge your own fixed amount instead of the server fee. Click the amount to change it.
+STR_COMPANY_SETTINGS_SHARING_NOTE_NOTICE                        :{BLACK}Higher fees take effect after {COMMA} day{P "" s}, lower fees immediately.
+STR_COMPANY_SETTINGS_SHARING_TOOLTIP                            :{BLACK}Fees that other companies pay for using the infrastructure of this company. Unticked fees are the server fee
+STR_COMPANY_SETTINGS_SHARING_QUERY_CAPTION                      :{WHITE}Enter the fee (maximum {CURRENCY_LONG})
+STR_SHARING_FEE_NAME_RAIL                                       :track toll
+STR_SHARING_FEE_NAME_ROAD                                       :stopping fee for road vehicles
+STR_SHARING_FEE_NAME_WATER                                      :docking fee for ships
+STR_SHARING_FEE_NAME_AIR                                        :terminal fee for aircraft
+STR_SHARING_FEE_MESSAGE_CHANGED                                 :{COMPANY} changed its {STRING} from {CURRENCY_LONG} to {CURRENCY_LONG} {STRING}
+STR_SHARING_FEE_MESSAGE_ANNOUNCED                               :{COMPANY} will raise its {STRING} from {CURRENCY_LONG} to {CURRENCY_LONG} {STRING} in {COMMA} day{P "" s}
+STR_SHARING_FEE_MESSAGE_CANCELLED                               :{COMPANY} cancelled the announced rise of its {STRING}, it stays at {CURRENCY_LONG} {STRING}
+STR_SHARING_FEE_NEWS                                            :{BIG_FONT}{BLACK}{RAW_STRING}
+STR_ERROR_CAN_T_CHANGE_SHARING_FEE                              :{WHITE}Can't change the sharing fee...
+STR_ERROR_SHARING_FEE_ABOVE_MAXIMUM                             :{WHITE}... the highest fee allowed is {CURRENCY_LONG}

@@ -3610,7 +3610,7 @@ static bool ConDumpVehicle(std::span<std::string_view> argv)
 static bool ConSharingFees(std::span<std::string_view> argv)
 {
 	if (argv.empty()) {
-		IConsolePrint(CC_HELP, "List the current infrastructure sharing fees (as money fractions, 1/256 of a currency unit), including inflation.");
+		IConsolePrint(CC_HELP, "List the current infrastructure sharing fees (as money fractions, 1/256 of a currency unit), including inflation, and the own fees of the companies.");
 		return true;
 	}
 
@@ -3619,6 +3619,18 @@ static bool ConSharingFees(std::span<std::string_view> argv)
 	for (VehicleType type : { VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft }) {
 		IConsolePrint(CC_DEFAULT, "{}: setting {}, enabled {}, fee_fract {}", names[to_underlying(type)],
 				_settings_game.economy.sharing_fee[to_underlying(type)], IsInfrastructureSharingEnabled(type) ? 1 : 0, GetSharingFeeFract(type));
+	}
+	for (VehicleType type : { VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft }) {
+		IConsolePrint(CC_DEFAULT, "{} own fees: max_setting {}, max_fract {}, notice_days {}", names[to_underlying(type)],
+				_settings_game.economy.sharing_fee_max[to_underlying(type)], GetSharingFeeMaxFract(type), _settings_game.economy.sharing_fee_notice_days);
+	}
+	for (const Company *c : Company::Iterate()) {
+		for (VehicleType type : { VehicleType::Train, VehicleType::Road, VehicleType::Ship, VehicleType::Aircraft }) {
+			const CompanySharingFee &fee = c->sharing_fees[to_underlying(type)];
+			IConsolePrint(CC_DEFAULT, "company {} {}: custom {}, fee {}, pending {}, pending_custom {}, pending_fee {}, pending_days {}, effective_fract {}",
+					c->index, names[to_underlying(type)], fee.custom ? 1 : 0, fee.fee, fee.pending ? 1 : 0, fee.pending_custom ? 1 : 0, fee.pending_fee,
+					fee.pending ? (fee.pending_date - EconTime::CurDate()).base() : 0, GetCompanySharingFeeFract(type, c->index));
+		}
 	}
 	return true;
 }

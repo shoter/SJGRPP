@@ -16,6 +16,8 @@
 #include "tile_type.h"
 #include "settings_type.h"
 #include "group.h"
+#include "sharing_fee_type.h"
+#include "vehicle_type.h"
 #include <array>
 #include <numeric>
 #include <string>
@@ -143,6 +145,8 @@ struct CompanyProperties {
 
 	EngineRenewList engine_renew_list = nullptr; ///< Engine renewals of this company.
 	CompanySettings settings{};                  ///< settings specific for each company
+
+	std::array<CompanySharingFee, to_underlying(VehicleType::CompanyEnd)> sharing_fees{}; ///< Infrastructure sharing fees charged by this company, per vehicle type.
 
 	int32_t InauguratedDisplayYear() const
 	{
