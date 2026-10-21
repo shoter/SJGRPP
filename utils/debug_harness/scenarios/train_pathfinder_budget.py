@@ -177,12 +177,20 @@ def start_game(ctx, name: str, extra: dict | None = None):
     return b, builder, grid, loco["id"]
 
 
-def show_grid(ctx, b, grid: Grid, label: str) -> None:
+def show_grid(ctx, b, grid: Grid, label: str, center: int | None = None, zoom: int = 3,
+              window: tuple[str, int | None] | None = None) -> None:
+    """Screenshot of the grid with path reservations shown, centred on a tile (default: the grid's centre)."""
     for w in b.windows():
-        if w["class_name"] in ("News", "Message", "Error"):
+        if w["class_name"] in ("News", "Message", "Error", "VehicleView", "VehicleList"):
             b.close_window(w["class"], w["number"])
-    b.console(f"scrollto instant {grid.x0 + SIZE // 2} {grid.y0 + SIZE // 2}")
-    b.console("zoomto 2")
+    b.console("setting gui.show_track_reservation 1")
+    if center is None:
+        b.console(f"scrollto instant {grid.x0 + SIZE // 2} {grid.y0 + SIZE // 2}")
+    else:
+        b.console(f"scrollto instant {center}")
+    b.console(f"zoomto {zoom}")
+    if window is not None:
+        b.call("show", *(a for a in window if a is not None))
     b.step(2)
     ctx.screenshot(b, label)
 
@@ -239,7 +247,7 @@ def block_game(ctx) -> None:
     check(small and max(small) <= LOST_NODES, f"lost train searches outside its full search days stop at {LOST_NODES} nodes "
           f"(max {max(small, default=None)})")
     check(not big or max(big) > LOST_NODES, f"on its full search days the lost train searches more nodes (max {max(big, default=None)})")
-    show_grid(ctx, b, grid, "lost_train")
+    show_grid(ctx, b, grid, "lost_train", center=b.obj("vehicle", lost, "tile")["tile"], zoom=2, window=("vehicle", lost))
 
     # Connect the station: the train finds it (at the latest on its next full search day) and is no longer lost.
     grid.connect_station()
@@ -302,7 +310,7 @@ def pbs_game(ctx) -> None:
     biggest = max((s["closed"] for s in no_orders), default=0)
     ctx.check(biggest < LOST_NODES, f"no full-network searches for trains without orders (biggest {biggest} nodes)",
               soft=BASELINE)
-    show_grid(ctx, b, grid, "no_orders_pbs")
+    show_grid(ctx, b, grid, "no_orders_pbs", window=("trains", None))
 
 
 def run(ctx):
