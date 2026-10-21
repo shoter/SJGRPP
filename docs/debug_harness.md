@@ -147,10 +147,15 @@ performance between runs. Exit code 1 on any failed check.
 `.github/workflows/game-tests.yml` builds the game once on Linux, then runs each test as a separate parallel job:
 pull requests to `main` and pushes to `main` run `scenarios` (all `scenarios/*.py`), `quick`, `normal`, `max-28` and
 `sharing`; "Run workflow" accepts any comma-separated subset. Runs on `main` are never cancelled by newer pushes. Full tests run with `--perf-report-only`: performance is
-reported but only correctness (crashes, desyncs, state/cache mismatches, gameplay) fails a job. Each test job writes its
-own summary; the `Report` job combines all results with `utils/debug_harness/ci_report.py` into the run summary and a
-PR comment (updated in place). Artifacts `game-test-<name>` hold report.json, perf.csv, events.log, screenshots and the
-crash/desync bundle (`collected/`) of a failed test. The harness unit tests (`utils/debug_harness/tests/`), the C++ unit
+reported but only correctness (crashes, desyncs, state/cache mismatches, gameplay) fails a job. Each full test runs 3
+times in parallel (job "Test quick (run 2)" etc.; "Run workflow" takes a `repeats` count). The runs are on separate
+runners, so they don't slow each other down, and they smooth out the noise of shared CI machines: the reports show one
+result per test, which passes only if every run passed and whose performance is the average of the runs (checks are
+prefixed `run <n>:`). Scenarios run once. Each test job writes its own summary; the `Report` job combines all results
+with `utils/debug_harness/ci_report.py` into the run summary and a PR comment (updated in place). Artifacts
+`game-test-<name>-run<n>` (`game-test-scenarios` for scenarios) hold report.json, perf.csv, events.log, screenshots and
+the crash/desync bundle (`collected/`) of a failed test. Measure performance here rather than locally while other work
+runs on the same machine. The harness unit tests (`utils/debug_harness/tests/`), the C++ unit
 tests and the AI/GS regression tests run in the build job; their results (artifact `pr-tests-unit`) only feed the PR
 tests report, `CI - Build` is what gates on the C++ and regression tests.
 
@@ -170,7 +175,8 @@ shows a warning; it never fails a check. Locally: `python utils/debug_harness/pr
 ### Performance history
 
 `.github/workflows/perf-history.yml` runs after every `Game tests` run of a push to `main`: it downloads that run's
-results and records each full test's perf summary (and whether it passed) for the commit in `history.json` on the
+results and records each full test's perf summary (the average of its parallel runs, and whether all passed) for the
+commit in `history.json` on the
 `perf-history` orphan branch, then regenerates that branch's `README.md` (tables of recent runs) and `charts/*.svg`
 (trends of game loop avg/p95, server memory and command round trip per profile). The main `README.md` embeds two of
 the charts, so they update without commits to `main`.

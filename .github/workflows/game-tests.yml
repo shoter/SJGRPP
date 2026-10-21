@@ -2,7 +2,9 @@ name: Game tests
 
 # Multiplayer full tests (stress / regression) driven by utils/debug_harness: a dedicated server and headless clients play
 # a generated map through real game commands. The game is built once, then every test runs as its own parallel job,
-# and a final job renders all results into the run summary (and a PR comment). The build job also runs the C++ unit
+# and a final job renders all results into the run summary (and a PR comment). Each full test runs several times in
+# parallel, on separate runners so the runs don't slow each other down, and its performance is the average of those
+# runs. The build job also runs the C++ unit
 # and AI/GS regression tests; on pull requests the PR tests workflow (pr-tests.yml) then adds the results of every new
 # and changed test to the PR's test list comment.
 
@@ -18,6 +20,9 @@ on:
       tests:
         description: 'Comma separated tests: scenarios, quick, normal, max-28, sharing'
         default: 'scenarios,quick,normal,max-28,sharing'
+      repeats:
+        description: 'Parallel runs of each full test; its performance is their average'
+        default: '3'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -32,7 +37,7 @@ jobs:
     name: Build (Linux)
     runs-on: ubuntu-latest
     outputs:
-      tests: ${{ steps.tests.outputs.tests }}
+      jobs: ${{ steps.tests.outputs.jobs }}
       expect: ${{ steps.tests.outputs.expect }}
 
     steps:
@@ -44,13 +49,15 @@ jobs:
       env:
         EVENT: ${{ github.event_name }}
         INPUT: ${{ github.event.inputs.tests }}
+        INPUT_REPEATS: ${{ github.event.inputs.repeats }}
       run: |
         case "$EVENT" in
           # main runs everything too: perf-history.yml records its full test performance as the PR baseline.
-          pull_request|push) list="scenarios,quick,normal,max-28,sharing" ;;
-          workflow_dispatch) list="$INPUT" ;;
+          pull_request|push) list="scenarios,quick,normal,max-28,sharing"; repeats=3 ;;
+          workflow_dispatch) list="$INPUT"; repeats="${INPUT_REPEATS:-3}" ;;
         esac
-        echo "tests=$(python3 -c "import json,sys; print(json.dumps([t.strip() for t in sys.argv[1].split(',') if t.strip()]))" "$list")" >> "$GITHUB_OUTPUT"
+        # One job per run: scenarios run once, each full test runs `repeats` times.
+        echo "jobs=$(python3 utils/debug_harness/ci_report.py --matrix "$list" --repeats "$repeats")" >> "$GITHUB_OUTPUT"
         echo "expect=$list" >> "$GITHUB_OUTPUT"
 
     - name: Harness unit tests
@@ -120,14 +127,14 @@ jobs:
         retention-days: 14
 
   test:
-    name: Test ${{ matrix.test }}
+    name: Test ${{ matrix.test }}${{ matrix.runs > 1 && format(' (run {0})', matrix.run) || '' }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
-        test: ${{ fromJSON(needs.build.outputs.tests) }}
+        include: ${{ fromJSON(needs.build.outputs.jobs) }}
     env:
       OTTD_CONTENT_DIR: ${{ github.workspace }}/content
       PYTHONUNBUFFERED: 1
@@ -157,12 +164,15 @@ jobs:
     - name: Run ${{ matrix.test }}
       id: run
       run: |
-        out="results/game-test-${{ matrix.test }}"
-        mkdir -p "$out"
         set +e
         if [ "${{ matrix.test }}" = "scenarios" ]; then
+          out="results/game-test-scenarios"
+          mkdir -p "$out"
           python utils/debug_harness/scenario.py utils/debug_harness/scenarios/*.py --out "$out"
         else
+          # The reports load all run-<n> reports of a test together and average their performance.
+          out="results/game-test-${{ matrix.test }}/run-${{ matrix.run }}"
+          mkdir -p "$out"
           python utils/debug_harness/full_test.py --profile "${{ matrix.test }}" --name "${{ matrix.test }}" \
             --out "$out" --perf-report-only
         fi
@@ -178,7 +188,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: game-test-${{ matrix.test }}
+        name: game-test-${{ matrix.test }}${{ matrix.runs > 1 && format('-run{0}', matrix.run) || '' }}
         path: |
           results/**/report.json
           results/**/result.json
@@ -193,7 +203,7 @@ jobs:
     - name: Fail if tests failed
       if: steps.run.outputs.exit_code != '0'
       run: |
-        echo "::error::${{ matrix.test }} failed (exit code ${{ steps.run.outputs.exit_code }}), see the Game tests report"
+        echo "::error::${{ matrix.test }} run ${{ matrix.run }} failed (exit code ${{ steps.run.outputs.exit_code }}), see the Game tests report"
         exit 1
 
   report:

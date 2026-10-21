@@ -552,6 +552,12 @@ def load_results(root: Path, expect: set[str]) -> Results:
         data = json.loads(f.read_text(encoding="utf-8"))
         group = next((p.name for p in f.parents if p.name.startswith("game-test-")), None)
         name = data.get("profile") or (group.removeprefix("game-test-") if group else f.parent.name)
+        prev = r.full.get(name)
+        if prev is not None:
+            # Parallel runs of the same full test: it passes only if every run passed.
+            data = {**data, "ok": bool(prev.get("ok")) and bool(data.get("ok")),
+                    "checks": prev.get("checks", []) + data.get("checks", []),
+                    "seconds": max(s for s in (prev.get("seconds"), data.get("seconds"), 0) if s is not None)}
         r.full[name] = data
     return r
 

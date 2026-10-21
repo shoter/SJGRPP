@@ -292,6 +292,18 @@ class TestResults(unittest.TestCase):
         self.assertIn("quick", s.detail)
         self.assertEqual(self.status("full_check", "no desync").state, "pass")
 
+    def test_parallel_runs_fail_if_any_run_failed(self):
+        for run, ok in ((1, True), (2, False), (3, True)):
+            d = self.tmp / f"game-test-normal-run{run}" / "game-test-normal" / f"run-{run}" / "normal"
+            d.mkdir(parents=True)
+            (d / "report.json").write_text(json.dumps({
+                "profile": "normal", "ok": ok, "seconds": 100 * run,
+                "checks": [{"ok": ok, "name": "no desync", "severity": "fail"}]}), encoding="utf-8")
+        self.results = pt.load_results(self.tmp, {"scenarios", "quick", "normal"})
+        s = self.status("full_profile", "normal")
+        self.assertEqual((s.state, s.seconds), ("fail", 300))
+        self.assertEqual(self.status("full_check", "no desync").state, "fail")
+
     def test_missing_unit_results(self):
         shutil.rmtree(self.tmp / "pr-tests-unit")
         self.results = pt.load_results(self.tmp, {"scenarios"})

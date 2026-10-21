@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import ci_report  # noqa: E402
 import perf_history as ph  # noqa: E402
 
 
@@ -40,6 +41,71 @@ class ResultsTest(unittest.TestCase):
         self.assertEqual(list(res), ["quick"])
         self.assertTrue(res["quick"]["ok"])
         self.assertEqual(res["quick"]["perf"], {"game_loop_ms_avg": 0.5, "commands": 10.0, "join_seconds_max": 4.0})
+
+
+def write_run(root: Path, name: str, run: int, ok: bool, perf: dict, checks: list | None = None) -> None:
+    """One parallel CI run of a full test, as downloaded: game-test-<name>-run<n>/game-test-<name>/run-<n>/<run>/."""
+    d = root / f"game-test-{name}-run{run}" / f"game-test-{name}" / f"run-{run}" / f"{name}-20261021"
+    d.mkdir(parents=True)
+    (d / "report.json").write_text(json.dumps({"ok": ok, "seconds": 10 * run, "checks": checks or [], "perf": perf,
+                                               "routes": {}, "profile": name, "args": {"clients": 3}}),
+                                   encoding="utf-8")
+
+
+class RepeatsTest(unittest.TestCase):
+    def test_matrix_runs_full_tests_repeatedly_and_scenarios_once(self):
+        jobs = ci_report.matrix_jobs("scenarios, quick,,max-28", 3)
+        self.assertEqual(jobs[0], {"test": "scenarios", "run": 1, "runs": 1})
+        self.assertEqual([(j["test"], j["run"], j["runs"]) for j in jobs[1:]],
+                         [("quick", 1, 3), ("quick", 2, 3), ("quick", 3, 3),
+                          ("max-28", 1, 3), ("max-28", 2, 3), ("max-28", 3, 3)])
+        self.assertEqual(ci_report.matrix_jobs("quick", 0), [{"test": "quick", "run": 1, "runs": 1}])
+
+    def test_mean_perf(self):
+        perf = ci_report.mean_perf([
+            {"game_loop_ms_avg": 1.0, "commands": 10, "vehicles_max": 5, "join_seconds": {"c1": 1.0}, "label": "a"},
+            {"game_loop_ms_avg": 2.0, "commands": 20, "vehicles_max": 6, "join_seconds": {"c1": 3.0, "c2": 4.0}},
+            {"game_loop_ms_avg": 3.0, "commands": 30, "vehicles_max": 6, "label": "c"},
+        ])
+        self.assertAlmostEqual(perf["game_loop_ms_avg"], 2.0)
+        self.assertEqual(perf["commands"], 20)
+        self.assertIsInstance(perf["commands"], int)
+        self.assertAlmostEqual(perf["vehicles_max"], 17 / 3)
+        self.assertEqual(perf["join_seconds"], {"c1": 2.0, "c2": 4.0})
+        self.assertEqual(perf["label"], "a")
+
+    def test_parallel_runs_are_averaged_and_fail_if_any_run_failed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_run(root, "quick", 1, True, {"game_loop_ms_avg": 1.0, "join_seconds": {"c1": 2.0}})
+            write_run(root, "quick", 2, True, {"game_loop_ms_avg": 2.0, "join_seconds": {"c1": 4.0}})
+            write_run(root, "quick", 3, True, {"game_loop_ms_avg": 3.0, "join_seconds": {"c1": 6.0}})
+            write_run(root, "normal", 1, True, {"game_loop_ms_avg": 5.0}, [{"ok": True, "name": "desync"}])
+            write_run(root, "normal", 2, False, {"game_loop_ms_avg": 7.0}, [{"ok": False, "name": "desync"}])
+            loaded = ci_report.load_results(root)
+            res = ph.full_results(root)
+            report = ci_report.render(loaded, ["quick", "normal"], "Game tests", None)
+        self.assertEqual(res["quick"], {"ok": True, "seconds": 30, "runs": 3,
+                                        "perf": {"game_loop_ms_avg": 2.0, "join_seconds_max": 4.0}})
+        self.assertFalse(res["normal"]["ok"])
+        self.assertEqual(res["normal"]["runs"], 2)
+        self.assertAlmostEqual(res["normal"]["perf"]["game_loop_ms_avg"], 6.0)
+        self.assertEqual([c["name"] for c in loaded["normal"]["checks"]], ["run 1: desync", "run 2: desync"])
+        self.assertIn("average of 3 parallel runs", report)
+        self.assertIn("run 2: desync", report)
+
+    def test_single_run_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = write_results(Path(tmp), {"quick": (True, {"game_loop_ms_avg": 0.5})})
+            res = ph.full_results(root)
+        self.assertEqual(res["quick"]["runs"], 1)
+        self.assertEqual(res["quick"]["perf"], {"game_loop_ms_avg": 0.5})
+
+    def test_compare_names_the_number_of_runs(self):
+        h = {"entries": [entry("a" * 40, {"game_loop_ms_avg": 1.0})]}
+        pr = {"quick": {"ok": True, "seconds": 10, "runs": 3, "perf": {"game_loop_ms_avg": 1.0}}}
+        text = ph.render_compare(h, pr, "a" * 40, ["quick"], None, None)
+        self.assertIn("averages of 3 parallel runs (PR) and 1 run (`main`)", text)
 
 
 class HistoryTest(unittest.TestCase):

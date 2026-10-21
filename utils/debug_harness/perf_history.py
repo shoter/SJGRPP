@@ -14,7 +14,8 @@ compare  renders the PR comment: every metric of the PR run against the main run
          trend charts of the last main runs with the PR as the last point.
 site     writes the README.md and SVG trend charts of the perf-history branch (the main README embeds the charts).
 
-Timings come from shared CI machines: a change is only flagged when it exceeds max(relative floor, absolute floor,
+Timings come from shared CI machines: each full test runs several times in parallel and its numbers are the average of
+those runs (ci_report.merge_runs), and a change is only flagged when it exceeds max(relative floor, absolute floor,
 2 standard deviations of the recent main runs).
 """
 
@@ -75,8 +76,10 @@ def perf_of(result: dict) -> dict[str, float]:
 
 
 def full_results(results_dir: Path) -> dict[str, dict]:
-    """test name -> {"ok", "seconds", "perf"} for the full tests (not scenarios) in a results directory."""
-    return {name: {"ok": bool(r["ok"]), "seconds": r.get("seconds"), "perf": perf_of(r)}
+    """test name -> {"ok", "seconds", "perf", "runs"} for the full tests (not scenarios) in a results directory.
+
+    perf is the average of the test's parallel runs (ci_report.merge_runs)."""
+    return {name: {"ok": bool(r["ok"]), "seconds": r.get("seconds"), "perf": perf_of(r), "runs": r.get("runs", 1)}
             for name, r in load_results(results_dir).items() if r["kind"] == "full"}
 
 
@@ -153,6 +156,12 @@ def short(sha: str) -> str:
     return sha[:7]
 
 
+def runs_label(test: dict) -> str:
+    """'3 parallel runs' / '1 run' for a test result or history entry (entries before repeats have no 'runs')."""
+    runs = test.get("runs", 1)
+    return f"{runs} parallel runs" if runs > 1 else "1 run"
+
+
 # ---- PR comment ----
 
 def mermaid_chart(title: str, labels: list[str], values: list[float], unit: str) -> list[str]:
@@ -197,7 +206,8 @@ def render_compare(history: dict, pr: dict[str, dict], base_sha: str | None, exp
         exact = base["sha"] == base_sha
         sec += [f"Compared with `main` at {commit_link(base)}"
                 + ("" if exact or not base_sha else f" (latest recorded; base `{short(base_sha)}` has no run)")
-                + (f", [run]({base['run_url']})" if base.get("run_url") else "") + ".", ""]
+                + (f", [run]({base['run_url']})" if base.get("run_url") else "") + "."
+                + f" Values are averages of {runs_label(r)} (PR) and {runs_label(base['tests'][name])} (`main`).", ""]
         sec += ["| Metric | main | PR | Δ | |", "|---|---|---|---|---|"]
         worse = better = 0
         for key, label, _, _, direction, abs_floor in METRICS:
