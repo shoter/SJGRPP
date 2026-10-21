@@ -356,6 +356,9 @@ public:
 	StationID last_station_visited = StationID::Invalid(); ///< The last station we stopped at.
 	StationID last_loading_station = StationID::Invalid(); ///< Last station the vehicle has stopped at and could possibly leave from with any cargo loaded. (See VehicleFlag::LastLoadStationSeparate).
 	StateTicks last_loading_tick{};              ///< Last tick (_state_ticks) the vehicle has stopped at a station and could possibly leave with any cargo loaded. (See VehicleFlag::LastLoadStationSeparate).
+	StationID overseas_station = StationID::Invalid(); ///< Front only: overseas station whose country the vehicle is visiting, if any.
+	StateTicks overseas_return{};                ///< Front only: when the vehicle comes back from overseas.
+	uint32_t overseas_trip_ticks = 0;            ///< Front only: length of the current overseas trip, there and back.
 
 	VehicleCargoList cargo{};                    ///< The cargo this vehicle is carrying
 	uint16_t cargo_cap = 0;                      ///< total capacity
@@ -540,6 +543,12 @@ public:
 	 * @return \c true iff this considered the primary vehicle.
 	 */
 	virtual bool IsPrimaryVehicle() const { return false; }
+
+	/**
+	 * Is the vehicle away on a trip to an overseas country? It is then hidden and does not move.
+	 * @return True if the front of this vehicle is overseas.
+	 */
+	inline bool IsOverseas() const { return this->First()->overseas_station != StationID::Invalid(); }
 
 	const Engine *GetEngine() const;
 

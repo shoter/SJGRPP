@@ -241,6 +241,12 @@ void CheckForDockingTile(TileIndex t)
 			Station::GetByTile(tile)->docking_station.Add(t);
 			SetDockingTile(t, true);
 		}
+		if (IsOverseasStationTile(tile)) {
+			Station *st = Station::GetByTile(tile);
+			st->docking_station.Add(t);
+			st->docking_tiles.push_back(t);
+			SetDockingTile(t, true);
+		}
 	}
 }
 
@@ -793,7 +799,7 @@ bool IsWateredTile(TileIndex tile, Direction from)
 
 				return IsTileOnWater(tile);
 			}
-			return (IsDock(tile) && IsTileFlat(tile)) || IsBuoy(tile);
+			return (IsDock(tile) && IsTileFlat(tile)) || IsBuoy(tile) || IsOverseasStation(tile);
 
 		case TileType::Industry: {
 			/* Do not draw waterborders inside of industries.

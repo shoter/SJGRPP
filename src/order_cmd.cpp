@@ -1042,7 +1042,10 @@ static CommandCost PreInsertOrderCheck(Vehicle *v, const Order &new_order, CmdIn
 			const Station *st = Station::GetIfValid(new_order.GetDestination().ToStationID());
 			if (st == nullptr) return CMD_ERROR;
 
-			if (st->owner != OWNER_NONE) {
+			if (st->IsOverseas()) {
+				/* Only the company that controls an overseas station can go there. */
+				if (st->owner != v->owner) return CommandCost::DualErrorMessage(STR_ERROR_CAN_T_ADD_ORDER, STR_ERROR_OVERSEAS_NOT_CONTROLLED);
+			} else if (st->owner != OWNER_NONE) {
 				CommandCost ret = CheckInfraUsageAllowed(v->type, st->owner);
 				if (ret.Failed()) return ret;
 			}

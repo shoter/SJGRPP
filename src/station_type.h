@@ -40,6 +40,7 @@ enum class StationType : uint8_t {
 	Buoy, ///< Waypoint for ships.
 	RailWaypoint, ///< Waypoint for trains.
 	RoadWaypoint, ///< Waypoint for trucks and busses.
+	Overseas, ///< Overseas station at the map border, a water tile without graphics.
 	End, ///< End marker.
 };
 

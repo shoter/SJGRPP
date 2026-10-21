@@ -13,6 +13,7 @@ add_test_files(
     mock_fontcache.h
     mock_spritecache.cpp
     mock_spritecache.h
+    overseas.cpp
     serialisation.cpp
     sharing_fee.cpp
     variable_inflation.cpp

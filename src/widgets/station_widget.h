@@ -32,6 +32,9 @@ enum StationViewWidgets : WidgetID {
 	WID_SV_CATCHMENT,          ///< Toggle catchment area highlight.
 	WID_SV_DEPARTURES,         ///< Departures button.
 	WID_SV_HISTORY,            ///< Cargo history button.
+	WID_SV_OVERSEAS_SEL,       ///< Container for the overseas panel, which is hidden for other stations.
+	WID_SV_OVERSEAS,           ///< Overseas station information.
+	WID_SV_OVERSEAS_CONTROL,   ///< 'Take control' / 'Give up control' button of an overseas station.
 };
 
 /** Widgets of the #CompanyStationsWindow class. */

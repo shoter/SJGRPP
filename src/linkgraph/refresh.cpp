@@ -306,6 +306,8 @@ void LinkRefresher::RefreshStats(const Order *cur, const Order *next, uint32_t t
 	Station *st = Station::GetIfValid(cur->GetDestination().ToStationID());
 	if (st != nullptr && next_station != StationID::Invalid() && next_station != st->index) {
 		Station *st_to = Station::Get(next_station);
+		/* Overseas stations are not part of cargo distribution. */
+		if (st->IsOverseas() || st_to->IsOverseas()) return;
 		for (CargoType cargo : EnumRange(NUM_CARGO)) {
 			/* Refresh the link and give it a minimum capacity. */
 

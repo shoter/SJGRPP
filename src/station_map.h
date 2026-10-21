@@ -394,6 +394,27 @@ inline bool IsOilRig(TileIndex t)
 }
 
 /**
+ * Is tile \a t an overseas station tile?
+ * @param t Tile to check
+ * @pre IsTileType(t, TileType::Station)
+ * @return \c true if the tile is an overseas station
+ */
+inline bool IsOverseasStation(TileIndex t)
+{
+	return GetStationType(t) == StationType::Overseas;
+}
+
+/**
+ * Is tile \a t an overseas station tile?
+ * @param t Tile to check
+ * @return \c true if the tile is an overseas station
+ */
+inline bool IsOverseasStationTile(TileIndex t)
+{
+	return IsTileType(t, TileType::Station) && GetStationType(t) == StationType::Overseas;
+}
+
+/**
  * Is tile \a t a dock tile?
  * @param t Tile to check
  * @pre IsTileType(t, TileType::Station)
@@ -876,6 +897,17 @@ inline void MakeDock(TileIndex t, Owner o, StationID sid, DiagDirection d, Water
 inline void MakeOilrig(TileIndex t, StationID sid, WaterClass wc)
 {
 	MakeStation(t, OWNER_NONE, sid, StationType::Oilrig, 0, wc);
+}
+
+/**
+ * Make the given tile an overseas station tile.
+ * @param t the tile to make an overseas station
+ * @param sid the station to which this tile belongs
+ * @param wc the type of water on this tile
+ */
+inline void MakeOverseasStation(TileIndex t, StationID sid, WaterClass wc)
+{
+	MakeStation(t, OWNER_NONE, sid, StationType::Overseas, 0, wc);
 }
 
 #endif /* STATION_MAP_H */

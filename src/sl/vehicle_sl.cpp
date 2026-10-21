@@ -1177,6 +1177,9 @@ NamedSaveLoadTable GetVehicleDescription(VehicleType vt)
 		NSL("current_loading_time",     SLE_CONDVAR_X(Vehicle, current_loading_time,      SLE_UINT32,                 SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_AUTO_TIMETABLE))),
 		NSL("current_loading_time",     SLE_CONDVAR_X(Vehicle, current_loading_time,      SLE_UINT32,                 SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_JOKERPP, SL_JOKER_1_23))),
 		NSL("last_loading_tick",        SLE_CONDVAR_X(Vehicle, last_loading_tick,         SLE_INT64,                  SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_LAST_LOADING_TICK))),
+		NSL("overseas_station",         SLE_CONDVAR_X(Vehicle, overseas_station,          SLE_UINT16,                 SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_OVERSEAS_STATIONS))),
+		NSL("overseas_return",          SLE_CONDVAR_X(Vehicle, overseas_return,           SLE_INT64,                  SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_OVERSEAS_STATIONS))),
+		NSL("overseas_trip_ticks",      SLE_CONDVAR_X(Vehicle, overseas_trip_ticks,       SLE_UINT32,                 SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_OVERSEAS_STATIONS))),
 		NSL("",                        SLE_CONDNULL_X(4,                                                              SL_MIN_VERSION, SL_MAX_VERSION, SlXvFeatureTest(XSLFTO_AND, XSLFI_SPRINGPP))),
 		NSL("lateness_counter",           SLE_CONDVAR(Vehicle, lateness_counter,          SLE_INT32,                  SLV_67, SL_MAX_VERSION)),
 

@@ -47,6 +47,7 @@
 #include "road_cmd.h"
 #include "scope.h"
 #include "sector_func.h"
+#include "overseas.h"
 
 #include "table/strings.h"
 
@@ -176,6 +177,7 @@ static void _GenerateWorld()
 				GenerateObjects();
 				GenerateTrees();
 				GeneratePublicRoads(_settings_game.game_creation.build_public_roads);
+				GenerateOverseasStations();
 			}
 		}
 

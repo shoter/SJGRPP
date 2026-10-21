@@ -37,7 +37,8 @@ void AfterLoadCompanyStats()
 
 	/* Collect airport count. */
 	for (const Station *st : Station::Iterate()) {
-		if (st->facilities.Test(StationFacility::Airport) && Company::IsValidID(st->owner)) {
+		/* Overseas stations are not infrastructure of the company that controls them. */
+		if (st->facilities.Test(StationFacility::Airport) && Company::IsValidID(st->owner) && !st->IsOverseas()) {
 			Company::Get(st->owner)->infrastructure.airport++;
 		}
 	}

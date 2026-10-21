@@ -645,6 +645,8 @@ static PixelColour GetTopographyValue(TileIndex tile)
 				return PC_GREY;
 			case StationType::RoadWaypoint:
 				return PC_GREY;
+			case StationType::Overseas:
+				return PC_WATER;
 			default: NOT_REACHED();
 		}
 	}
@@ -740,6 +742,8 @@ static PixelColour GetIndustryValue(TileIndex tile)
 				return PC_GREY;
 			case StationType::RoadWaypoint:
 				return PC_GREY;
+			case StationType::Overseas:
+				return PC_WATER;
 			default: NOT_REACHED();
 		}
 	}

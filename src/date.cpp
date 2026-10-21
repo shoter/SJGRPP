@@ -30,6 +30,8 @@
 #include "used_vehicle.h"
 #include "variable_inflation.h"
 
+#include "overseas.h"
+
 #include "safeguards.h"
 
 uint64_t _tick_counter;                    ///< Ever incrementing tick counter for setting off various events
@@ -396,6 +398,7 @@ static void OnNewEconomyYear()
 	CompaniesYearlyLoop();
 	VehiclesYearlyLoop();
 	TownsYearlyLoop();
+	OverseasStationsYearlyLoop();
 	if (_network_server) NetworkServerEconomyYearlyLoop();
 
 	/* check if we reached the maximum year, decrement dates by a year */
@@ -463,6 +466,7 @@ static void OnNewEconomyDay()
 	DisasterDailyLoop();
 	IndustryDailyLoop();
 	StationDailyLoop();
+	OverseasStationsDailyLoop();
 	CompaniesSharingFeesDailyLoop();
 
 	ClearOutOfDateSignalSpeedRestrictions();

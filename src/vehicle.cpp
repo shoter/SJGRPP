@@ -854,7 +854,7 @@ void UpdateVehicleTileHash(Vehicle *v, bool remove)
 	TileIndex old_hash_tile = v->hash_tile_current;
 	TileIndex new_hash_tile;
 
-	if (remove || HasBit(v->subtype, GVSF_VIRTUAL) || (v->tile == 0 && _settings_game.construction.freeform_edges) || IsRoadVehicleAboardFerry(v)) {
+	if (remove || HasBit(v->subtype, GVSF_VIRTUAL) || (v->tile == 0 && _settings_game.construction.freeform_edges) || IsRoadVehicleAboardFerry(v) || v->IsOverseas()) {
 		new_hash_tile = INVALID_TILE;
 	} else {
 		new_hash_tile = v->tile;
@@ -907,6 +907,7 @@ bool ValidateVehicleTileHash(const Vehicle *v)
 			|| (v->type == VehicleType::Ship && HasBit(v->subtype, GVSF_VIRTUAL))
 			|| (v->type == VehicleType::Aircraft && v->tile == 0 && _settings_game.construction.freeform_edges)
 			|| IsRoadVehicleAboardFerry(v)
+			|| v->IsOverseas()
 			|| v->type >= VehicleType::CompanyEnd) {
 		return v->hash_tile_current == INVALID_TILE;
 	}
@@ -4061,6 +4062,7 @@ CommandCost Vehicle::SendToDepot(DoCommandFlags flags, DepotCommandFlags command
 
 	if (this->vehstatus.Test(VehState::Crashed)) return CMD_ERROR;
 	if (IsRoadVehicleAboardFerry(this)) return CommandCost(STR_ERROR_ROAD_VEHICLE_IS_ABOARD_FERRY);
+	if (this->IsOverseas()) return CommandCost(STR_ERROR_VEHICLE_IS_OVERSEAS);
 	if (this->IsStoppedInDepot()) {
 		if (command.Test(DepotCommandFlag::Sell) && !command.Test(DepotCommandFlag::Cancel) && (!command.Test(DepotCommandFlag::Specific) || specific_depot == this->tile)) {
 			/* Sell vehicle immediately */
@@ -4861,6 +4863,8 @@ bool CanVehicleUseStation(EngineID engine_type, const Station *st)
 			return st->facilities.Test(StationFacility::Dock);
 
 		case VehicleType::Aircraft:
+			/* Every aircraft can fly to an overseas station, it does not land there. */
+			if (st->IsOverseas()) return true;
 			return st->facilities.Test(StationFacility::Airport) &&
 					st->airport.GetFTA()->flags.Test(e->VehInfo<AircraftVehicleInfo>().subtype & AIR_CTOL ? AirportFTAClass::Flag::Airplanes : AirportFTAClass::Flag::Helicopters);
 

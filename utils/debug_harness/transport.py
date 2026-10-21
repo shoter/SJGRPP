@@ -60,6 +60,8 @@ AIRPORT_TYPES = ((0, (4, 3)), (5, (5, 4)), (1, (6, 6)))
 RAILTYPE_RAIL = 0
 ROADTYPE_ROAD = 0
 OWNER_NONE_VALUES = (255,)  # tiles without an owner in the "tiles" dump
+STATION_TYPE_OVERSEAS = 9   # StationType::Overseas (sub value of STATION tiles)
+STATION_OWNER_NONE = 29     # OWNER_NONE as a station owner
 
 
 def reverse(d: int) -> int:
@@ -243,7 +245,7 @@ def plan_path(gmap: GameMap, start: tuple[int, int], start_dir: int, goal: tuple
 
 @dataclass
 class Route:
-    kind: str                      # rail | road | air | ship
+    kind: str                      # rail | road | air | ship | ferry | overseas
     company: int
     stations: list[int] = field(default_factory=list)
     depot_tile: int | None = None
@@ -253,6 +255,7 @@ class Route:
     path_length: int = 0
     commands: int = 0
     buses: list[int] = field(default_factory=list)       # ferry: road vehicles crossing on the car ferry
+    overseas: int | None = None                           # overseas: the overseas station the vehicles trade with
     terminals: list[dict] = field(default_factory=list)  # ferry: bus stop, roads and depot at each dock
 
     def to_json(self) -> dict:
@@ -721,6 +724,113 @@ class Builder:
         route.path_length = abs(pair[0][0] - pair[1][0]) + abs(pair[0][1] - pair[1][1])
         route.commands = self.commands_sent - start_cmds
         return route
+
+    # ---- overseas stations ----
+
+    def overseas_stations(self) -> dict[int, dict]:
+        """Overseas stations of the map: station id -> {"tile", "owner"}."""
+        gmap = self.fresh_map()
+        sids = sorted(self.b.objs("station"))
+        out = {}
+        for sid, r in zip(sids, self.b.batch([f"obj station {sid} xy owner" for sid in sids])):
+            if not r.get("ok"):
+                continue
+            xy = r["result"]["xy"]
+            if gmap.type[xy] == STATION and gmap.sub[xy] == STATION_TYPE_OVERSEAS:
+                out[sid] = {"tile": xy, "owner": r["result"]["owner"]}
+        return out
+
+    def overseas_dock_sites(self, station_tile: int, near: tuple[int, int] | None = None,
+                            towns: list[tuple[int, int]] | None = None, town_range: int = 6,
+                            avoid: tuple[int, int] | None = None) -> list[tuple[int, int, int, int]]:
+        """
+        Dock sites that pass their test run on the sea of an overseas station, at least 10 tiles from it. towns: only
+        sites within town_range of a town, nearest town first; otherwise nearest to near (or the station) first.
+        avoid: keep 12 tiles away from this site.
+        """
+        gmap = self.fresh_map()
+        bodies = gmap.water_bodies(sea_only=True)
+        sx, sy = gmap.xy(station_tile)
+        body = None
+        for dx, dy in DELTA.values():
+            body = bodies.get(gmap.tile(sx + dx, sy + dy), body)
+        if body is None:
+            raise BuildError("overseas station has no sea next to it")
+        sites = [s for s in self._dock_sites(gmap, bodies, sea_only=True)
+                 if s[3] == body and abs(s[0] - sx) + abs(s[1] - sy) >= 10]
+        if avoid is not None:
+            sites = [s for s in sites if abs(s[0] - avoid[0]) + abs(s[1] - avoid[1]) >= 12]
+        if towns:
+            def town_dist(s):
+                return min(abs(s[0] - tx) + abs(s[1] - ty) for tx, ty in towns)
+            sites = [s for s in sites if town_dist(s) <= town_range]
+            sites.sort(key=lambda s: (town_dist(s), abs(s[0] - sx) + abs(s[1] - sy)))
+        else:
+            nx, ny = near if near is not None else (sx, sy)
+            sites.sort(key=lambda s: abs(s[0] - nx) + abs(s[1] - ny))
+        results = self.test_many([("BuildDock", gmap.tile(x, y), NEW_STATION, False) for x, y, _, _ in sites[:200]])
+        ok = [site for site, res in zip(sites, results) if res["success"]]
+        if not ok:
+            raise BuildError("no dock site on the water of the overseas station")
+        return ok
+
+    def build_overseas_dock(self, site: tuple[int, int, int, int]) -> tuple[int, int]:
+        """Build a dock at a site from overseas_dock_sites and a ship depot near it: (dock station, depot tile)."""
+        gmap = self.fresh_map()
+        dock = self._station_of(self.cmd("BuildDock", gmap.tile(site[0], site[1]), NEW_STATION, False))
+        return dock, self._ship_depot(self.fresh_map(), site)
+
+    def build_overseas_route(self, near: tuple[int, int], vehicles: int = 2, airport: tuple[int, int] | None = None) -> Route:
+        """
+        Take control of a free overseas station near `near` and send passenger ships there from a new dock on its sea.
+        airport: (airport station, hangar tile) of the company; an aircraft from there flies to the station too.
+        Route.stations is [dock, overseas station], Route.vehicles the ships followed by the aircraft.
+        """
+        start_cmds = self.commands_sent
+        stations = self.overseas_stations()
+        mx = self.b.info()["map"]["x"]
+
+        def distance(sid: int) -> int:
+            tile = stations[sid]["tile"]
+            return abs(tile % mx - near[0]) + abs(tile // mx - near[1])
+        free = sorted((sid for sid, st in stations.items() if st["owner"] == STATION_OWNER_NONE), key=distance)
+        errors = []
+        for sid in free[:8]:
+            try:
+                sites = self.overseas_dock_sites(stations[sid]["tile"], near=near)
+            except BuildError as e:
+                errors.append(f"{sid}: {e}")
+                continue
+            # Another company may take the station first, or this one may be at its limit.
+            res = self.cmd("OverseasStationControl", 0, sid, True, allow_fail=True)
+            if not res["success"]:
+                errors.append(f"{sid}: control: {res.get('error')}")
+                continue
+            dock, depot = self.build_overseas_dock(sites[0])
+            route = Route("overseas", self.company)
+            route.stations = [dock, sid]
+            route.overseas = sid
+            route.depot_tile = depot
+            ship = self.pick_engine("ship")
+            first = self.build_vehicle(depot, ship["id"])
+            self.order(first, "station", dock)
+            self.order(first, "station", sid)
+            self.start_vehicle(first)
+            route.vehicles.append(first)
+            route.template_vehicle = first
+            route.engine = ship["name"]
+            self.add_vehicles(route, vehicles - 1)
+            if airport is not None:
+                plane = self.build_vehicle(airport[1], self.pick_engine("aircraft", fast=False, helicopter=False)["id"])
+                self.order(plane, "station", airport[0])
+                self.order(plane, "station", sid)
+                self.start_vehicle(plane)
+                route.vehicles.append(plane)
+                route.engine += " + aircraft"
+            route.path_length = abs(stations[sid]["tile"] % mx - sites[0][0]) + abs(stations[sid]["tile"] // mx - sites[0][1])
+            route.commands = self.commands_sent - start_cmds
+            return route
+        raise BuildError("no free overseas station with a dock site: " + "; ".join(errors[:6]))
 
     # ---- car ferries ----
 

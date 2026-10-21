@@ -57,6 +57,8 @@
 
 #include "strings_internal.h"
 
+#include "overseas.h"
+
 #include "safeguards.h"
 
 std::string _config_language_file;                ///< The file (name) stored in the configuration.
@@ -2269,6 +2271,9 @@ static void FormatString(StringBuilder builder, std::string_view str_arg, String
 					if (use_cache) { // Use cached version if first call
 						AutoRestoreBackup cache_backup(use_cache, false);
 						builder += st->GetCachedName();
+					} else if (st->IsOverseas()) {
+						auto tmp_params = MakeParameters(GetOverseasCountry(st->overseas->country).name);
+						GetStringWithArgs(builder, STR_SV_STNAME_OVERSEAS, tmp_params);
 					} else if (!st->name.empty()) {
 						FormatRawString(builder, st->name);
 					} else {

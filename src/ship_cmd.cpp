@@ -44,6 +44,8 @@
 
 #include "table/strings.h"
 
+#include "overseas.h"
+
 #include "safeguards.h"
 
 /** Max distance in tiles (as the crow flies) to search for depots when user clicks "go to depot". */
@@ -298,10 +300,13 @@ void Ship::OnPeriodic()
 {
 	if (!this->IsPrimaryVehicle()) return;
 
-	CheckVehicleBreakdown(this);
-	CheckIfShipNeedsService(this);
+	/* No breakdowns or servicing while overseas. */
+	if (!this->IsOverseas()) {
+		CheckVehicleBreakdown(this);
+		CheckIfShipNeedsService(this);
 
-	CheckOrders(this);
+		CheckOrders(this);
+	}
 
 	if (this->running_ticks == 0) return;
 
@@ -818,6 +823,7 @@ bool IsShipDestinationTile(TileIndex tile, StationID station)
 			if (i->neutral_station != nullptr && i->neutral_station->index == station) return true;
 		}
 		if (IsTileType(t, TileType::Station) && IsOilRig(t) && GetStationIndex(t) == station) return true;
+		if (IsOverseasStationTile(t) && GetStationIndex(t) == station) return true;
 	}
 	return false;
 }
@@ -932,6 +938,13 @@ static void ShipController(Ship *v)
 							if (st->facilities.Test(StationFacility::Dock) && st->docking_station.Contains(gp.new_tile) && IsShipDestinationTile(gp.new_tile, station_id)) {
 								v->last_station_visited = station_id;
 								ShipArrivesAt(v, st);
+								if (st->IsOverseas()) {
+									if (!OverseasVehicleDepart(v, st)) {
+										v->current_order.MakeLeaveStation();
+										v->IncrementRealOrderIndex();
+									}
+									return;
+								}
 								v->BeginLoading();
 								return;
 							}
@@ -966,7 +979,14 @@ static void ShipController(Ship *v)
 							Station *st = Station::Get(v->current_order.GetDestination().ToStationID());
 							if (st->docking_station.Contains(gp.new_tile) && IsShipDestinationTile(gp.new_tile, st->index)) {
 								v->last_station_visited = st->index;
-								if (st->facilities.Test(StationFacility::Dock)) { // ugly, ugly workaround for problem with ships able to drop off cargo at wrong stations
+								if (st->IsOverseas()) {
+									/* The ship leaves the map for the trip to the country, unless it may not use the station. */
+									ShipArrivesAt(v, st);
+									if (!OverseasVehicleDepart(v, st)) {
+										v->current_order.MakeLeaveStation();
+										v->IncrementRealOrderIndex();
+									}
+								} else if (st->facilities.Test(StationFacility::Dock)) { // ugly, ugly workaround for problem with ships able to drop off cargo at wrong stations
 									ShipArrivesAt(v, st);
 									v->BeginLoading();
 								} else { // leave stations without docks right away
@@ -1065,6 +1085,11 @@ bool Ship::Tick()
 	DEBUG_UPDATESTATECHECKSUM("Ship::Tick: v: {}, x: {}, y: {}", this->index, this->x_pos, this->y_pos);
 	UpdateStateChecksum((((uint64_t) this->x_pos) << 32) | this->y_pos);
 	if (!(this->vehstatus.Test(VehState::Stopped) || this->IsWaitingInDepot())) this->running_ticks++;
+
+	if (this->IsOverseas()) {
+		OverseasVehicleTick(this);
+		return true;
+	}
 
 	ShipController(this);
 

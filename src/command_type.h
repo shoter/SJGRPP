@@ -787,6 +787,7 @@ enum class Commands : uint8_t {
 	SectorSetLocked,                        ///< scenario editor: protect the tiles of a sector from painting
 
 	SetCompanySharingFee,                   ///< change the fee a company charges for the use of its infrastructure
+	OverseasStationControl,                 ///< take or give up control of an overseas station
 
 	End,                                    ///< Must ALWAYS be on the end of this list!! (period)
 };

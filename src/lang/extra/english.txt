@@ -2779,6 +2779,124 @@ STR_VEHICLE_DETAILS_CAR_FERRY_VEHICLE_EMPTY                     :Empty
 STR_VEHICLE_DETAILS_CAR_FERRY_MORE                              :{BLACK}... and {NUM} more
 STR_VEHICLE_STATUS_ABOARD_FERRY                                 :{LTBLUE}Aboard {VEHICLE}
 
+STR_CONFIG_SETTING_ENVIRONMENT_OVERSEAS                         :Overseas stations
+STR_CONFIG_SETTING_OVERSEAS_STATIONS                            :Number of overseas stations: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_STATIONS_HELPTEXT                   :Number of overseas stations created on a new map, on sea tiles at the map border. Each one trades with another country. Ships and aircraft that visit an overseas station leave the map for a trip to its country and come back with passengers, mail and freight from there. A company has to take control of an overseas station before its vehicles can use it
+STR_CONFIG_SETTING_OVERSEAS_STATIONS_VALUE                      :{COMMA}
+STR_CONFIG_SETTING_OVERSEAS_MAX_PER_COMPANY                     :Most overseas stations a company can control: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_MAX_PER_COMPANY_HELPTEXT            :How many overseas stations a company can control at the same time. An overseas station is controlled by at most one company
+STR_CONFIG_SETTING_OVERSEAS_FEE                                 :Price of the first overseas station: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_FEE_HELPTEXT                        :Price a company pays to take control of its first overseas station. A company that controls X overseas stations pays (X+1)! times this price for the next one: 2 times for the second, 6 times for the third, 24 times for the fourth. Prices rise with inflation
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS                       :Trip time of ships to the nearest country: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS_HELPTEXT              :How long a ship is away from the map when it visits an overseas station of the nearest country, there and back. Countries farther away take longer, up to the trip time to the farthest country
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MAX_DAYS                       :Trip time of ships to the farthest country: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MAX_DAYS_HELPTEXT              :How long a ship is away from the map when it visits an overseas station of the farthest country (Australia), there and back
+STR_CONFIG_SETTING_OVERSEAS_AIRCRAFT_TRIP_PERCENT               :Trip time of aircraft: {STRING2} of the trip time of ships
+STR_CONFIG_SETTING_OVERSEAS_AIRCRAFT_TRIP_PERCENT_HELPTEXT      :Aircraft fly to overseas countries faster than ships sail there. This is their trip time in percent of the trip time of ships
+STR_CONFIG_SETTING_OVERSEAS_PASSENGERS                          :Passengers produced by overseas stations: {STRING2} per month
+STR_CONFIG_SETTING_OVERSEAS_PASSENGERS_HELPTEXT                 :Passengers an overseas station of a country of 100 million people produces per month. Countries with more people produce more (by the square root of the population, from half to four times as much). Production grows every year and halves during a recession
+STR_CONFIG_SETTING_OVERSEAS_MAIL                                :Mail produced by overseas stations: {STRING2} per month
+STR_CONFIG_SETTING_OVERSEAS_MAIL_HELPTEXT                       :Mail an overseas station of a country of 100 million people produces per month, scaled like passengers
+STR_CONFIG_SETTING_OVERSEAS_CARGO                               :Freight produced by overseas stations: {STRING2} per month
+STR_CONFIG_SETTING_OVERSEAS_CARGO_HELPTEXT                      :Freight an overseas station of a country of 100 million people produces per month, scaled like passengers. Each overseas station produces one freight cargo picked at random
+STR_CONFIG_SETTING_OVERSEAS_GROWTH                              :Yearly growth of overseas production: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_GROWTH_HELPTEXT                     :Production of overseas stations grows by this percentage every year, as the world gets bigger
+STR_CONFIG_SETTING_OVERSEAS_STOCKPILE_MONTHS                    :Stockpile of overseas stations: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_STOCKPILE_MONTHS_HELPTEXT           :An overseas station stops producing a cargo when this many months of production are waiting. This limit does not depend on the station capacity settings
+STR_CONFIG_SETTING_OVERSEAS_DAYS                                :{COMMA} day{P "" s}
+STR_CONFIG_SETTING_OVERSEAS_MONTHS                              :{COMMA} month{P "" s} of production
+
+STR_SV_STNAME_OVERSEAS                                          :{STRING} (Overseas)
+STR_LAI_STATION_DESCRIPTION_OVERSEAS                            :Overseas station
+STR_OVERSEAS_COUNTRY_INDIA                                      :India
+STR_OVERSEAS_COUNTRY_CHINA                                      :China
+STR_OVERSEAS_COUNTRY_USA                                        :United States
+STR_OVERSEAS_COUNTRY_INDONESIA                                  :Indonesia
+STR_OVERSEAS_COUNTRY_PAKISTAN                                   :Pakistan
+STR_OVERSEAS_COUNTRY_NIGERIA                                    :Nigeria
+STR_OVERSEAS_COUNTRY_BRAZIL                                     :Brazil
+STR_OVERSEAS_COUNTRY_BANGLADESH                                 :Bangladesh
+STR_OVERSEAS_COUNTRY_RUSSIA                                     :Russia
+STR_OVERSEAS_COUNTRY_ETHIOPIA                                   :Ethiopia
+STR_OVERSEAS_COUNTRY_MEXICO                                     :Mexico
+STR_OVERSEAS_COUNTRY_JAPAN                                      :Japan
+STR_OVERSEAS_COUNTRY_PHILIPPINES                                :Philippines
+STR_OVERSEAS_COUNTRY_EGYPT                                      :Egypt
+STR_OVERSEAS_COUNTRY_DR_CONGO                                   :DR Congo
+STR_OVERSEAS_COUNTRY_VIETNAM                                    :Vietnam
+STR_OVERSEAS_COUNTRY_IRAN                                       :Iran
+STR_OVERSEAS_COUNTRY_TURKEY                                     :Turkey
+STR_OVERSEAS_COUNTRY_GERMANY                                    :Germany
+STR_OVERSEAS_COUNTRY_THAILAND                                   :Thailand
+STR_OVERSEAS_COUNTRY_TANZANIA                                   :Tanzania
+STR_OVERSEAS_COUNTRY_UK                                         :United Kingdom
+STR_OVERSEAS_COUNTRY_FRANCE                                     :France
+STR_OVERSEAS_COUNTRY_SOUTH_AFRICA                               :South Africa
+STR_OVERSEAS_COUNTRY_ITALY                                      :Italy
+STR_OVERSEAS_COUNTRY_KENYA                                      :Kenya
+STR_OVERSEAS_COUNTRY_MYANMAR                                    :Myanmar
+STR_OVERSEAS_COUNTRY_COLOMBIA                                   :Colombia
+STR_OVERSEAS_COUNTRY_SOUTH_KOREA                                :South Korea
+STR_OVERSEAS_COUNTRY_UGANDA                                     :Uganda
+STR_OVERSEAS_COUNTRY_SUDAN                                      :Sudan
+STR_OVERSEAS_COUNTRY_SPAIN                                      :Spain
+STR_OVERSEAS_COUNTRY_ALGERIA                                    :Algeria
+STR_OVERSEAS_COUNTRY_IRAQ                                       :Iraq
+STR_OVERSEAS_COUNTRY_ARGENTINA                                  :Argentina
+STR_OVERSEAS_COUNTRY_AFGHANISTAN                                :Afghanistan
+STR_OVERSEAS_COUNTRY_CANADA                                     :Canada
+STR_OVERSEAS_COUNTRY_UKRAINE                                    :Ukraine
+STR_OVERSEAS_COUNTRY_MOROCCO                                    :Morocco
+STR_OVERSEAS_COUNTRY_SAUDI_ARABIA                               :Saudi Arabia
+STR_OVERSEAS_COUNTRY_ANGOLA                                     :Angola
+STR_OVERSEAS_COUNTRY_UZBEKISTAN                                 :Uzbekistan
+STR_OVERSEAS_COUNTRY_YEMEN                                      :Yemen
+STR_OVERSEAS_COUNTRY_PERU                                       :Peru
+STR_OVERSEAS_COUNTRY_MOZAMBIQUE                                 :Mozambique
+STR_OVERSEAS_COUNTRY_GHANA                                      :Ghana
+STR_OVERSEAS_COUNTRY_MALAYSIA                                   :Malaysia
+STR_OVERSEAS_COUNTRY_NEPAL                                      :Nepal
+STR_OVERSEAS_COUNTRY_MADAGASCAR                                 :Madagascar
+STR_OVERSEAS_COUNTRY_VENEZUELA                                  :Venezuela
+STR_OVERSEAS_COUNTRY_IVORY_COAST                                :Ivory Coast
+STR_OVERSEAS_COUNTRY_CAMEROON                                   :Cameroon
+STR_OVERSEAS_COUNTRY_NIGER                                      :Niger
+STR_OVERSEAS_COUNTRY_AUSTRALIA                                  :Australia
+STR_OVERSEAS_COUNTRY_NORTH_KOREA                                :North Korea
+STR_OVERSEAS_COUNTRY_TAIWAN                                     :Taiwan
+STR_OVERSEAS_COUNTRY_MALI                                       :Mali
+STR_OVERSEAS_COUNTRY_SYRIA                                      :Syria
+STR_OVERSEAS_COUNTRY_BURKINA_FASO                               :Burkina Faso
+STR_OVERSEAS_COUNTRY_SRI_LANKA                                  :Sri Lanka
+
+STR_OVERSEAS_COUNTRY                                            :{BLACK}Country: {WHITE}{STRING} {BLACK}({COMMA} km from Poland)
+STR_OVERSEAS_CONTROLLED_BY                                      :{BLACK}Controlled by: {WHITE}{COMPANY}
+STR_OVERSEAS_NOT_CONTROLLED                                     :{BLACK}Controlled by: {WHITE}nobody
+STR_OVERSEAS_TRIP                                               :{BLACK}Trip there and back: {WHITE}{COMMA} day{P "" s} {BLACK}by ship, {WHITE}{COMMA} day{P "" s} {BLACK}by aircraft
+STR_OVERSEAS_PRODUCTION                                         :{BLACK}Production per month (most waiting):
+STR_OVERSEAS_PRODUCTION_LINE                                    :{WHITE}  {CARGO_LONG} {BLACK}({CARGO_SHORT})
+STR_OVERSEAS_PRODUCTION_RECESSION                               :{ORANGE}  Halved by the recession
+STR_OVERSEAS_GROWTH                                             :{BLACK}Production grows by {WHITE}{COMMA}% {BLACK}per year
+STR_OVERSEAS_PRICE                                              :{BLACK}Price of control for you: {WHITE}{CURRENCY_LONG}
+STR_OVERSEAS_TAKE_CONTROL                                       :{BLACK}Take control
+STR_OVERSEAS_TAKE_CONTROL_TOOLTIP                               :{BLACK}Pay the price and take control of this overseas station, so that your ships and aircraft can use it
+STR_OVERSEAS_GIVE_UP_CONTROL                                    :{BLACK}Give up control
+STR_OVERSEAS_GIVE_UP_CONTROL_TOOLTIP                            :{BLACK}Give up control of this overseas station. The price is not refunded
+STR_OVERSEAS_GIVE_UP_QUERY_CAPTION                              :{WHITE}Give up control
+STR_OVERSEAS_GIVE_UP_QUERY                                      :{YELLOW}Give up control of {STATION}? The price is not refunded and your vehicles can no longer use it.
+STR_VEHICLE_STATUS_OVERSEAS                                     :{LTBLUE}Overseas: {STATION}, back in {COMMA} day{P "" s}
+STR_NEWS_OVERSEAS_CONTROL_TITLE                                 :{BIG_FONT}{BLACK}Overseas trade!
+STR_NEWS_OVERSEAS_CONTROL                                       :{BIG_FONT}{BLACK}{RAW_STRING} takes control of {STATION}!
+STR_ERROR_CAN_T_TAKE_CONTROL_OF_OVERSEAS                        :{WHITE}Can't take control of the overseas station...
+STR_ERROR_CAN_T_GIVE_UP_CONTROL_OF_OVERSEAS                     :{WHITE}Can't give up control of the overseas station...
+STR_ERROR_OVERSEAS_ALREADY_CONTROLLED                           :{WHITE}... you already control it
+STR_ERROR_OVERSEAS_CONTROLLED_BY_OTHER                          :{WHITE}... another company controls it
+STR_ERROR_OVERSEAS_TOO_MANY                                     :{WHITE}... you control the most overseas stations allowed
+STR_ERROR_OVERSEAS_NOT_CONTROLLED                               :{WHITE}... you do not control this overseas station
+STR_ERROR_OVERSEAS_STATION_IN_THE_WAY                           :{WHITE}... overseas station in the way
+STR_ERROR_VEHICLE_IS_OVERSEAS                                   :{WHITE}... vehicle is overseas
+STR_NEWS_OVERSEAS_CAR_FERRY_LOADED                              :{WHITE}{VEHICLE} can't go to {STATION} with road vehicles aboard
+
 STR_COMPANY_VIEW_SETTINGS_BUTTON                                :{BLACK}Settings
 STR_COMPANY_VIEW_SETTINGS_TOOLTIP                               :{BLACK}View the company settings, such as the fees for the use of its infrastructure by other companies
 STR_COMPANY_SETTINGS_CAPTION                                    :{WHITE}{COMPANY} - Settings

@@ -420,6 +420,11 @@ add_files(
     order_func.h
     order_gui.cpp
     order_type.h
+    overseas.cpp
+    overseas.h
+    overseas_cmd.h
+    overseas_flag.cpp
+    overseas_flag.h
     order_serialisation.cpp
     order_serialisation.h
     order_serialisation_gui.cpp

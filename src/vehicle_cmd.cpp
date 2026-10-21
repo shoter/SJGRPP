@@ -755,6 +755,7 @@ CommandCost CmdStartStopVehicle(DoCommandFlags flags, VehicleID veh_id, bool eva
 	if (ret.Failed()) return ret;
 
 	if (v->vehstatus.Test(VehState::Crashed)) return CommandCost(STR_ERROR_VEHICLE_IS_DESTROYED);
+	if (v->IsOverseas()) return CommandCost(STR_ERROR_VEHICLE_IS_OVERSEAS);
 
 	switch (v->type) {
 		case VehicleType::Train:

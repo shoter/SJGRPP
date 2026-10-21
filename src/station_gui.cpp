@@ -53,6 +53,10 @@
 #include "table/strings.h"
 
 #include "dropdown_common_type.h"
+#include "overseas.h"
+#include "overseas_cmd.h"
+#include "economy_func.h"
+#include "textbuf_gui.h"
 
 #include <set>
 #include <vector>
@@ -947,6 +951,13 @@ static constexpr std::initializer_list<NWidgetPart> _nested_station_view_widgets
 		NWidget(NWID_VSCROLLBAR, Colours::Grey, WID_SV_SCROLLBAR),
 	EndContainer(),
 	NWidget(WWT_PANEL, Colours::Grey, WID_SV_ACCEPT_RATING_LIST), SetMinimalSize(249, 23), SetResize(1, 0), EndContainer(),
+	NWidget(NWID_SELECTION, Colours::Invalid, WID_SV_OVERSEAS_SEL),
+		NWidget(NWID_VERTICAL),
+			NWidget(WWT_PANEL, Colours::Grey, WID_SV_OVERSEAS), SetMinimalSize(249, 23), SetResize(1, 0), EndContainer(),
+			NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SV_OVERSEAS_CONTROL), SetMinimalSize(46, 12), SetResize(1, 0), SetFill(1, 1),
+					SetStringTip(STR_OVERSEAS_TAKE_CONTROL, STR_OVERSEAS_TAKE_CONTROL_TOOLTIP),
+		EndContainer(),
+	EndContainer(),
 	NWidget(NWID_HORIZONTAL, NWidContainerFlag::EqualSize),
 		NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_SV_ACCEPTS_RATINGS), SetMinimalSize(46, 12), SetResize(1, 0), SetFill(1, 1),
 				SetStringTip(STR_STATION_VIEW_RATINGS_BUTTON, STR_STATION_VIEW_RATINGS_TOOLTIP),
@@ -1453,7 +1464,8 @@ struct StationViewWindow : public Window {
 	{
 		const Station *st = Station::Get(window_number);
 		this->CreateNestedTree();
-		this->GetWidget<NWidgetStacked>(WID_SV_CLOSE_AIRPORT_SEL)->SetDisplayedPlane(st->facilities.Test(StationFacility::Airport) ? 0 : SZSP_NONE);
+		this->GetWidget<NWidgetStacked>(WID_SV_CLOSE_AIRPORT_SEL)->SetDisplayedPlane(st->facilities.Test(StationFacility::Airport) && !st->IsOverseas() ? 0 : SZSP_NONE);
+		this->GetWidget<NWidgetStacked>(WID_SV_OVERSEAS_SEL)->SetDisplayedPlane(st->IsOverseas() ? 0 : SZSP_NONE);
 		this->vscroll = this->GetScrollbar(WID_SV_SCROLLBAR);
 		/* Nested widget tree creation is done in two steps to ensure that this->GetWidget<NWidgetCore>(WID_SV_ACCEPTS_RATINGS) exists in UpdateWidgetSize(). */
 		this->FinishInitNested(window_number);
@@ -1548,6 +1560,16 @@ struct StationViewWindow : public Window {
 				size.height = ((this->GetWidget<NWidgetCore>(WID_SV_ACCEPTS_RATINGS)->GetString() == STR_STATION_VIEW_RATINGS_BUTTON) ? this->accepts_lines : this->rating_lines) * GetCharacterHeight(FontSize::Normal) + padding.height;
 				break;
 
+			case WID_SV_OVERSEAS:
+				size.height = OVERSEAS_PANEL_LINES * GetCharacterHeight(FontSize::Normal) + WidgetDimensions::scaled.vsep_wide + padding.height;
+				break;
+
+			case WID_SV_OVERSEAS_CONTROL: {
+				Dimension d = maxdim(GetStringBoundingBox(STR_OVERSEAS_TAKE_CONTROL), GetStringBoundingBox(STR_OVERSEAS_GIVE_UP_CONTROL));
+				size.width = std::max(size.width, d.width + padding.width);
+				break;
+			}
+
 			case WID_SV_GROUP_BY:
 			case WID_SV_SORT_BY: {
 				uint width = 0;
@@ -1607,7 +1629,18 @@ struct StationViewWindow : public Window {
 		});
 
 		/* disable some buttons */
-		this->SetWidgetDisabledState(WID_SV_RENAME,   st->owner != _local_company);
+		this->SetWidgetDisabledState(WID_SV_RENAME,   st->owner != _local_company || st->IsOverseas());
+		this->SetWidgetDisabledState(WID_SV_ACCEPTS_RATINGS, st->IsOverseas());
+		if (st->IsOverseas()) {
+			NWidgetCore *control = this->GetWidget<NWidgetCore>(WID_SV_OVERSEAS_CONTROL);
+			if (st->owner == _local_company) {
+				control->SetStringTip(STR_OVERSEAS_GIVE_UP_CONTROL, STR_OVERSEAS_GIVE_UP_CONTROL_TOOLTIP);
+				this->SetWidgetDisabledState(WID_SV_OVERSEAS_CONTROL, false);
+			} else {
+				control->SetStringTip(STR_OVERSEAS_TAKE_CONTROL, STR_OVERSEAS_TAKE_CONTROL_TOOLTIP);
+				this->SetWidgetDisabledState(WID_SV_OVERSEAS_CONTROL, !Company::IsValidID(_local_company) || GetOverseasControlError(st, _local_company) != STR_NULL);
+			}
+		}
 		this->SetWidgetDisabledState(WID_SV_TRAINS,   !st->facilities.Test(StationFacility::Train) && !have_veh_types.Test(VehicleType::Train));
 		this->SetWidgetDisabledState(WID_SV_ROADVEHS, !st->facilities.Test(StationFacility::TruckStop) && !st->facilities.Test(StationFacility::BusStop) && !have_veh_types.Test(VehicleType::Road));
 		this->SetWidgetDisabledState(WID_SV_SHIPS,    !st->facilities.Test(StationFacility::Dock) && !have_veh_types.Test(VehicleType::Ship));
@@ -1616,7 +1649,7 @@ struct StationViewWindow : public Window {
 		this->SetWidgetLoweredState(WID_SV_CLOSE_AIRPORT, st->facilities.Test(StationFacility::Airport) && st->airport.blocks.Test(AirportBlock::AirportClosed));
 
 		extern const Station *_viewport_highlight_station;
-		this->SetWidgetDisabledState(WID_SV_CATCHMENT, st->facilities.None());
+		this->SetWidgetDisabledState(WID_SV_CATCHMENT, st->facilities.None() || st->IsOverseas());
 		this->SetWidgetLoweredState(WID_SV_CATCHMENT, _viewport_highlight_station == st);
 
 		this->DrawWidgets();
@@ -2043,6 +2076,79 @@ struct StationViewWindow : public Window {
 		return pos;
 	}
 
+	/** Number of lines of the overseas panel: the flag takes two lines. */
+	static constexpr uint OVERSEAS_PANEL_LINES = 2 + 1 + 1 + NUM_OVERSEAS_PRODUCTS + 1 + 1 + 1;
+
+	void DrawWidget(const Rect &r, WidgetID widget) const override
+	{
+		if (widget == WID_SV_OVERSEAS) this->DrawOverseasPanel(r);
+	}
+
+	/**
+	 * Draw the information of an overseas station in the #WID_SV_OVERSEAS widget: its country and flag,
+	 * who controls it, trip times, production, acceptance and the price of control.
+	 * @param r Rectangle of the widget.
+	 */
+	void DrawOverseasPanel(const Rect &r) const
+	{
+		const Station *st = Station::Get(this->window_number);
+		if (!st->IsOverseas()) return;
+		const OverseasCountry &country = GetOverseasCountry(st->overseas->country);
+		const int line = GetCharacterHeight(FontSize::Normal);
+		Rect tr = r.Shrink(WidgetDimensions::scaled.framerect);
+
+		/* Flag, with the country and who controls the station next to it. */
+		const int flag_h = line * 2;
+		const int flag_w = flag_h * 3 / 2;
+		const bool rtl = _current_text_dir == TD_RTL;
+		Rect flag = rtl ? tr.WithWidth(flag_w, true) : tr.WithWidth(flag_w, false);
+		flag = flag.WithHeight(flag_h);
+		DrawOverseasFlag(st->overseas->country, flag);
+		GfxDrawLine(flag.left, flag.top, flag.right, flag.top, PC_BLACK);
+		GfxDrawLine(flag.left, flag.bottom, flag.right, flag.bottom, PC_BLACK);
+		GfxDrawLine(flag.left, flag.top, flag.left, flag.bottom, PC_BLACK);
+		GfxDrawLine(flag.right, flag.top, flag.right, flag.bottom, PC_BLACK);
+
+		Rect text = tr.Indent(flag_w + WidgetDimensions::scaled.hsep_wide, rtl);
+		DrawString(text.left, text.right, text.top, GetString(STR_OVERSEAS_COUNTRY, country.name, country.distance_km));
+		if (Company::IsValidID(st->owner)) {
+			DrawString(text.left, text.right, text.top + line, GetString(STR_OVERSEAS_CONTROLLED_BY, st->owner));
+		} else {
+			DrawString(text.left, text.right, text.top + line, STR_OVERSEAS_NOT_CONTROLLED);
+		}
+		tr.top += flag_h + WidgetDimensions::scaled.vsep_wide;
+
+		DrawString(tr, GetString(STR_OVERSEAS_TRIP, GetOverseasTripDays(st, VehicleType::Ship), GetOverseasTripDays(st, VehicleType::Aircraft)));
+		tr.top += line;
+
+		DrawString(tr, STR_OVERSEAS_PRODUCTION);
+		tr.top += line;
+		for (uint p = 0; p < NUM_OVERSEAS_PRODUCTS; p++) {
+			const OverseasProduct product = static_cast<OverseasProduct>(p);
+			const CargoType cargo = GetOverseasProductCargo(st, product);
+			if (!IsValidCargoType(cargo)) continue;
+			DrawString(tr, GetString(STR_OVERSEAS_PRODUCTION_LINE, cargo, GetOverseasStationMonthlyProduction(st, product),
+					cargo, GetOverseasStationStockpileLimit(st, product)));
+			tr.top += line;
+		}
+		if (EconomyIsInRecession()) {
+			DrawString(tr, STR_OVERSEAS_PRODUCTION_RECESSION);
+			tr.top += line;
+		}
+		DrawString(tr, GetString(STR_OVERSEAS_GROWTH, _settings_game.economy.overseas_growth));
+		tr.top += line;
+
+		if (st->owner == OWNER_NONE && Company::IsValidID(_local_company)) {
+			DrawString(tr, GetString(STR_OVERSEAS_PRICE, GetOverseasControlPrice(_local_company)));
+		}
+	}
+
+	/** Ask whether to give up control of an overseas station. */
+	static void GiveUpOverseasControlCallback(Window *w, bool confirmed)
+	{
+		if (confirmed) Command<Commands::OverseasStationControl>::Post(STR_ERROR_CAN_T_GIVE_UP_CONTROL_OF_OVERSEAS, static_cast<StationID>(w->window_number), false);
+	}
+
 	/**
 	 * Draw accepted cargo in the #WID_SV_ACCEPT_RATING_LIST widget.
 	 * @param r Rectangle of the widget.
@@ -2167,6 +2273,17 @@ struct StationViewWindow : public Window {
 					if (w->parent->window_class == WindowClass::WaypointView && w->IsWidgetLowered(WID_QS_MOVE)) SetViewportWaypointRect(Waypoint::Get(w->parent->window_number), true);
 				}
 				break;
+
+			case WID_SV_OVERSEAS_CONTROL: {
+				const Station *st = Station::Get(this->window_number);
+				if (!st->IsOverseas()) break;
+				if (st->owner == _local_company) {
+					ShowQuery(GetEncodedString(STR_OVERSEAS_GIVE_UP_QUERY_CAPTION), GetEncodedString(STR_OVERSEAS_GIVE_UP_QUERY, st->index), this, GiveUpOverseasControlCallback);
+				} else {
+					Command<Commands::OverseasStationControl>::Post(STR_ERROR_CAN_T_TAKE_CONTROL_OF_OVERSEAS, st->index, true);
+				}
+				break;
+			}
 
 			case WID_SV_LOCATION:
 				if (_ctrl_pressed) {

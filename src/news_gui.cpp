@@ -41,6 +41,8 @@
 
 #include "table/strings.h"
 
+#include "overseas.h"
+
 #include "safeguards.h"
 
 static const uint MIN_NEWS_AMOUNT = 30; ///< preferred minimum amount of news messages.
@@ -536,6 +538,16 @@ struct NewsWindow : Window {
 			}
 
 			case WID_N_MGR_FACE: {
+				/* News about an overseas station shows the flag of its country. */
+				const StationID *sid = std::get_if<StationID>(&this->ni->ref1);
+				const Station *st = sid != nullptr ? Station::GetIfValid(*sid) : nullptr;
+				if (st != nullptr && st->IsOverseas()) {
+					const int flag_w = r.Width();
+					const int flag_h = flag_w * 2 / 3;
+					Rect flag = r.WithHeight(flag_h).Translate(0, (r.Height() - flag_h) / 2);
+					DrawOverseasFlag(st->overseas->country, flag);
+					break;
+				}
 				const CompanyNewsInformation *cni = static_cast<const CompanyNewsInformation*>(this->ni->data.get());
 				DrawCompanyManagerFace(cni->face, cni->colour, r);
 				GfxFillRect(r, PALETTE_NEWSPAPER, FillRectMode::Recolour);

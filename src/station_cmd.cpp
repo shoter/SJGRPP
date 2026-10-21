@@ -40,6 +40,7 @@
 #include "station_container.h"
 #include "station_func.h"
 #include "station_kdtree.h"
+#include "overseas.h"
 #include "roadstop_base.h"
 #include "newgrf_railtype.h"
 #include "newgrf_roadtype.h"
@@ -489,7 +490,8 @@ TileArea Station::GetTileArea(StationType type) const
 		case StationType::Truck: return this->truck_station;
 		case StationType::Bus: return this->bus_station;
 		case StationType::Dock:
-		case StationType::Oilrig: return this->docking_station;
+		case StationType::Oilrig:
+		case StationType::Overseas: return this->docking_station;
 		default: NOT_REACHED();
 	}
 }
@@ -590,7 +592,7 @@ void Station::UpdateVirtCoord()
 	Point pt = RemapCoords2(TileX(this->xy) * TILE_SIZE, TileY(this->xy) * TILE_SIZE);
 
 	pt.y -= 32 * ZOOM_BASE;
-	if (this->facilities.Test(StationFacility::Airport) && this->airport.type == AT_OILRIG) pt.y -= 16 * ZOOM_BASE;
+	if (this->facilities.Test(StationFacility::Airport) && this->airport.type == AT_OILRIG && !this->IsOverseas()) pt.y -= 16 * ZOOM_BASE;
 
 	if (_viewport_sign_kdtree_valid && this->sign.kdtree_valid()) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeStation(this->index));
 
@@ -773,6 +775,12 @@ static std::pair<CargoArray, CargoTypes> GetAcceptanceAroundStation(const Statio
  */
 void UpdateStationAcceptance(Station *st, bool show_msg)
 {
+	if (st->IsOverseas()) {
+		UpdateOverseasAcceptance(st);
+		SetWindowWidgetDirty(WindowClass::StationView, st->index, WID_SV_ACCEPT_RATING_LIST);
+		return;
+	}
+
 	/* old accepted goods types */
 	CargoTypes old_acc = GetAcceptanceMask(st);
 
@@ -1009,6 +1017,7 @@ static StringID GetBridgeTooLowMessageForStationType(StationType type)
 		STR_ERROR_BRIDGE_TOO_LOW_FOR_BUOY, // Buoy
 		STR_ERROR_BRIDGE_TOO_LOW_FOR_RAIL_WAYPOINT, // RailWaypoint
 		STR_ERROR_BRIDGE_TOO_LOW_FOR_ROAD_WAYPOINT, // RoadWaypoint
+		INVALID_STRING_ID, // Overseas
 	};
 	return too_low_msgs[type];
 };
@@ -3095,7 +3104,7 @@ CommandCost CmdOpenCloseAirport(DoCommandFlags flags, StationID station_id)
 	if (!Station::IsValidID(station_id)) return CMD_ERROR;
 	Station *st = Station::Get(station_id);
 
-	if (!st->facilities.Test(StationFacility::Airport) || st->owner == OWNER_NONE) return CMD_ERROR;
+	if (!st->facilities.Test(StationFacility::Airport) || st->owner == OWNER_NONE || st->IsOverseas()) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(st->owner);
 	if (ret.Failed()) return ret;
@@ -3535,6 +3544,13 @@ static void DrawTile_Station(TileInfo *ti, DrawTileProcParams params)
 	const StationSpec *statspec = nullptr;
 	uint tile_layout = 0;
 
+	/* An overseas station has no graphics, only its sign. */
+	if (IsOverseasStation(ti->tile)) {
+		DrawWaterClassGround(ti);
+		DrawBridgeMiddle(ti);
+		return;
+	}
+
 	if (HasStationRail(ti->tile)) {
 		rti = GetRailTypeInfo(GetRailType(ti->tile));
 		total_offset = rti->GetRailtypeSpriteOffset();
@@ -3932,6 +3948,10 @@ static void GetTileDesc_Station(TileIndex tile, TileDesc &td)
 		case StationType::Buoy:         str = STR_LAI_STATION_DESCRIPTION_BUOY; break;
 		case StationType::RailWaypoint: str = STR_LAI_STATION_DESCRIPTION_WAYPOINT; break;
 		case StationType::RoadWaypoint: str = STR_LAI_STATION_DESCRIPTION_WAYPOINT; break;
+		case StationType::Overseas:
+			td.owner[0] = BaseStation::GetByTile(tile)->owner;
+			str = STR_LAI_STATION_DESCRIPTION_OVERSEAS;
+			break;
 	}
 	td.str = str;
 }
@@ -4010,6 +4030,7 @@ static void TileLoop_Station(TileIndex tile)
 
 		case StationType::Oilrig: //(station part)
 		case StationType::Buoy:
+		case StationType::Overseas:
 			TileLoop_Water(tile);
 			break;
 
@@ -4418,6 +4439,9 @@ int GetTargetRating(const Station *st, const CargoSpec *cs, const GoodsEntry *ge
 
 static void UpdateStationRating(Station *st)
 {
+	/* Overseas stations have their own stockpile limit and never lose cargo. */
+	if (st->IsOverseas()) return;
+
 	bool waiting_changed = false;
 
 	byte_inc_sat(&st->time_since_load);
@@ -4713,6 +4737,8 @@ void IncreaseStats(Station *st, CargoType cargo, StationID next_station_id, uint
 {
 	GoodsEntry &ge1 = st->goods[cargo];
 	Station *st2 = Station::Get(next_station_id);
+	/* Overseas stations are not part of cargo distribution. */
+	if (st->IsOverseas() || st2->IsOverseas()) return;
 	GoodsEntry &ge2 = st2->goods[cargo];
 	LinkGraph *lg = nullptr;
 	if (ge1.link_graph == LinkGraphID::Invalid()) {
@@ -4918,7 +4944,7 @@ static bool IsUniqueStationName(std::string_view name)
 CommandCost CmdRenameStation(DoCommandFlags flags, StationID station_id, bool generate, const std::string &text)
 {
 	Station *st = Station::GetIfValid(station_id);
-	if (st == nullptr) return CMD_ERROR;
+	if (st == nullptr || st->IsOverseas()) return CMD_ERROR;
 
 	CommandCost ret = CheckOwnership(st->owner);
 	if (ret.Failed()) return ret;
@@ -5453,6 +5479,9 @@ static CommandCost RemoveRoadStopAndUpdateRoadCachedOneWayState(TileIndex tile, 
 /** @copydoc ClearTileProc */
 CommandCost ClearTile_Station(TileIndex tile, DoCommandFlags flags)
 {
+	/* Overseas stations stay for the whole game. */
+	if (IsOverseasStation(tile)) return CommandCost(STR_ERROR_OVERSEAS_STATION_IN_THE_WAY);
+
 	if (flags.Test(DoCommandFlag::Auto)) {
 		switch (GetStationType(tile)) {
 			default: break;

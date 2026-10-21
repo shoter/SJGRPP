@@ -76,6 +76,8 @@
 #include "sector_func.h"
 #include "variable_inflation.h"
 
+#include "overseas.h"
+
 #include "safeguards.h"
 
 
@@ -1357,10 +1359,10 @@ static Money DeliverGoods(int num_pieces, CargoType cargo_type, StationID dest, 
 	/* Update company statistics */
 	company->cur_economy.delivered_cargo[cargo_type] += accepted_total;
 
-	/* Increase town's counter for town effects */
+	/* Increase town's counter for town effects; cargo delivered to an overseas country does not count for the nearest town. */
 	const CargoSpec *cs = CargoSpec::Get(cargo_type);
-	st->town->received[cs->town_acceptance_effect].new_act += accepted_total;
-	if (accepted_total - accepted_ind > 0) {
+	if (!st->IsOverseas()) st->town->received[cs->town_acceptance_effect].new_act += accepted_total;
+	if (accepted_total - accepted_ind > 0 && !st->IsOverseas()) {
 		/* Cargo not delivered to an industry must go to the town. */
 		st->town->GetOrCreateCargoAccepted(cargo_type).history[THIS_MONTH].accepted += accepted_total - accepted_ind;
 	}
@@ -1469,8 +1471,10 @@ CargoPayment::~CargoPayment()
  */
 void CargoPayment::PayFinalDelivery(CargoType cargo, CargoPacket *cp, uint count, TileIndex current_tile)
 {
-	/* Handle end of route payment */
-	Money profit = DeliverGoods(count, cargo, this->current_station, cp->GetDistance(current_tile), cp->GetPeriodsInTransit(), Company::Get(this->front->owner), cp->GetSource());
+	/* Handle end of route payment. Cargo to or from an overseas country is also paid for the distance to the country. */
+	const uint distance = cp->GetDistance(current_tile) + GetOverseasDistanceBonus(cp) + this->overseas_extra_distance;
+	const uint16_t periods = ClampTo<uint16_t>(cp->GetPeriodsInTransit() + this->overseas_extra_periods);
+	Money profit = DeliverGoods(count, cargo, this->current_station, distance, periods, Company::Get(this->front->owner), cp->GetSource());
 
 	profit -= cp->GetFeederShare(count);
 
@@ -1496,7 +1500,7 @@ Money CargoPayment::PayTransfer(CargoType cargo, CargoPacket *cp, uint count, Ti
 	 * the source to the current point, and the sum of the previous transfer payments */
 	Money profit = -cp->GetFeederShare(count) + GetTransportedGoodsIncome(
 			count,
-			cp->GetDistance(current_tile),
+			cp->GetDistance(current_tile) + GetOverseasDistanceBonus(cp),
 			cp->GetPeriodsInTransit(),
 			cargo);
 
@@ -1778,8 +1782,10 @@ struct FinalizeRefitAction
 	bool operator()(Vehicle *v)
 	{
 		if (this->do_reserve || (cargo_type_loading == nullptr || IsFullLoadOrderLoadType(cargo_type_loading->current_order.GetCargoLoadTypeRaw(v->cargo_type)))) {
-			this->st->goods[v->cargo_type].CreateData().cargo.Reserve(v->cargo_cap - v->cargo.RemainingCount(),
-					&v->cargo, this->next_station.Get(v->cargo_type), v->GetCargoTile());
+			StationCargoList &list = this->st->goods[v->cargo_type].CreateData().cargo;
+			std::vector<StationID> hops;
+			list.Reserve(v->cargo_cap - v->cargo.RemainingCount(),
+					&v->cargo, GetOverseasLoadNextHops(this->next_station.Get(v->cargo_type), list, hops), v->GetCargoTile());
 		}
 		this->consist_capleft[v->cargo_type] += v->cargo_cap - v->cargo.RemainingCount();
 		return true;
@@ -1814,7 +1820,8 @@ static void HandleStationRefit(Vehicle *v, Vehicle *v_start, CargoArray &consist
 		new_cid = v_start->cargo_type;
 		for (CargoType cid : refit_mask) {
 			if (check_order && v->First()->current_order.GetCargoLoadType(cid) == OrderLoadType::NoLoad) continue;
-			if (st->goods[cid].data != nullptr && st->goods[cid].data->cargo.HasCargoFor(next_station.Get(cid))) {
+			std::vector<StationID> hops;
+			if (st->goods[cid].data != nullptr && st->goods[cid].data->cargo.HasCargoFor(GetOverseasLoadNextHops(next_station.Get(cid), st->goods[cid].data->cargo, hops))) {
 				/* Try to find out if auto-refitting would succeed. In case the refit is allowed,
 				 * the returned refit capacity will be greater than zero. */
 				Command<Commands::RefitVehicle>::Do(DoCommandFlag::QueryCost, v_start->index, cid, 0xFF, true, false, 1); // Auto-refit and only this vehicle including artic parts.
@@ -1881,8 +1888,10 @@ struct ReserveCargoAction {
 			if (!IsFullLoadOrderLoadType(load_type) && !through_load) return true;
 		}
 		if (v->cargo_cap > v->cargo.RemainingCount() && MayLoadUnderExclusiveRights(st, v)) {
-			st->goods[v->cargo_type].CreateData().cargo.Reserve(v->cargo_cap - v->cargo.RemainingCount(),
-					&v->cargo, next_station.Get(v->cargo_type), v->GetCargoTile());
+			StationCargoList &list = st->goods[v->cargo_type].CreateData().cargo;
+			std::vector<StationID> hops;
+			list.Reserve(v->cargo_cap - v->cargo.RemainingCount(),
+					&v->cargo, GetOverseasLoadNextHops(next_station.Get(v->cargo_type), list, hops), v->GetCargoTile());
 		}
 
 		return true;
@@ -2252,7 +2261,8 @@ static void LoadUnloadVehicle(Vehicle *front)
 				if (v->cargo.StoredCount() == 0) TriggerVehicleRandomisation(v, VehicleRandomTrigger::NewCargo);
 				if (_settings_game.order.gradual_loading) cap_left = std::min(cap_left, GetLoadAmount(v));
 
-				uint loaded = ged->cargo.Load(cap_left, &v->cargo, next_station.Get(v->cargo_type), v->GetCargoTile());
+				std::vector<StationID> hops;
+				uint loaded = ged->cargo.Load(cap_left, &v->cargo, GetOverseasLoadNextHops(next_station.Get(v->cargo_type), ged->cargo, hops), v->GetCargoTile());
 				if (v->cargo.ActionCount(VehicleCargoList::MoveToAction::Load) > 0) {
 					/* Remember if there are reservations left so that we don't stop
 					 * loading before they're loaded. */
