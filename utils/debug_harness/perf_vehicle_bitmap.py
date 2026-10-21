@@ -10,6 +10,11 @@ the same savegame with each build.
 
   python utils/debug_harness/perf_vehicle_bitmap.py --exe build/openttd --out build.json --save bench.sav
   python utils/debug_harness/perf_vehicle_bitmap.py --exe build/openttd --out bench.json --load bench.sav
+  python utils/debug_harness/perf_vehicle_bitmap.py --pair base/openttd pr/openttd --out pair.json --load bench.sav
+
+--pair runs both builds at the same time from the same save in lockstep and advances them alternately by segments of
+512 ticks (ABBA order), recording per segment the wall time and the fps averages of exactly those ticks. Both games stay
+identical tick for tick, and slow drifts of a shared machine hit both sides alike; compare the per-segment pairs.
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from transport import Builder, BuildError, GameMap  # noqa: E402
 
 FPS_TIMES_RE = re.compile(r"^\s*(.+?) times: ([\d.]+)ms\s+([\d.]+)ms\s+([\d.]+)ms")
 KEYS = {"game loop": "game_loop_ms", "gl train ticks": "gl_train_ticks_ms", "gl road vehicle ticks": "gl_road_vehicle_ticks_ms"}
+SEGMENT_TICKS = 512  # the fps console averages the last 512 ticks
 ARRAYS = ("type", "height", "slope", "owner", "sub", "bits", "road_owner")
 
 
@@ -134,6 +140,50 @@ def build(a: argparse.Namespace, b, result: dict) -> None:
                    "trains": built["rail"], "buses": built["road"] * a.buses, "vehicles": len(b.objs("vehicle"))})
 
 
+def pair(a: argparse.Namespace) -> int:
+    """Paired lockstep measurement of two builds on the same save."""
+    names = ("base", "pr")
+    insts = {n: Instance(f"{a.name}_{n}", mode="headless", root=DEFAULT_RUN_ROOT / "perf", exe=exe, resolution=(320, 240),
+                         lockstep=True) for n, exe in zip(names, a.pair)}
+    segs: dict[str, dict[str, list[float]]] = {n: {"wall_ms_per_tick": [], **{k: [] for k in KEYS.values()}} for n in names}
+    result: dict = {"segments": a.segments, "segment_ticks": SEGMENT_TICKS}
+    try:
+        for n, inst in insts.items():
+            inst.start("-g", str(Path(a.load).resolve()), wait=300)
+            inst.bridge.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=300, what="game")
+            inst.bridge.step(SEGMENT_TICKS * 2)  # warm up
+            result[f"vehicles_{n}"] = len(inst.bridge.objs("vehicle"))
+        for i in range(a.segments):
+            for n in (names if i % 2 == 0 else names[::-1]):
+                b = insts[n].bridge
+                t0 = time.perf_counter()
+                b.step(SEGMENT_TICKS)
+                segs[n]["wall_ms_per_tick"].append((time.perf_counter() - t0) * 1000 / SEGMENT_TICKS)
+                for line in b.console("fps"):
+                    if (m := FPS_TIMES_RE.match(line)) and (key := KEYS.get(m.group(1).strip().lower())):
+                        segs[n][key].append(float(m.group(4)))  # average of the last 512 ticks: this segment
+        for n, inst in insts.items():
+            if (r := rss_mb(inst)) is not None:
+                result[f"mem_mb_{n}"] = round(r[0], 2)
+            result[f"cache_mismatches_{n}"] = [l for l in inst.bridge.console("check_caches") if "mismatch" in l.lower()][:10]
+            result[f"tick_counter_{n}"] = inst.bridge.info()["tick_counter"]
+    finally:
+        for inst in insts.values():
+            inst.stop()
+    for key in segs["base"]:
+        pairs = list(zip(segs["base"][key], segs["pr"][key]))
+        if not pairs:
+            continue
+        ratios = sorted(p / b for b, p in pairs if b > 0)
+        result[key] = {"base": round(statistics.mean(b for b, _ in pairs), 5), "pr": round(statistics.mean(p for _, p in pairs), 5),
+                       "median_ratio": round(statistics.median(ratios), 5) if ratios else None,
+                       "pr_faster_segments": sum(1 for b, p in pairs if p < b), "pairs": len(pairs)}
+    result["raw"] = segs
+    Path(a.out).write_text(json.dumps(result, indent=2), encoding="utf-8")
+    print(json.dumps({k: v for k, v in result.items() if k != "raw"}, indent=2))
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exe", help="game binary (default: build/openttd of this checkout)")
@@ -150,7 +200,11 @@ def main() -> int:
     ap.add_argument("--interval", type=float, default=2.0, help="seconds between fps samples")
     ap.add_argument("--save", help="build the game, save it to this file and exit without measuring")
     ap.add_argument("--load", help="measure a game saved with --save instead of building one")
+    ap.add_argument("--pair", nargs=2, metavar=("BASE_EXE", "PR_EXE"), help="paired lockstep measurement of two builds")
+    ap.add_argument("--segments", type=int, default=40, help="--pair: segments of 512 ticks per build")
     a = ap.parse_args()
+    if a.pair:
+        return pair(a)
 
     config = {
         "game_creation": {"map_x": a.map_bits, "map_y": a.map_bits, "starting_year": 1990, "landscape": "temperate",

@@ -89,16 +89,11 @@ jobs:
         python pr/utils/debug_harness/perf_vehicle_bitmap.py --exe "$GITHUB_WORKSPACE/pr/build/openttd" \
           --name bench_build --out results/bench_build.json --save bench.sav
 
-    - name: Targeted benchmark x 3 (base, PR, PR, base, base, PR)
+    - name: Targeted benchmark (paired lockstep, base vs PR)
       run: |
-        # The order alternates per round so that running first or second does not bias one side.
-        for round in 1 2 3; do
-          order="base pr"; [ "$round" = 2 ] && order="pr base"
-          for side in $order; do
-            python pr/utils/debug_harness/perf_vehicle_bitmap.py --exe "$GITHUB_WORKSPACE/$side/build/openttd" \
-              --name "bench_${side}_${round}" --out "results/bench_${side}_${round}.json" --load bench.sav
-          done
-        done
+        # Both builds load the save and run side by side in lockstep, advanced alternately by 512 tick segments
+        # (ABBA order): both play the identical game, and drifts of the shared runner hit both alike.
+        python pr/utils/debug_harness/perf_vehicle_bitmap.py --pair "$GITHUB_WORKSPACE/base/build/openttd"           "$GITHUB_WORKSPACE/pr/build/openttd" --load bench.sav --segments 60 --out results/bench_pair.json
 
     - name: Quick full test (base, PR)
       run: |
@@ -117,16 +112,17 @@ jobs:
         def load(p):
             return json.loads(p.read_text()) if p.exists() else {}
         out = {"run": ${{ matrix.run }}, "metrics": {}}
-        bench = {side: [load(r / f"bench_{side}_{i}.json") for i in (1, 2, 3)] for side in ("base", "pr")}
+        bench = load(r / "bench_pair.json")
         out["built"] = load(r / "bench_build.json")
-        out["vehicles"] = {side: [b.get("vehicles") for b in bench[side]] for side in bench}
-        out["cache_mismatches"] = {side: sum(len(b.get("cache_mismatches", [])) for b in bench[side]) for side in bench}
-        for key in ("game_loop_ms_avg", "game_loop_ms_p95", "gl_train_ticks_ms_avg", "gl_train_ticks_ms_p95",
-                    "gl_road_vehicle_ticks_ms_avg", "gl_road_vehicle_ticks_ms_p95", "mem_mb_max"):
-            vals = {side: [b[key] for b in bench[side] if key in b] for side in bench}
-            if vals["base"] and vals["pr"]:
-                base, pr = statistics.mean(vals["base"]), statistics.mean(vals["pr"])
-                out["metrics"][f"bench {key}"] = {"base": base, "pr": pr}
+        out["vehicles"] = {side: [bench.get(f"vehicles_{side}")] for side in ("base", "pr")}
+        out["cache_mismatches"] = {side: len(bench.get(f"cache_mismatches_{side}", [])) for side in ("base", "pr")}
+        out["pairs"] = {}
+        for key in ("wall_ms_per_tick", "game_loop_ms", "gl_train_ticks_ms", "gl_road_vehicle_ticks_ms"):
+            if key in bench:
+                out["metrics"][f"bench {key}"] = {"base": bench[key]["base"], "pr": bench[key]["pr"]}
+                out["pairs"][key] = {k: bench[key][k] for k in ("median_ratio", "pr_faster_segments", "pairs")}
+        if "mem_mb_base" in bench and "mem_mb_pr" in bench:
+            out["metrics"]["bench mem_mb"] = {"base": bench["mem_mb_base"], "pr": bench["mem_mb_pr"]}
         quick = {side: load(r / f"quick_{side}.json") for side in ("base", "pr")}
         for key in ("game_loop_ms_avg", "game_loop_ms_p95", "gl_train_ticks_ms_avg", "gl_train_ticks_ms_p95",
                     "gl_road_vehicle_ticks_ms_avg", "gl_road_vehicle_ticks_ms_p95", "server_mem_mb_max"):
@@ -173,8 +169,9 @@ jobs:
         print("## Perf: vehicle tile occupancy bitmap (PR vs base)\n")
         print(f"{len(runs)} parallel runs; each run builds base and PR and runs both on the same runner. "
               "Targeted benchmark: single player, 2048x2048, up to 150 rail shuttle routes (one 6-car train each) "
-              "and 60 bus routes with 35 buses each, built once and saved; each side loads the same save, 30s warmup, "
-              "3 minutes real time sampled every 2s, 3 times per side (base, PR, PR, base, base, PR). "
+              "and 60 bus routes with 35 buses each, built once and saved. Both builds load the save and run side by side "
+              "in lockstep, advanced alternately by 60 segments of 512 ticks (ABBA order), so both play the identical game; "
+              "per-segment wall time and fps averages. "
               "Quick: the standard quick full test. Lower is better; memory in MB.\n")
         print("| metric | base | PR | PR - base | PR - base (%) | spread of % over runs |")
         print("|---|---:|---:|---:|---:|---|")
@@ -189,6 +186,9 @@ jobs:
             pct = statistics.mean(pcts) if pcts else 0.0
             spread = f"{min(pcts):+.1f}% .. {max(pcts):+.1f}%" if pcts else "-"
             print(f"| {key} | {base:.3f} | {pr:.3f} | {pr - base:+.3f} | {pct:+.1f}% | {spread} (n={len(rows)}) |")
+        print("\nPaired segments (median PR/base ratio, segments where PR was faster): " + "; ".join(
+            f"run {r['run']}: " + ", ".join(f"{k} {v['median_ratio']} ({v['pr_faster_segments']}/{v['pairs']})"
+                                           for k, v in r.get("pairs", {}).items()) for r in runs))
         print("\nBuilt per run: " + "; ".join(
             f"run {r['run']}: {r['built'].get('rail_routes')} rail + {r['built'].get('road_routes')} road routes"
             for r in runs if r.get("built")))
