@@ -156,6 +156,7 @@ enum SlXvFeatureIndex {
 	XSLFI_SHARING_FEE_INFLATION,                  ///< Infrastructure sharing fees scale with inflation
 	XSLFI_VARIABLE_INFLATION,                     ///< Inflation rates that change each year, with history
 	XSLFI_CAR_FERRY,                              ///< Road vehicles carried by ships (car ferries)
+	XSLFI_TRACK_TOLL_LENGTH,                      ///< Track toll of trains is charged per tile of train length
 
 	XSLFI_SCRIPT_INT64,                           ///< See: SLV_SCRIPT_INT64
 	XSLFI_U64_TICK_COUNTER,                       ///< See: SLV_U64_TICK_COUNTER

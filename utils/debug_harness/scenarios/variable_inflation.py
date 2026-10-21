@@ -92,10 +92,10 @@ def run(ctx):
     check_history(ctx, state, "18 years")
 
     # Save and load keep rates and history.
-    save = str(inst.dir / "inflation.sav")
-    b.console(f"save {save}")
-    b.console(f"load {save}")
-    b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=120, what="reload")
+    b.save_game("inflation")
+    next_year(b)
+    ctx.check(inflation(b) != state, "history grows after saving")
+    b.load_game("inflation")
     ctx.check_eq(inflation(b), state, "rates and history after save/load")
 
     ctx.check(open_economy_graph(ctx, b, lockstep=True, menu_shot="graphs_menu"), "Graphs > Economy opens the economy graph")

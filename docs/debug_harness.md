@@ -65,6 +65,8 @@ One request per line, `command arg1 "arg 2" ...`; one JSON response line: `{"ok"
 - `info` – game mode, date, tick counters, pause state, network role, client id, company, screen size, lockstep state.
 - `console <line>` – run a console command and return its output lines. All existing console tooling is
   reachable this way (`dump_vehicle`, `dump_tile`, `dump_info`, `setting`, `save`, `load`, `pause`, `join`, ...).
+  Note that `load` takes a savegame name from the instance's `save` directory (not a path) and only queues the load;
+  use `Bridge.save_game(name)` / `Bridge.load_game(name)` in Python, which wait until the savegame is really loaded.
 - `log [since] [max]`, `wait_log <substring> [timeout_ms] [since]` – ring buffer (10000 lines) of console and
   `Debug()` output with sequence numbers.
 - `get <name>...`, `watches` – watch expressions (see below) and probe values.

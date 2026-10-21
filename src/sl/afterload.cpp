@@ -3034,6 +3034,11 @@ bool AfterLoadGame()
 		_settings_game.economy.sharing_fee_inflation = false;
 	}
 
+	if (SlXvIsFeatureMissing(XSLFI_TRACK_TOLL_LENGTH)) {
+		/* The track toll of older games was per 1000 tonnes, it is now per tile of train length. */
+		_settings_game.economy.sharing_fee[to_underlying(VehicleType::Train)] = DEF_TRACK_TOLL;
+	}
+
 	if (SlXvIsFeatureMissing(XSLFI_INFRA_SHARING)) {
 		for (Company *c : Company::Iterate()) {
 			/* yearly_expenses has 3*15 entries now, saveload code gave us 3*13.

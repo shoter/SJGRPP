@@ -63,8 +63,8 @@ PROFILES = {
                 "churn": ["save", "rejoin", "spectator"]},
 }
 
-# Sharing fee settings of the sharing profile, per vehicle type (rail per 1000 tonnes): money per day of 74 ticks.
-SHARING_FEES = {"rail": 5_000, "road": 7_400, "water": 7_400, "air": 14_800}
+# Sharing fee settings of the sharing profile, per vehicle type (rail per tile of train length): money per day of 74 ticks.
+SHARING_FEES = {"rail": 1_000, "road": 7_400, "water": 7_400, "air": 14_800}
 SHARING_TYPES = ["rail", "road", "water", "air"]
 EXPENSES_SHARING_COST = 13     # ExpensesType::SharingCost
 EXPENSES_SHARING_REVENUE = 14  # ExpensesType::SharingRevenue
@@ -252,7 +252,8 @@ class FullTest:
         server = self.mon(self.cluster.server)
         for i, name in enumerate(SHARING_TYPES):
             server.console(f"setting economy.infrastructure_sharing[{i}] 1")
-            server.console(f"setting economy.sharing_fee[{i}] {SHARING_FEES[name]}")
+            fee_setting = "economy.track_toll" if name == "rail" else f"economy.sharing_fee[{i}]"
+            server.console(f"setting {fee_setting} {SHARING_FEES[name]}")
         server.wait_ticks(5, timeout_ms=30000)
         fees = self.sharing_fees(server)
         self.initial_fees = {t: fees[t]["fee_fract"] for t in SHARING_TYPES}
