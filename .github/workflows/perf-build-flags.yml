@@ -1,0 +1,174 @@
+name: Perf (build flags, TEMPORARY)
+
+# TEMPORARY: measures this PR's build-flag change on Windows (MSVC). Removed before merge together with .github/perf/.
+# Builds the PR's base and head once each, then runs both on the same windows-latest runner (3 runners), alternating:
+# a CPU-heavy free-running tick benchmark and the quick full test. The report job posts one PR comment (updated in place).
+
+on:
+  pull_request:
+    branches:
+    - main
+
+concurrency:
+  group: perf-build-flags-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.side }})
+    strategy:
+      fail-fast: true
+      matrix:
+        side: [base, head]
+    runs-on: windows-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ matrix.side == 'base' && github.event.pull_request.base.sha || github.event.pull_request.head.sha }}
+
+    - name: Setup vcpkg
+      id: vcpkg
+      uses: OpenTTD/actions/setup-vcpkg@v6
+
+    - name: Configure developer command prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Build
+      shell: bash
+      run: |
+        mkdir build
+        cd build
+        cmake .. -GNinja -DVCPKG_TARGET_TRIPLET=x64-windows-static \
+          -DCMAKE_TOOLCHAIN_FILE="${{ steps.vcpkg.outputs.vcpkg-cmake }}" \
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        echo "Inlining flags in the compile commands:"
+        grep -o '/Ob[0-3] ' compile_commands.json | sort | uniq -c
+        cmake --build . --target openttd
+
+    - name: Package
+      shell: bash
+      run: |
+        mkdir pkg
+        cp build/openttd.exe pkg/
+        for d in lang ai game baseset scripts; do [ -d "build/$d" ] && cp -r "build/$d" pkg/; done
+        ls pkg
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: perf-build-${{ matrix.side }}
+        path: pkg
+        retention-days: 3
+
+  measure:
+    name: Measure (runner ${{ matrix.run }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3]
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+    - name: Checkout (harness and benchmark)
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - uses: actions/download-artifact@v8
+      with:
+        name: perf-build-base
+        path: bin-base
+
+    - uses: actions/download-artifact@v8
+      with:
+        name: perf-build-head
+        path: bin-head
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    - name: Get OpenGFX
+      shell: bash
+      run: |
+        mkdir -p content/baseset
+        curl -fsSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d content/baseset
+        rm opengfx.zip
+
+    - name: Heavy tick benchmark (alternating)
+      shell: bash
+      run: |
+        mkdir -p results
+        # Odd runners start with base, even runners with head.
+        if [ $(( ${{ matrix.run }} % 2 )) -eq 1 ]; then order="base head"; else order="head base"; fi
+        for i in 1 2 3; do
+          for side in $order; do
+            python .github/perf/heavy_bench.py "$side" "bin-$side/openttd.exe" "results/heavy-$side-$i.json" \
+              --content content --run-root runs
+          done
+        done
+
+    - name: Quick full test (alternating)
+      shell: bash
+      run: |
+        if [ $(( ${{ matrix.run }} % 2 )) -eq 1 ]; then order="base head"; else order="head base"; fi
+        for side in $order; do
+          OTTD_EXE="$(pwd -W)/bin-$side/openttd.exe" OTTD_CONTENT_DIR="$(pwd -W)/content" \
+            python utils/debug_harness/full_test.py --profile quick --perf-report-only \
+              --out results --name "quick-$side-1" || echo "full test ($side) reported failures"
+        done
+
+    - name: Compare
+      shell: bash
+      run: python .github/perf/compare.py job results "job-${{ matrix.run }}.json"
+
+    - uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: perf-results-${{ matrix.run }}
+        path: |
+          job-${{ matrix.run }}.json
+          results/heavy-*.json
+          results/quick-*/report.json
+          results/quick-*/summary.txt
+        retention-days: 7
+
+  report:
+    name: Report
+    needs: measure
+    if: always() && needs.measure.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: perf-results-*
+        path: jobs
+
+    - name: Report
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        python3 .github/perf/compare.py report jobs report.md --title "Windows performance (MSVC): this PR vs base"
+        cat report.md >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> report.md
+        echo "[Workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> report.md
+        id=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+          --jq '.[] | select(.body | startswith("<!-- perf-build-flags -->")) | .id' | head -1)
+        if [ -n "$id" ]; then
+          gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$id" -F body=@report.md > /dev/null
+        else
+          gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" -F body=@report.md > /dev/null
+        fi
