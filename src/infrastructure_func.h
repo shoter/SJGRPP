@@ -18,9 +18,19 @@
 
 /** Default track toll for trains, per tile of train length per day. */
 static constexpr uint DEF_TRACK_TOLL = 20;
+/** Default maximum of the track toll that companies can set for their own railways. */
+static constexpr uint DEF_TRACK_TOLL_MAX = 100;
+/** Default maximum of the sharing fees that companies can set for their own road stops, docks and airports. */
+static constexpr uint DEF_SHARING_FEE_MAX = 500;
 
 Money ScaleSharingFeeFract(uint fee, uint64_t inflation_prices, bool scale_with_inflation);
 Money GetSharingFeeFract(VehicleType type);
+Money GetSharingFeeMaxFract(VehicleType type);
+Money GetEffectiveSharingFeeFract(const struct CompanySharingFee &fee, Money server_fee, Money max_fee);
+Money GetCompanySharingFeeFract(VehicleType type, Owner infra_owner);
+bool IsSharingFeeChangeDelayed(Money old_fee, Money new_fee, uint notice_days);
+StringID GetSharingFeeUnitString(VehicleType type);
+void CompaniesSharingFeesDailyLoop();
 Money GetTrackTollFract(Money fee, uint length, uint running_ticks);
 void PayStationSharingFee(Vehicle *v, const Station *st);
 Money GetCarFerrySharingFeeFract(Owner rv_owner, Owner ship_owner);

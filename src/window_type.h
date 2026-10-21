@@ -880,6 +880,12 @@ enum class WindowClass : uint16_t {
 	 */
 	SjgrppInfo,
 
+	/**
+	 * Company settings window; %Window numbers:
+	 *   - #CompanyID = #CompanySettingsWidgets
+	 */
+	CompanySettings,
+
 	End,              ///< End sentinel.
 	Invalid = 0xFFFF, ///< Invalid window.
 };

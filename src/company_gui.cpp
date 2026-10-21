@@ -36,6 +36,7 @@
 #include "tilehighlight_func.h"
 #include "company_base.h"
 #include "company_cmd.h"
+#include "company_gui.h"
 #include "core/geometry_func.hpp"
 #include "object_cmd.h"
 #include "object_type.h"
@@ -2151,8 +2152,9 @@ static constexpr std::initializer_list<NWidgetPart> _nested_company_widgets = {
 				NWidget(NWID_HORIZONTAL), SetPIP(0, WidgetDimensions::unscaled.hsep_normal, 0),
 					NWidget(WWT_TEXT, Colours::Invalid, WID_C_DESC_INFRASTRUCTURE), SetStringTip(STR_COMPANY_VIEW_INFRASTRUCTURE),  SetAlignment({AlignmentH::Start, AlignmentV::Top}),
 					NWidget(WWT_EMPTY, Colours::Invalid, WID_C_DESC_INFRASTRUCTURE_COUNTS), SetMinimalTextLines(5, 0), SetFill(1, 0),
-					NWidget(NWID_VERTICAL), SetPIPRatio(0, 0, 1),
+					NWidget(NWID_VERTICAL), SetPIP(0, WidgetDimensions::unscaled.vsep_normal, 0), SetPIPRatio(0, 0, 1),
 						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_C_VIEW_INFRASTRUCTURE), SetStringTip(STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON, STR_COMPANY_VIEW_INFRASTRUCTURE_TOOLTIP),
+						NWidget(WWT_PUSHTXTBTN, Colours::Grey, WID_C_COMPANY_SETTINGS), SetStringTip(STR_COMPANY_VIEW_SETTINGS_BUTTON, STR_COMPANY_VIEW_SETTINGS_TOOLTIP),
 					EndContainer(),
 				EndContainer(),
 				NWidget(NWID_HORIZONTAL),
@@ -2352,11 +2354,13 @@ struct CompanyWindow : Window
 			case WID_C_BUILD_HQ:
 			case WID_C_RELOCATE_HQ:
 			case WID_C_VIEW_INFRASTRUCTURE:
+			case WID_C_COMPANY_SETTINGS:
 			case WID_C_GIVE_MONEY:
 			case WID_C_HOSTILE_TAKEOVER:
 			case WID_C_COMPANY_PASSWORD:
 			case WID_C_COMPANY_JOIN:
 				size.width = GetStringBoundingBox(STR_COMPANY_VIEW_VIEW_HQ_BUTTON).width;
+				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_SETTINGS_BUTTON).width);
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_BUILD_HQ_BUTTON).width);
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_RELOCATE_HQ).width);
 				size.width = std::max(size.width, GetStringBoundingBox(STR_COMPANY_VIEW_INFRASTRUCTURE_BUTTON).width);
@@ -2563,6 +2567,10 @@ struct CompanyWindow : Window
 
 			case WID_C_VIEW_INFRASTRUCTURE:
 				ShowCompanyInfrastructure((CompanyID)this->window_number);
+				break;
+
+			case WID_C_COMPANY_SETTINGS:
+				ShowCompanySettings((CompanyID)this->window_number);
 				break;
 
 			case WID_C_GIVE_MONEY:

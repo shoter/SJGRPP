@@ -13,6 +13,7 @@
 #include "command_type.h"
 #include "company_type.h"
 #include "livery.h"
+#include "vehicle_type.h"
 
 enum class Colours : uint8_t;
 
@@ -34,6 +35,7 @@ struct CmdCompanyCtrlData final : public TupleRefCmdData<CmdCompanyCtrlData, Cmd
 DEF_CMD_TUPLE_NT (Commands::CompanyControl,           CmdCompanyCtrl,           CMD_SPECTATOR | CMD_CLIENT_ID | CMD_NO_EST, CommandType::ServerSetting,   CmdCompanyCtrlData)
 DEF_CMD_TUPLE_NT (Commands::CompanyAllowListControl,  CmdCompanyAllowListCtrl,  CMD_NO_EST,                                 CommandType::OtherManagement, CmdDataT<CompanyAllowListCtrlAction, std::string>)
 DEF_CMD_TUPLE_NT (Commands::GiveMoney,                CmdGiveMoney,             {},                                         CommandType::MoneyManagement, CmdDataT<Money, CompanyID>)
+DEF_CMD_TUPLE_NT (Commands::SetCompanySharingFee,     CmdSetCompanySharingFee,  CMD_NO_EST,                                 CommandType::CompanySetting,  CmdDataT<VehicleType, bool, Money>)
 DEF_CMD_TUPLE_NT (Commands::RenameCompany,            CmdRenameCompany,         {},                                         CommandType::CompanySetting,  CmdDataT<std::string>)
 DEF_CMD_TUPLE_NT (Commands::RenamePresident,          CmdRenamePresident,       {},                                         CommandType::CompanySetting,  CmdDataT<std::string>)
 DEF_CMD_TUPLE_NT (Commands::SetCompanyManagerFace,    CmdSetCompanyManagerFace, {},                                         CommandType::CompanySetting,  CmdDataT<uint, uint32_t>)

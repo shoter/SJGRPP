@@ -21,6 +21,7 @@ void ShowCompanyLiveryWindow(CompanyID company, GroupID group);
 void ShowCompanyStations(CompanyID company);
 void ShowCompanyFinances(CompanyID company);
 void ShowCompany(CompanyID company);
+void ShowCompanySettings(CompanyID company);
 
 void InvalidateCompanyWindows(const Company *c);
 void CloseCompanyWindows(CompanyID company);
