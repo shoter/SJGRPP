@@ -943,6 +943,8 @@ struct EconomySettings {
 	bool     infrastructure_sharing[4];      ///< enable infrastructure sharing for rail/road/water/air
 	uint     sharing_fee[4];                 ///< fees for infrastructure sharing for rail (per tile of train length)/road/water/air
 	bool     sharing_fee_inflation;          ///< sharing fees scale with price inflation
+	uint     sharing_fee_max[4];             ///< maximum of the fees companies can set for their own infrastructure, same units as #sharing_fee
+	uint16_t sharing_fee_notice_days;        ///< days before an increase of a company's own sharing fee takes effect
 	bool     sharing_payment_in_debt;        ///< allow fee payment for companies with more loan than money (switch off to prevent MP exploits)
 	bool     allow_town_level_crossings;     ///< towns are allowed to build level crossings
 	TownTunnelMode town_build_tunnels;       ///< if/when towns are allowed to build road tunnels

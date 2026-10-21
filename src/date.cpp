@@ -14,6 +14,7 @@
 #include "window_func.h"
 #include "settings_type.h"
 #include "date_func.h"
+#include "infrastructure_func.h"
 #include "vehicle_base.h"
 #include "rail_gui.h"
 #include "linkgraph/linkgraphschedule.h"
@@ -462,6 +463,7 @@ static void OnNewEconomyDay()
 	DisasterDailyLoop();
 	IndustryDailyLoop();
 	StationDailyLoop();
+	CompaniesSharingFeesDailyLoop();
 
 	ClearOutOfDateSignalSpeedRestrictions();
 

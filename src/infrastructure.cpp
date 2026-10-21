@@ -27,6 +27,11 @@
 #include "strings_func.h"
 #include "scope.h"
 #include "economy_func.h"
+#include "company_cmd.h"
+#include "news_func.h"
+#include "console_func.h"
+#include "network/network.h"
+#include "network/network_func.h"
 
 #include "table/strings.h"
 
@@ -73,6 +78,55 @@ Money GetSharingFeeFract(VehicleType type)
 }
 
 /**
+ * Get the highest fee that companies can set for their own infrastructure, including inflation if enabled.
+ * @param type The vehicle type.
+ * @return The fee as money fraction (shifted 8 bits to the left), in the same units as #GetSharingFeeFract.
+ */
+Money GetSharingFeeMaxFract(VehicleType type)
+{
+	return ScaleSharingFeeFract(_settings_game.economy.sharing_fee_max[to_underlying(type)], _economy.inflation_prices, _settings_game.economy.sharing_fee_inflation);
+}
+
+/**
+ * Get the fee that is charged with a company's sharing fee setting.
+ * @param fee The fee setting of the company.
+ * @param server_fee The fee set by the server, as money fraction.
+ * @param max_fee The highest fee companies can set, as money fraction.
+ * @return The fee as money fraction (shifted 8 bits to the left).
+ */
+Money GetEffectiveSharingFeeFract(const CompanySharingFee &fee, Money server_fee, Money max_fee)
+{
+	if (!fee.custom) return server_fee;
+	/* The maximum may have been lowered since the company set its fee. */
+	return std::min<Money>(fee.fee << 8, max_fee);
+}
+
+/**
+ * Get the fee that a company charges for the use of its infrastructure.
+ * @param type The vehicle type.
+ * @param infra_owner The owner of the infrastructure.
+ * @return The fee as money fraction (shifted 8 bits to the left), in the same units as #GetSharingFeeFract.
+ */
+Money GetCompanySharingFeeFract(VehicleType type, Owner infra_owner)
+{
+	const Company *c = Company::GetIfValid(infra_owner);
+	if (c == nullptr || !c->sharing_fees[to_underlying(type)].custom) return GetSharingFeeFract(type);
+	return GetEffectiveSharingFeeFract(c->sharing_fees[to_underlying(type)], GetSharingFeeFract(type), GetSharingFeeMaxFract(type));
+}
+
+/**
+ * Check whether a change of a company's sharing fee has to wait for the notice period.
+ * @param old_fee The fee before the change.
+ * @param new_fee The fee after the change.
+ * @param notice_days The notice period in days.
+ * @return True if the change takes effect after the notice period, false if immediately.
+ */
+bool IsSharingFeeChangeDelayed(Money old_fee, Money new_fee, uint notice_days)
+{
+	return notice_days > 0 && new_fee > old_fee;
+}
+
+/**
  * Pay the fee for spending a single tick inside a station.
  * @param v The vehicle that is using the station.
  * @param st The station that it uses.
@@ -80,7 +134,7 @@ Money GetSharingFeeFract(VehicleType type)
 void PayStationSharingFee(Vehicle *v, const Station *st)
 {
 	if (v->owner == st->owner || st->owner == OWNER_NONE || v->type == VehicleType::Train) return;
-	PaySharingFee(v, st->owner, GetSharingFeeFract(v->type) / DAY_TICKS);
+	PaySharingFee(v, st->owner, GetCompanySharingFeeFract(v->type, st->owner) / DAY_TICKS);
 }
 
 /**
@@ -106,7 +160,7 @@ void PayDailyTrackSharingFee(Train *v)
 {
 	Owner owner = GetTileOwner(v->tile);
 	if (owner == v->owner) return;
-	Money cost = GetTrackTollFract(GetSharingFeeFract(VehicleType::Train), v->gcache.cached_total_length, v->running_ticks);
+	Money cost = GetTrackTollFract(GetCompanySharingFeeFract(VehicleType::Train, owner), v->gcache.cached_total_length, v->running_ticks);
 	if (cost != 0) PaySharingFee(v, owner, cost);
 }
 
@@ -444,4 +498,107 @@ void UpdateAllBlockSignals(Owner owner)
 
 	UpdateSignalsInBuffer();
 	FlushDeferredAspectUpdates();
+}
+
+/** Name of the sharing fee of each vehicle type, used in messages. */
+static const StringID _sharing_fee_name_strings[] = {
+	STR_SHARING_FEE_NAME_RAIL,
+	STR_SHARING_FEE_NAME_ROAD,
+	STR_SHARING_FEE_NAME_WATER,
+	STR_SHARING_FEE_NAME_AIR,
+};
+
+/**
+ * Get the unit of the sharing fee of a vehicle type, to be shown after the amount.
+ * @param type The vehicle type.
+ * @return The string of the unit.
+ */
+StringID GetSharingFeeUnitString(VehicleType type)
+{
+	return type == VehicleType::Train ? STR_COMPANY_SETTINGS_SHARING_UNIT_RAIL : STR_COMPANY_SETTINGS_SHARING_UNIT_OTHER;
+}
+
+/**
+ * Tell all players about a change of a company's sharing fee: in the chat in multiplayer, as news otherwise.
+ * @param message The message.
+ */
+static void AnnounceSharingFeeChange(const std::string &message)
+{
+	if (_networking) {
+		const std::string text = GetString(STR_NETWORK_SERVER_MESSAGE, message);
+		IConsolePrint(CC_DEFAULT, text);
+		NetworkAddChatMessage(CC_DEFAULT, _settings_client.gui.network_chat_timeout, text);
+	} else {
+		AddNewsItem(GetEncodedString(STR_SHARING_FEE_NEWS, message), NewsType::Economy, NewsStyle::Normal, {});
+	}
+}
+
+/**
+ * Change the fee that the current company charges for the use of its infrastructure.
+ * A higher fee takes effect after the notice period, a lower fee immediately.
+ * @param flags Type of operation.
+ * @param type Vehicle type of the fee.
+ * @param custom Charge an own fee instead of the server's fee.
+ * @param fee The own fee, a fixed amount per day (trains: per tile of train length per day). Ignored if \p custom is false.
+ * @return The cost of this operation or an error.
+ */
+CommandCost CmdSetCompanySharingFee(DoCommandFlags flags, VehicleType type, bool custom, Money fee)
+{
+	if (type >= VehicleType::CompanyEnd) return CMD_ERROR;
+	Company *c = Company::GetIfValid(_current_company);
+	if (c == nullptr) return CMD_ERROR;
+
+	if (!custom) fee = 0;
+	if (fee < 0) return CMD_ERROR;
+	const Money max_fee = GetSharingFeeMaxFract(type);
+	if (fee > (max_fee >> 8)) return CommandCostWithParam(STR_ERROR_SHARING_FEE_ABOVE_MAXIMUM, max_fee >> 8);
+
+	if (flags.Test(DoCommandFlag::Execute)) {
+		CompanySharingFee &current = c->sharing_fees[to_underlying(type)];
+		const Money server_fee = GetSharingFeeFract(type);
+		const Money old_fee = GetEffectiveSharingFeeFract(current, server_fee, max_fee);
+		CompanySharingFee requested{};
+		requested.custom = custom;
+		requested.fee = fee;
+		const Money new_fee = GetEffectiveSharingFeeFract(requested, server_fee, max_fee);
+		const StringID name = _sharing_fee_name_strings[to_underlying(type)];
+		const StringID unit = GetSharingFeeUnitString(type);
+
+		if (current.custom == custom && current.fee == fee) {
+			/* Back to the fee that is in effect: drop an announced rise. */
+			if (!current.pending) return CommandCost();
+			current.pending = false;
+			AnnounceSharingFeeChange(GetString(STR_SHARING_FEE_MESSAGE_CANCELLED, c->index, name, old_fee >> 8, unit));
+		} else if (IsSharingFeeChangeDelayed(old_fee, new_fee, _settings_game.economy.sharing_fee_notice_days)) {
+			/* Announcing the same rise again does not postpone it. */
+			if (current.pending && current.pending_custom == custom && current.pending_fee == fee) return CommandCost();
+			current.pending = true;
+			current.pending_custom = custom;
+			current.pending_fee = fee;
+			current.pending_date = EconTime::CurDate() + EconTime::DateDelta{_settings_game.economy.sharing_fee_notice_days};
+			AnnounceSharingFeeChange(GetString(STR_SHARING_FEE_MESSAGE_ANNOUNCED, c->index, name, old_fee >> 8, new_fee >> 8, unit, _settings_game.economy.sharing_fee_notice_days));
+		} else {
+			current.custom = custom;
+			current.fee = fee;
+			current.pending = false;
+			AnnounceSharingFeeChange(GetString(STR_SHARING_FEE_MESSAGE_CHANGED, c->index, name, old_fee >> 8, new_fee >> 8, unit));
+		}
+		InvalidateWindowData(WindowClass::CompanySettings, c->index);
+	}
+
+	return CommandCost();
+}
+
+/** Put the announced rises of the companies' sharing fees into effect when their notice period is over. */
+void CompaniesSharingFeesDailyLoop()
+{
+	for (Company *c : Company::Iterate()) {
+		for (CompanySharingFee &fee : c->sharing_fees) {
+			if (!fee.pending || EconTime::CurDate() < fee.pending_date) continue;
+			fee.custom = fee.pending_custom;
+			fee.fee = fee.pending_fee;
+			fee.pending = false;
+			InvalidateWindowData(WindowClass::CompanySettings, c->index);
+		}
+	}
 }

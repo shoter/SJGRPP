@@ -1347,6 +1347,7 @@ void ChangeWindowOwner(Owner old_owner, Owner new_owner)
 			case WindowClass::BuyCompany:
 			case WindowClass::Company:
 			case WindowClass::CompanyInfrastructure:
+			case WindowClass::CompanySettings:
 			case WindowClass::VehicleOrders: // Changing owner would also require changing WindowDesc, which is not possible; however keeping the old one crashes because of missing widgets etc.. See ShowOrdersWindow().
 				continue;
 

@@ -410,6 +410,41 @@ struct CompanyLiveriesStructHandler final : public TypedSaveLoadStructHandler<Co
 	void LoadCheck(CompanyProperties *cprops) const override { this->Load(cprops); }
 };
 
+static const NamedSaveLoad _company_sharing_fee_desc[] = {
+	NSLT("custom",         SLE_VAR(CompanySharingFee, custom,         SLE_BOOL)),
+	NSLT("fee",            SLE_VAR(CompanySharingFee, fee,            SLE_INT64)),
+	NSLT("pending",        SLE_VAR(CompanySharingFee, pending,        SLE_BOOL)),
+	NSLT("pending_custom", SLE_VAR(CompanySharingFee, pending_custom, SLE_BOOL)),
+	NSLT("pending_fee",    SLE_VAR(CompanySharingFee, pending_fee,    SLE_INT64)),
+	NSLT("pending_date",   SLE_VAR(CompanySharingFee, pending_date,   SLE_INT32)),
+};
+
+/** Infrastructure sharing fees that the company set for its own infrastructure, one per vehicle type. */
+struct CompanySharingFeesStructHandler final : public TypedSaveLoadStructHandler<CompanySharingFeesStructHandler, CompanyProperties> {
+	NamedSaveLoadTable GetDescription() const override
+	{
+		return _company_sharing_fee_desc;
+	}
+
+	void Save(CompanyProperties *cprops) const override
+	{
+		SlSetStructListLength(cprops->sharing_fees.size());
+		for (CompanySharingFee &fee : cprops->sharing_fees) {
+			SlObjectSaveFiltered(&fee, this->GetLoadDescription());
+		}
+	}
+
+	void Load(CompanyProperties *cprops) const override
+	{
+		size_t count = SlGetStructListLength(cprops->sharing_fees.size());
+		for (size_t i = 0; i < count; i++) {
+			SlObjectLoadFiltered(&cprops->sharing_fees[i], this->GetLoadDescription());
+		}
+	}
+
+	void LoadCheck(CompanyProperties *cprops) const override { this->Load(cprops); }
+};
+
 struct CompanyAllowListStructHandler final : public TypedSaveLoadStructHandler<CompanyAllowListStructHandler, CompanyProperties> {
 public:
 	struct KeyWrapper {
@@ -518,6 +553,7 @@ static const NamedSaveLoad _company_desc[] = {
 	NSLT_STRUCTLIST<CompanyLiveriesStructHandler>("liveries"),
 	NSLT_STRUCTLIST<CompanyAllowListStructHandler>("allow_list"),
 	NSLT("allow_any", SLE_VAR(CompanyProperties, allow_any, SLE_BOOL)),
+	NSLT_STRUCTLIST<CompanySharingFeesStructHandler>("sharing_fees"),
 };
 
 /** Description of Company (as CompanyProperties), for the debug bridge object inspector. */

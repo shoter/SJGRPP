@@ -1278,6 +1278,11 @@ SettingsContainer &GetSettingsTree()
 				sharing->Add(new SettingEntry("economy.sharing_fee[2]"));
 				sharing->Add(new SettingEntry("economy.sharing_fee[3]"));
 				sharing->Add(new SettingEntry("economy.sharing_fee_inflation"));
+				sharing->Add(new SettingEntry("economy.sharing_fee_max[0]"));
+				sharing->Add(new SettingEntry("economy.sharing_fee_max[1]"));
+				sharing->Add(new SettingEntry("economy.sharing_fee_max[2]"));
+				sharing->Add(new SettingEntry("economy.sharing_fee_max[3]"));
+				sharing->Add(new SettingEntry("economy.sharing_fee_notice_days"));
 				sharing->Add(new SettingEntry("economy.sharing_payment_in_debt"));
 			}
 

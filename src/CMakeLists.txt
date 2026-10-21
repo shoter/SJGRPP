@@ -130,6 +130,7 @@ add_files(
     company_func.h
     company_gui.cpp
     company_gui.h
+    company_settings_gui.cpp
     company_manager_face.h
     company_type.h
     console.cpp
@@ -503,6 +504,7 @@ add_files(
     settings_table.cpp
     settings_table.h
     settings_type.h
+    sharing_fee_type.h
     ship.h
     ship_cmd.cpp
     ship_gui.cpp
