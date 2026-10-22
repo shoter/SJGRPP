@@ -226,7 +226,7 @@ class FullTest:
                            "vehicle_breakdowns": 0, "money_cheat_in_multiplayer": "true", "max_no_competitors": 0},
             "station": {"never_expire_airports": "true"},
             "pf": {"forbid_90_deg": "false"},
-            "vehicle": {"plane_crashes": 0},
+            "vehicle": {"plane_crashes": 0, "train_braking_model": 1},  # realistic braking
             "economy": {"inflation": "true" if self.profile.get("sharing") else "false",
                         "overseas_stations": 60, "overseas_trip_min_days": OVERSEAS_TRIP_DAYS[0],
                         "overseas_trip_max_days": OVERSEAS_TRIP_DAYS[1]},
