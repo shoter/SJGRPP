@@ -8,6 +8,7 @@ add_files(
     queue.cpp
     pathfinder_func.h
     pathfinder_type.h
+    train_pathfinder_budget.h
     water_regions.h
     water_regions.cpp
 )

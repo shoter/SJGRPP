@@ -12,6 +12,7 @@
 #include "articulated_vehicles.h"
 #include "command_func.h"
 #include "pathfinder/yapf/yapf.hpp"
+#include "pathfinder/train_pathfinder_budget.h"
 #include "news_func.h"
 #include "company_func.h"
 #include "newgrf_sound.h"
@@ -26,6 +27,7 @@
 #include "effectvehicle_func.h"
 #include "network/network.h"
 #include "core/random_func.hpp"
+#include "date_func.h"
 #include "company_base.h"
 #include "newgrf.h"
 #include "infrastructure_func.h"
@@ -4032,7 +4034,23 @@ void FreeTrainTrackReservation(Train *consist, TileIndex origin, Trackdir orig_t
 static Track DoTrainPathfind(const Train *v, TileIndex tile, DiagDirection enterdir, TrackBits tracks, bool &path_found, bool do_track_reservation, PBSTileInfo *dest, TileIndex *final_dest)
 {
 	if (final_dest != nullptr) *final_dest = INVALID_TILE;
-	return YapfTrainChooseTrack(v, tile, enterdir, tracks, path_found, do_track_reservation, dest, final_dest);
+
+	if (!TrainPathfinderHasDestination(v->current_order.GetType(), v->current_order.GetDepotActionType(), v->dest_tile)) {
+		/* Nothing to look for: a search would only explore the whole network. With path reservation the caller
+		 * reserves a path to the nearest safe tile instead; without it pick a random track, like road vehicles. */
+		path_found = false;
+		if (dest != nullptr) dest->tile = INVALID_TILE;
+		if (do_track_reservation || KillFirstBit(tracks) == TRACK_BIT_NONE) return FindFirstTrack(tracks);
+		uint num = RandomRange(CountBits(tracks));
+		for (Track t : SetTrackBitIterator(tracks)) {
+			if (num-- == 0) return t;
+		}
+		NOT_REACHED();
+	}
+
+	const int max_nodes = TrainPathfinderNodeBudget(_settings_game.pf.yapf.max_search_nodes, v->vehicle_flags.Test(VehicleFlag::PathfinderLost),
+			_state_ticks.base() / DAY_TICKS, v->index.base());
+	return YapfTrainChooseTrack(v, tile, enterdir, tracks, path_found, do_track_reservation, dest, final_dest, max_nodes);
 }
 
 /**
