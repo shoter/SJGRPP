@@ -123,6 +123,15 @@ public:
 	/** default destructor */
 	~CYapfBaseT() {}
 
+	/**
+	 * Set the maximum number of nodes to visit before giving up.
+	 * @param max_nodes The new limit (0 means no limit).
+	 */
+	inline void SetMaxSearchNodes(int max_nodes)
+	{
+		this->max_search_nodes = max_nodes;
+	}
+
 protected:
 	/**
 	 * Access the inherited path finder.
