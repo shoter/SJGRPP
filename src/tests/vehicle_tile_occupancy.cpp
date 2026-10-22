@@ -113,6 +113,7 @@ struct VehicleHashFixture {
 
 	static Ship *NewShip(TileIndex tile)
 	{
+		REQUIRE(Ship::CanAllocateItem()); // debug builds assert that the pool was checked before allocating
 		Ship *v = Ship::Create();
 		v->tile = tile;
 		UpdateVehicleTileHash(v, false);
