@@ -60,10 +60,13 @@ def quote(a) -> str:
     return quote_arg(int(a) if isinstance(a, bool) else a)
 
 
-def run_batch(b, lines: list[str], what: str) -> list:
+def run_batch(b, lines: list[str], what: str, check: bool = True) -> list:
     out = []
     for i in range(0, len(lines), 300):
         for line, resp in zip(lines[i:i + 300], b.batch(lines[i:i + 300], timeout=600)):
+            if not check:
+                out.append(resp.get("result") if resp.get("ok") else {"success": False, "error": resp.get("error")})
+                continue
             if not resp.get("ok"):
                 raise RuntimeError(f"{what}: {line}: {resp.get('error')}")
             res = resp["result"]
@@ -110,21 +113,23 @@ def cmd_prepare(a) -> int:
             return all(not (ox - 24 <= tx <= ox + LOOP_LENGTH + 24 and oy - 24 <= ty <= oy + 28) for tx, ty in towns)
 
         sites = (((16 + (i % cols) * COL_STEP, 16 + (i // cols) * ROW_STEP)) for i in range(cols * ((size - 32) // ROW_STEP)))
-        sites = [p for p in sites if clear_of_towns(*p)][:a.loops]
-        if len(sites) < a.loops:
-            raise RuntimeError(f"room for only {len(sites)} loops")
+        sites = [p for p in sites if clear_of_towns(*p)]
         trains = 0
-        for n, (ox, oy) in enumerate(sites):
+        n = 0
+        skipped = 0
+        for ox, oy in sites:
+            if n >= a.loops:
+                break
             ya, yb, xs, xe = oy, oy + 3, ox, ox + LOOP_LENGTH
             sa, sb = xs + 10, xe - 15
             depot = tile(xs + 2, ya - 1)
             # Land: clear and level (with game ticks in between so the landscaping allowance refills).
             b.step(4)
             run_batch(b, [docmd("ClearArea", tile(xe + 3, yb + 2), tile(xs - 3, ya - 2), False),
-                          docmd("LevelLand", tile(xe + 3, yb + 2), tile(xs - 3, ya - 2), False, 0)], f"loop {n} land")
+                          docmd("LevelLand", tile(xe + 3, yb + 2), tile(xs - 3, ya - 2), False, 0)], f"loop {n} land", check=False)
             b.step(4)
             # One level up, so no loop sits at sea level where it could flood.
-            run_batch(b, [docmd("LevelLand", tile(xe + 3, yb + 2), tile(xs - 3, ya - 2), False, 2)], f"loop {n} raise")
+            run_batch(b, [docmd("LevelLand", tile(xe + 3, yb + 2), tile(xs - 3, ya - 2), False, 2)], f"loop {n} raise", check=False)
             lines = [docmd("BuildRailStation", tile(sa, ya), RAILTYPE_RAIL, AXIS_X, 1, 5, 0, 0, NEW_STATION, False),
                      docmd("BuildRailStation", tile(sb, yb), RAILTYPE_RAIL, AXIS_X, 1, 5, 0, 0, NEW_STATION, False)]
             for x0, x1, y in ((xs, sa - 1, ya), (sa + 5, xe, ya), (xs, sb - 1, yb), (sb + 5, xe, yb)):
@@ -135,6 +140,11 @@ def cmd_prepare(a) -> int:
                 lines.append(docmd("BuildSingleRail", tile(xs - 1, y), RAILTYPE_RAIL, track, 0))
             lines.append(docmd("BuildTrainDepot", depot, RAILTYPE_RAIL, DIAGDIR_SE))
             lines.append(docmd("BuildSingleRail", tile(xs + 2, ya), RAILTYPE_RAIL, TRACK_LEFT, 0))
+            # Rivers, water or anything else left on the land: test-run the track and use the next site instead.
+            tests = run_batch(b, [line.replace("docmd ", "docmd test ", 1) for line in lines], "test", check=False)
+            if not all(isinstance(t, dict) and t.get("success") for t in tests):
+                skipped += 1
+                continue
             # One-way path signals facing the direction of travel (dragged along it).
             for x0, x1, y in ((xs + 4, sa - 1, ya), (sa + 5, xe, ya), (xe, sb + 5, yb), (sb - 1, xs, yb)):
                 lines.append(docmd("BuildSignalTrack", tile(x0, y), tile(x1, y), TRACK_X, SIGTYPE_PATH_ONEWAY, 0, 0, False, 0, 3))
@@ -154,9 +164,12 @@ def cmd_prepare(a) -> int:
                 b, [docmd("CloneVehicle", depot, first, True)] * (a.per_loop - 1), "clones")]
             run_batch(b, [docmd("StartStopVehicle", 0, v, False) for v in [first] + clones], "start")
             trains += a.per_loop
-            if n % 20 == 19:
+            n += 1
+            if n % 20 == 0:
                 b.step(74)   # let the trains leave their depots
-                print(f"{n + 1}/{a.loops} loops, {trains} trains, {time.monotonic() - t_start:.0f}s", flush=True)
+                print(f"{n}/{a.loops} loops ({skipped} sites skipped), {trains} trains, {time.monotonic() - t_start:.0f}s", flush=True)
+        if n < a.loops:
+            raise RuntimeError(f"room for only {n} loops ({skipped} sites skipped)")
         b.step(74 * 60)      # two months: every train out of its depot and running
         vehicles = len(b.objs("vehicle"))
         if vehicles < trains:
@@ -165,7 +178,7 @@ def cmd_prepare(a) -> int:
     save = Path(a.save)
     if not save.exists() and save.with_name(save.name + ".sav").exists():
         save.with_name(save.name + ".sav").rename(save)
-    info = {"loops": a.loops, "trains": trains, "primary_vehicles": vehicles, "map": f"{size}x{size}",
+    info = {"loops": n, "skipped_sites": skipped, "trains": trains, "primary_vehicles": vehicles, "map": f"{size}x{size}",
             "prepare_seconds": round(time.monotonic() - t_start), "save_mb": round(save.stat().st_size / 1e6, 1)}
     print(json.dumps(info), flush=True)
     Path(a.info).write_text(json.dumps(info), encoding="utf-8")
