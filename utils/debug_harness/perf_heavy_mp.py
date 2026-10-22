@@ -133,7 +133,7 @@ def cmd_prepare(a) -> int:
             lines = [docmd("BuildRailStation", tile(sa, ya), RAILTYPE_RAIL, AXIS_X, 1, 5, 0, 0, NEW_STATION, False),
                      docmd("BuildRailStation", tile(sb, yb), RAILTYPE_RAIL, AXIS_X, 1, 5, 0, 0, NEW_STATION, False)]
             for x0, x1, y in ((xs, sa - 1, ya), (sa + 5, xe, ya), (xs, sb - 1, yb), (sb + 5, xe, yb)):
-                lines.append(docmd("BuildRailroadTrack", tile(x1, y), tile(x0, y), RAILTYPE_RAIL, TRACK_X, 0, False))
+                lines.append(docmd("BuildRailroadTrack", tile(x1, y), tile(x0, y), RAILTYPE_RAIL, TRACK_X, 0, True))
             for y, track in ((ya, TRACK_RIGHT), (ya + 1, TRACK_Y), (ya + 2, TRACK_Y), (yb, TRACK_UPPER)):
                 lines.append(docmd("BuildSingleRail", tile(xe + 1, y), RAILTYPE_RAIL, track, 0))
             for y, track in ((yb, TRACK_LEFT), (ya + 1, TRACK_Y), (ya + 2, TRACK_Y), (ya, TRACK_LOWER)):
@@ -148,9 +148,13 @@ def cmd_prepare(a) -> int:
             # One-way path signals facing the direction of travel (dragged along it).
             for x0, x1, y in ((xs + 4, sa - 1, ya), (sa + 5, xe, ya), (xe, sb + 5, yb), (sb - 1, xs, yb)):
                 lines.append(docmd("BuildSignalTrack", tile(x0, y), tile(x1, y), TRACK_X, SIGTYPE_PATH_ONEWAY, 0, 0, False, 0, 3))
-            res = run_batch(b, lines, f"loop {n} track")
-            if "station" not in res[0] or "station" not in res[1]:
-                raise RuntimeError(f"loop {n}: stations not built: {res[:2]}")
+            res = run_batch(b, lines, f"loop {n} track", check=False)
+            failed = [(line, r) for line, r in zip(lines, res) if not (isinstance(r, dict) and r.get("success"))]
+            if failed or "station" not in res[0] or "station" not in res[1]:
+                # Something the test run could not see: leave the half-built loop without trains, use the next site.
+                print(f"site ({ox}, {oy}) skipped: {failed[:1]}", flush=True)
+                skipped += 1
+                continue
             st_a, st_b = res[0]["station"], res[1]["station"]
 
             # A template train, then clones sharing its orders.
