@@ -1,0 +1,262 @@
+name: Perf MP heavy
+
+# TEMPORARY: heavy multiplayer benchmark of the vehicle tile occupancy bitmap PR against main. Removed before merge.
+# main (the PR base) and the PR are built once each. One job builds a 4096x4096 game with ~8000 vehicles (rail shuttles
+# and buses, utils/debug_harness/perf_mp_heavy.py) with main's binary and saves it. Then 8 jobs run in parallel, 4 with
+# main and 4 with the PR: a dedicated server loads the save, 4 headless clients join as spectators, and the game runs in
+# real time while the per-tick times are sampled on the server and every client. The report job compares the averages.
+
+on:
+  pull_request:
+    branches:
+    - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.side }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        side: [base, pr]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ matrix.side == 'base' && github.event.pull_request.base.sha || '' }}
+
+    - name: Install dependencies
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          ccache cmake ninja-build \
+          libcurl4-openssl-dev libfontconfig-dev libfreetype-dev libharfbuzz-dev libicu-dev \
+          liblzma-dev liblzo2-dev libpng-dev libsdl2-dev libzstd-dev zlib1g-dev
+
+    - name: Restore compiler cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ccache
+        key: perf-mp-heavy-ccache-${{ matrix.side }}-${{ github.sha }}
+        restore-keys: |
+          perf-mp-heavy-ccache-${{ matrix.side }}-
+          game-tests-ccache-
+
+    - name: Build
+      run: |
+        # Same flags as game-tests.yml; vcpkg is not needed, system libraries are used.
+        mv vcpkg.json vcpkg-disabled.json
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DOPTION_USE_ASSERTS=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake --build build --target openttd -j $(nproc)
+        ccache -s
+        tar czf openttd-${{ matrix.side }}.tgz build/openttd $(cd build && for d in lang ai game baseset scripts; do [ -d "$d" ] && echo "build/$d"; done)
+
+    - name: Upload build
+      uses: actions/upload-artifact@v7
+      with:
+        name: openttd-${{ matrix.side }}
+        path: openttd-${{ matrix.side }}.tgz
+        retention-days: 3
+
+  save:
+    name: Build the heavy game
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      OTTD_CONTENT_DIR: ${{ github.workspace }}/content
+      PYTHONUNBUFFERED: 1
+
+    steps:
+    - name: Checkout PR (harness)
+      uses: actions/checkout@v7
+
+    - name: Download main build
+      uses: actions/download-artifact@v8
+      with:
+        name: openttd-base
+
+    - name: Unpack build and get OpenGFX
+      run: |
+        tar xzf openttd-base.tgz
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+          libcurl4 libfontconfig1 libfreetype6 libharfbuzz0b liblzo2-2 libsdl2-2.0-0
+        mkdir -p content/baseset
+        curl -sSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d content/baseset
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    - name: Build and save the game
+      run: |
+        python utils/debug_harness/perf_mp_heavy.py build --exe "$GITHUB_WORKSPACE/build/openttd" \
+          --save heavy.sav --out heavy-build.json
+
+    - name: Upload save
+      uses: actions/upload-artifact@v7
+      with:
+        name: heavy-save
+        path: |
+          heavy.sav
+          heavy-build.json
+        retention-days: 3
+
+  measure:
+    name: Measure ${{ matrix.side }} (run ${{ matrix.run }})
+    needs: save
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        side: [base, pr]
+        run: [1, 2, 3, 4]
+    env:
+      OTTD_CONTENT_DIR: ${{ github.workspace }}/content
+      OTTD_EXE: ${{ github.workspace }}/build/openttd
+      PYTHONUNBUFFERED: 1
+
+    steps:
+    - name: Checkout PR (harness)
+      uses: actions/checkout@v7
+
+    - name: Download build
+      uses: actions/download-artifact@v8
+      with:
+        name: openttd-${{ matrix.side }}
+
+    - name: Download save
+      uses: actions/download-artifact@v8
+      with:
+        name: heavy-save
+
+    - name: Unpack build and get OpenGFX
+      run: |
+        tar xzf openttd-${{ matrix.side }}.tgz
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+          libcurl4 libfontconfig1 libfreetype6 libharfbuzz0b liblzo2-2 libsdl2-2.0-0
+        mkdir -p content/baseset
+        curl -sSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d content/baseset
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    - name: Server + 4 clients
+      run: |
+        python utils/debug_harness/perf_mp_heavy.py measure --save heavy.sav --clients 4 \
+          --out "result-${{ matrix.side }}-${{ matrix.run }}.json"
+
+    - name: Upload result
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: perf-mp-heavy-${{ matrix.side }}-${{ matrix.run }}
+        path: result-*.json
+        retention-days: 14
+
+  report:
+    name: Report
+    needs: [save, measure]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+    - name: Download results
+      uses: actions/download-artifact@v8
+      with:
+        pattern: perf-mp-heavy-*
+        path: results
+
+    - name: Download build info
+      uses: actions/download-artifact@v8
+      with:
+        name: heavy-save
+        path: results/heavy-save
+
+    - name: Compare main and PR
+      run: |
+        python3 - <<'EOF' > perf.md
+        import json, statistics
+        from pathlib import Path
+        res = {"base": [], "pr": []}
+        for p in sorted(Path("results").glob("*/result-*.json")):
+            side = p.stem.split("-")[1]
+            res[side].append(json.loads(p.read_text()))
+        built = next((json.loads(p.read_text()) for p in Path("results").glob("*/heavy-build.json")), {})
+        print("## Perf: heavy multiplayer benchmark (PR vs main)\n")
+        print(f"Game: {2 ** built.get('map_bits', 12)}x{2 ** built.get('map_bits', 12)}, {built.get('vehicles', '?')} "
+              f"primary vehicles ({built.get('rail_routes', '?')} rail shuttles with one 6-car train each, "
+              f"{built.get('road_routes', '?')} bus routes), built once with main's binary and saved. "
+              f"Each job: dedicated server loads the save, 4 headless clients join as spectators, 60s warmup, 8 minutes "
+              f"real time, `fps` (average of the last 128 ticks) and memory sampled every 4s on every instance. "
+              f"{len(res['base'])} jobs with main and {len(res['pr'])} with the PR, each on its own runner. "
+              f"Lower is better.\n")
+        instances = ["server"] + [f"client{i}" for i in range(1, 5)]
+        metrics = ["game_loop_ms_avg", "game_loop_ms_p95", "gl_train_ticks_ms_avg", "gl_train_ticks_ms_p95",
+                   "gl_road_vehicle_ticks_ms_avg", "gl_road_vehicle_ticks_ms_p95", "mem_mb_max"]
+        def vals(side, inst, key):
+            return [r["instances"][inst][key] for r in res[side] if key in r.get("instances", {}).get(inst, {})]
+        def row(label, b, p):
+            if not b or not p:
+                return
+            mb, mp = statistics.mean(b), statistics.mean(p)
+            pct = 100 * (mp - mb) / mb if mb else 0.0
+            print(f"| {label} | {mb:.3f} | {mp:.3f} | {mp - mb:+.3f} | {pct:+.1f}% | {min(b):.3f} .. {max(b):.3f} | "
+                  f"{min(p):.3f} .. {max(p):.3f} |")
+        print("### All instances (server + 4 clients, mean of per-job means)\n")
+        print("| metric | main | PR | PR - main | PR - main (%) | main jobs range | PR jobs range |")
+        print("|---|---:|---:|---:|---:|---|---|")
+        for key in metrics:
+            per_job = {side: [statistics.mean(r["instances"][i][key] for i in instances
+                                              if key in r.get("instances", {}).get(i, {}))
+                              for r in res[side] if r.get("instances")] for side in res}
+            row(key, per_job["base"], per_job["pr"])
+        print("\n### Per instance\n")
+        print("| instance / metric | main | PR | PR - main | PR - main (%) | main jobs range | PR jobs range |")
+        print("|---|---:|---:|---:|---:|---|---|")
+        for inst in instances:
+            for key in ("game_loop_ms_avg", "gl_train_ticks_ms_avg", "gl_road_vehicle_ticks_ms_avg", "mem_mb_max"):
+                row(f"{inst} {key}", vals("base", inst, key), vals("pr", inst, key))
+        print("\n### Checks\n")
+        for side in res:
+            for i, r in enumerate(res[side], 1):
+                mism = sum(len(v) for v in r.get("cache_mismatches", {}).values())
+                print(f"- {'main' if side == 'base' else 'PR'} job {i}: speed {r.get('speed_ratio')}, "
+                      f"{r.get('vehicles')} vehicles, start {r.get('start_seconds')}s, cache mismatches {mism}, "
+                      f"problems {len(r.get('problems', []))}" + (f": {r['problems'][:3]}" if r.get("problems") else ""))
+        EOF
+        cat perf.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment on PR
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          const marker = '<!-- perf-mp-heavy -->';
+          const body = marker + '\n' + fs.readFileSync('perf.md', 'utf8');
+          const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+          const existing = comments.find(c => c.body && c.body.startsWith(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
