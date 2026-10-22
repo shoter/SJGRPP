@@ -113,6 +113,8 @@ jobs:
 
     uses: ./.github/workflows/release-linux.yml
     secrets: inherit
+    with:
+      pgo: true
 
   windows:
     name: Windows (${{ matrix.arch }})
@@ -178,7 +180,9 @@ jobs:
       with:
         arch: ${{ matrix.arch }}
 
-    - name: Build
+    # Profile-guided optimisation (cmake/PGO.cmake): build an instrumented binary, run the training workload with it,
+    # then link again with the profile. With MSVC the code is generated at link time, so the second build only relinks.
+    - name: Build (instrumented for PGO)
       shell: bash
       run: |
         mkdir build
@@ -189,7 +193,26 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="${{ steps.vcpkg.outputs.vcpkg-cmake }}" \
           -DHOST_BINARY_DIR=${GITHUB_WORKSPACE}/build-host \
           -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          -DOPTION_PGO=GENERATE \
+          -DOPTION_PGO_DIR=${GITHUB_WORKSPACE}/pgo \
           # EOF
+        cmake --build . --target openttd
+
+    - name: PGO training run
+      shell: bash
+      run: |
+        mkdir -p pgo-content/baseset
+        curl -fsSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d pgo-content/baseset
+        rm opengfx.zip
+        # pgort140.dll (needed by the instrumented binary) is on PATH from the developer command prompt.
+        python utils/debug_harness/pgo_train.py --exe build/openttd.exe --pgo-dir pgo --content pgo-content
+
+    - name: Build
+      shell: bash
+      run: |
+        cd build
+        cmake . -DOPTION_PGO=USE
         cmake --build . --target openttd
 
     - name: Create bundles
