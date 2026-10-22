@@ -29,6 +29,7 @@
 #include "network/network.h"
 #include "core/alignment.hpp"
 #include "sl/saveload_common_type.h"
+#include "vehicle_tile_occupancy.h"
 #include <array>
 #include <vector>
 
@@ -1781,7 +1782,23 @@ void UpdateAllVehiclesIsDrawn();
 
 void ShiftVehicleDates(EconTime::DateDelta interval);
 
-Vehicle *GetFirstVehicleOnTile(TileIndex tile, VehicleType type);
+Vehicle *GetFirstVehicleOnTileFromHash(TileIndex tile, VehicleType type);
+
+extern VehicleTypeIndexArray<VehicleTileOccupancy> _vehicle_tile_occupancy;
+
+/**
+ * Returns the first vehicle on a specific location, this should be iterated using Vehicle::HashTileNext.
+ * Empty tiles are answered from the occupancy bitmap without probing the tile hash.
+ * @note The iteration order is non-deterministic.
+ * @param tile The location on the map
+ * @param type The vehicle type
+ * @return First vehicle or nullptr.
+ */
+inline Vehicle *GetFirstVehicleOnTile(TileIndex tile, VehicleType type)
+{
+	if (!_vehicle_tile_occupancy[type].MayBeOccupied(tile)) return nullptr;
+	return GetFirstVehicleOnTileFromHash(tile, type);
+}
 
 template <VehicleType TYPE>
 struct VehicleTypeHelper {};
