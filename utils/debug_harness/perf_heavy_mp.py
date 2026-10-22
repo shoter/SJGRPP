@@ -75,14 +75,22 @@ def make_save(a: argparse.Namespace) -> int:
         log(f"map {mx}^2 generated in {time.monotonic() - t_start:.0f}s: {len(towns)} towns")
         builder = Builder(b, log=lambda s: None)
 
+        cell = 64
+        grid: dict[tuple[int, int], list[tuple[int, int]]] = {}
+        for t in towns:
+            grid.setdefault((t[0] // cell, t[1] // cell), []).append(t)
+
         def pairs(lo: int, hi: int) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+            """Town pairs lo..hi tiles apart (Manhattan), in random order."""
             out = []
-            for _ in range(200000):
-                p, q = rng.choice(towns), rng.choice(towns)
-                if lo <= abs(p[0] - q[0]) + abs(p[1] - q[1]) <= hi:
-                    out.append((p, q))
-                if len(out) >= 2000:
-                    break
+            reach = hi // cell + 1
+            for p in towns:
+                cx, cy = p[0] // cell, p[1] // cell
+                near = [q for gx in range(cx - reach, cx + reach + 1) for gy in range(cy - reach, cy + reach + 1)
+                        for q in grid.get((gx, gy), []) if p < q and lo <= abs(p[0] - q[0]) + abs(p[1] - q[1]) <= hi]
+                if near:
+                    out.append((p, rng.choice(near)))
+            rng.shuffle(out)
             return out
 
         built = {"road": 0, "air": 0, "rail": 0}

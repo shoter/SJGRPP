@@ -206,6 +206,16 @@ jobs:
             pct = 100 * (mp - mb) / mb if mb else 0.0
             print(f"| {group} | {key} | {mb:.3f} ({min(vb):.3f}..{max(vb):.3f}) | {mp:.3f} ({min(vp):.3f}..{max(vp):.3f}) "
                   f"| {mp - mb:+.3f} | {pct:+.1f}% |")
+        # Runner speed differs between jobs; the landscape share of the game loop cancels most of that out.
+        print("\n| instance | landscape / game loop | main (min..max) | PR (min..max) | PR - main (points) |")
+        print("|---|---|---:|---:|---:|")
+        for group in ("server", "clients"):
+            sh = {side: [100 * val(r, group, "gl_landscape_ticks_ms_avg") / val(r, group, "game_loop_ms_avg") for r in res[side]]
+                  for side in res}
+            if sh["base"] and sh["pr"]:
+                mb, mp = statistics.mean(sh["base"]), statistics.mean(sh["pr"])
+                print(f"| {group} | avg | {mb:.1f}% ({min(sh['base']):.1f}..{max(sh['base']):.1f}) "
+                      f"| {mp:.1f}% ({min(sh['pr']):.1f}..{max(sh['pr']):.1f}) | {mp - mb:+.1f} |")
         for side in ("base", "pr"):
             sp = [r["speed_ratio"] for r in res[side]]
             probs = sum(len(r.get("problems", [])) for r in res[side])
