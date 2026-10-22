@@ -50,6 +50,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         echo "Inlining flags in the compile commands:"
         grep -o '/Ob[0-3] ' compile_commands.json | sort | uniq -c
+        echo "Compile commands with /GL (link-time code generation): $(grep -c '/GL ' compile_commands.json)"
         cmake --build . --target openttd
 
     - name: Package
