@@ -141,8 +141,8 @@ Checks: crashes/desyncs/disconnects, paused server/client state comparison, game
 memory, command latency, join times, vehicles moving and earning, rejoin/spectator/save churn, save reload. Results in
 `build/harness_runs/full/<run>/` (summary.txt, report.json, perf.csv); `--save-baseline` / `--baseline` compare
 performance between runs. `--setting NAME=VALUE` (repeatable) changes a game setting on the server before the clients
-join, e.g. `--setting vehicle.train_braking_model=1` for realistic braking and `--setting debug.chicken_bits=512` to
-check every realistic braking lookahead cutoff against all items (a mismatch logs "cutoff mismatch" and asserts).
+join, e.g. `--setting debug.chicken_bits=512` to check every realistic braking lookahead cutoff against all items (a
+mismatch logs "cutoff mismatch" and asserts).
 Exit code 1 on any failed check.
 
 ## CI (GitHub Actions)

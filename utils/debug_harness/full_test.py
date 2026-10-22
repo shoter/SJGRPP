@@ -21,7 +21,7 @@ game runs for a period of game time while the test checks:
   python utils/debug_harness/full_test.py --clients 6 --scale 2        # more companies, twice the vehicles
   python utils/debug_harness/full_test.py --save-baseline perf_baseline.json
   python utils/debug_harness/full_test.py --baseline perf_baseline.json
-  python utils/debug_harness/full_test.py --setting vehicle.train_braking_model=1   # realistic braking
+  python utils/debug_harness/full_test.py --setting debug.chicken_bits=512   # check the realistic braking lookahead cutoff
 
 Output: build/harness_runs/full/<run>/ (summary.txt, report.json, perf.csv, events.log, instances/, collected/ on
 failure). Exit code 0 when no check failed.
@@ -1348,8 +1348,7 @@ def main() -> int:
     ap.add_argument("--debug", default="", help="-d debug levels for all instances, e.g. desync=2")
     ap.add_argument("--setting", action="append", default=[], metavar="NAME=VALUE",
                     help="change a game setting on the server before the clients join (repeatable), e.g. "
-                         "vehicle.train_braking_model=1 (realistic braking) or debug.chicken_bits=512 (check the "
-                         "realistic braking lookahead cutoff against all items)")
+                         "debug.chicken_bits=512 (check the realistic braking lookahead cutoff against all items)")
     ap.add_argument("--out", default=str(DEFAULT_RUN_ROOT / "full"))
     ap.add_argument("--name", help="run directory name (default: timestamp)")
     ap.add_argument("--keep", action="store_true", help="leave the instances running at the end")
