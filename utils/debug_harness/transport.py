@@ -91,8 +91,24 @@ class BuildError(Exception):
     pass
 
 
+class _WindowArray:
+    """Per-tile array of a map window, indexed by whole-map tile index; tiles outside the window read as default."""
+
+    def __init__(self, data: list, sx: int, x0: int, y0: int, w: int, h: int, default: int):
+        self.data, self.sx, self.x0, self.y0, self.w, self.h, self.default = data, sx, x0, y0, w, h, default
+
+    def __getitem__(self, i: int) -> int:
+        lx, ly = i % self.sx - self.x0, i // self.sx - self.y0
+        if 0 <= lx < self.w and 0 <= ly < self.h:
+            return self.data[ly * self.w + lx]
+        return self.default
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+
 class GameMap:
-    """Snapshot of the per-tile arrays returned by the 'tiles' bridge command (whole map)."""
+    """Snapshot of the per-tile arrays returned by the 'tiles' bridge command (whole map, or a window of it)."""
 
     def __init__(self, data: dict, map_x: int, map_y: int):
         assert data["x"] == 0 and data["y"] == 0 and data["w"] == map_x and data["h"] == map_y
@@ -104,11 +120,27 @@ class GameMap:
         self.sub = data["sub"]
         self.bits = data["bits"]
         self.road_owner = data.get("road_owner", [])
+        self.window = (0, 0, map_x, map_y)
 
     @classmethod
     def fetch(cls, bridge: Bridge) -> "GameMap":
         m = bridge.info()["map"]
         return cls(bridge.tiles(), m["x"], m["y"])
+
+    @classmethod
+    def fetch_window(cls, bridge: Bridge, x0: int, y0: int, w: int, h: int) -> "GameMap":
+        """Only the tiles of a window (for big maps); tiles outside it read as VOID and inside() excludes them."""
+        m = bridge.info()["map"]
+        x0, y0 = max(0, x0), max(0, y0)
+        w, h = min(w, m["x"] - x0), min(h, m["y"] - y0)
+        data = bridge.tiles(x0, y0, w, h)
+        gmap = cls.__new__(cls)
+        gmap.sx, gmap.sy = m["x"], m["y"]
+        for name, default in (("type", VOID), ("height", 0), ("slope", 0), ("owner", 255), ("sub", 0), ("bits", 0)):
+            setattr(gmap, name, _WindowArray(data[name], gmap.sx, x0, y0, w, h, default))
+        gmap.road_owner = _WindowArray(data["road_owner"], gmap.sx, x0, y0, w, h, 255) if "road_owner" in data else []
+        gmap.window = (x0, y0, w, h)
+        return gmap
 
     def tile(self, x: int, y: int) -> int:
         return y * self.sx + x
@@ -117,7 +149,9 @@ class GameMap:
         return tile % self.sx, tile // self.sx
 
     def inside(self, x: int, y: int, margin: int = 2) -> bool:
-        return margin <= x < self.sx - margin and margin <= y < self.sy - margin
+        x0, y0, w, h = self.window
+        return (margin <= x < self.sx - margin and margin <= y < self.sy - margin
+                and x0 <= x < x0 + w and y0 <= y < y0 + h)
 
     def t(self, x: int, y: int) -> int:
         return self.type[self.tile(x, y)]
@@ -276,6 +310,7 @@ class Builder:
         self.commands_failed = 0
         self.command_ms: list[float] = []
         self._engines: list[dict] | None = None
+        self.window: tuple[int, int, int, int] | None = None  # (x, y, w, h): fetch only this part of the map
 
     # ---- command helpers ----
 
@@ -340,6 +375,8 @@ class Builder:
         return max(cands, key=lambda e: (e["intro_year"], e["max_speed"]))
 
     def fresh_map(self) -> GameMap:
+        if self.window is not None:
+            return GameMap.fetch_window(self.b, *self.window)
         return GameMap.fetch(self.b)
 
     # ---- vehicles ----

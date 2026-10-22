@@ -1,0 +1,234 @@
+name: Perf heavy MP
+
+# TEMPORARY: heavy multiplayer benchmark of this PR against its base (main). Removed before merge.
+# One save is generated (4096x4096, every town a city, ~8000 vehicles, many town bus stations), then 8 jobs load it:
+# 4 with the base build and 4 with the PR build. Each job runs a dedicated server and 4 headless clients and samples
+# the tick times of every instance (utils/debug_harness/perf_heavy_mp.py). The report job averages each side.
+
+on:
+  pull_request:
+    branches:
+    - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: 1
+
+jobs:
+  build:
+    name: Build ${{ matrix.side }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        side: [base, pr]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ matrix.side == 'base' && github.event.pull_request.base.sha || github.event.pull_request.head.sha }}
+
+    - name: Install dependencies
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          ccache cmake ninja-build \
+          libcurl4-openssl-dev libfontconfig-dev libfreetype-dev libharfbuzz-dev libicu-dev \
+          liblzma-dev liblzo2-dev libpng-dev libsdl2-dev libzstd-dev zlib1g-dev
+
+    - name: Restore compiler cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ccache
+        key: perf-heavy-mp-ccache-${{ matrix.side }}-${{ github.sha }}
+        restore-keys: |
+          perf-heavy-mp-ccache-${{ matrix.side }}-
+          game-tests-ccache-
+
+    - name: Build
+      run: |
+        # Same flags as game-tests.yml; vcpkg is not needed, system libraries are used.
+        mv vcpkg.json vcpkg-disabled.json
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DOPTION_USE_ASSERTS=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake --build build --target openttd -j $(nproc)
+        tar czf openttd-${{ matrix.side }}.tgz build/openttd $(cd build && for d in lang ai game baseset scripts; do [ -d "$d" ] && echo "build/$d"; done)
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: openttd-${{ matrix.side }}
+        path: openttd-${{ matrix.side }}.tgz
+        retention-days: 3
+
+  make-save:
+    name: Make heavy save
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      OTTD_CONTENT_DIR: ${{ github.workspace }}/content
+    steps:
+    - name: Checkout PR (harness)
+      uses: actions/checkout@v7
+
+    - uses: actions/download-artifact@v8
+      with:
+        name: openttd-base
+
+    - name: Unpack and get OpenGFX
+      run: |
+        mkdir -p bin && tar xzf openttd-base.tgz -C bin
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+          libcurl4 libfontconfig1 libfreetype6 libharfbuzz0b liblzo2-2 libsdl2-2.0-0
+        mkdir -p content/baseset
+        curl -sSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d content/baseset
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    - name: Generate save (base build)
+      run: |
+        OTTD_EXE="$GITHUB_WORKSPACE/bin/build/openttd" python utils/debug_harness/perf_heavy_mp.py make-save --out heavy.sav
+        cat heavy.json >> "$GITHUB_STEP_SUMMARY"
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: heavy-save
+        path: |
+          heavy.sav
+          heavy.json
+        retention-days: 3
+
+  measure:
+    name: Measure ${{ matrix.side }} ${{ matrix.run }}
+    needs: make-save
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        side: [base, pr]
+        run: [1, 2, 3, 4]
+    env:
+      OTTD_CONTENT_DIR: ${{ github.workspace }}/content
+    steps:
+    - name: Checkout PR (harness)
+      uses: actions/checkout@v7
+
+    - uses: actions/download-artifact@v8
+      with:
+        name: openttd-${{ matrix.side }}
+
+    - uses: actions/download-artifact@v8
+      with:
+        name: heavy-save
+
+    - name: Unpack and get OpenGFX
+      run: |
+        mkdir -p bin && tar xzf openttd-${{ matrix.side }}.tgz -C bin
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+          libcurl4 libfontconfig1 libfreetype6 libharfbuzz0b liblzo2-2 libsdl2-2.0-0
+        mkdir -p content/baseset
+        curl -sSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d content/baseset
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    - name: Measure (server + 4 clients)
+      run: |
+        nproc; free -m
+        OTTD_EXE="$GITHUB_WORKSPACE/bin/build/openttd" python utils/debug_harness/perf_heavy_mp.py measure \
+          --save heavy.sav --out "result-${{ matrix.side }}-${{ matrix.run }}.json"
+
+    - uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: heavy-result-${{ matrix.side }}-${{ matrix.run }}
+        path: result-*.json
+        retention-days: 14
+
+  report:
+    name: Report
+    needs: [make-save, measure]
+    if: always() && needs.make-save.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+    - uses: actions/download-artifact@v8
+      with:
+        pattern: heavy-*
+        path: results
+
+    - name: Average each side
+      run: |
+        python3 - <<'EOF' > perf.md
+        import json, statistics
+        from pathlib import Path
+        save = json.loads(next(Path("results").glob("*/heavy.json")).read_text())
+        res = {"base": [], "pr": []}
+        for p in sorted(Path("results").glob("*/result-*.json")):
+            side = p.stem.split("-")[1]
+            res[side].append(json.loads(p.read_text()))
+        print("## Perf: heavy multiplayer (PR vs main)\n")
+        print(f"Save: 4096x4096, {save['towns']} towns (all cities), {save['primary_vehicles']} vehicles "
+              f"({save['vehicles']}), {save['town_stops']} extra town bus stations. Each job: dedicated server + 4 "
+              f"headless clients load it, 60s warm-up, then 'fps' of every instance every 5s for 10 minutes. "
+              f"Jobs: {len(res['base'])} on main, {len(res['pr'])} on the PR, each on its own runner. "
+              "Values are averages of the 64-tick averages; lower is better.\n")
+        def val(r, group, key):
+            if group == "server":
+                return r["instances"]["server"].get(key)
+            return r[group].get(key)
+        rows = [(g, k) for g in ("server", "clients") for k in (
+            "game_loop_ms_avg", "game_loop_ms_p95", "gl_landscape_ticks_ms_avg", "gl_landscape_ticks_ms_p95",
+            "gl_road_vehicle_ticks_ms_avg", "gl_aircraft_ticks_ms_avg", "gl_train_ticks_ms_avg", "gl_station_ticks_ms_avg")]
+        print("| instance | metric | main ms (min..max) | PR ms (min..max) | PR - main | % |")
+        print("|---|---|---:|---:|---:|---:|")
+        for group, key in rows:
+            vb = [v for r in res["base"] if (v := val(r, group, key)) is not None]
+            vp = [v for r in res["pr"] if (v := val(r, group, key)) is not None]
+            if not vb or not vp:
+                continue
+            mb, mp = statistics.mean(vb), statistics.mean(vp)
+            pct = 100 * (mp - mb) / mb if mb else 0.0
+            print(f"| {group} | {key} | {mb:.3f} ({min(vb):.3f}..{max(vb):.3f}) | {mp:.3f} ({min(vp):.3f}..{max(vp):.3f}) "
+                  f"| {mp - mb:+.3f} | {pct:+.1f}% |")
+        for side in ("base", "pr"):
+            sp = [r["speed_ratio"] for r in res[side]]
+            probs = sum(len(r.get("problems", [])) for r in res[side])
+            name = "main" if side == "base" else "PR"
+            if sp:
+                print(f"\n{name}: game speed vs real time {statistics.mean(sp):.3f} ({min(sp):.3f}..{max(sp):.3f}), "
+                      f"vehicle pool {res[side][0].get('vehicle_pool')}, problems logged: {probs}")
+        EOF
+        cat perf.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment on PR
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          const marker = '<!-- perf-heavy-mp -->';
+          const body = marker + '\n' + fs.readFileSync('perf.md', 'utf8');
+          const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+          const existing = comments.find(c => c.body && c.body.startsWith(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }
