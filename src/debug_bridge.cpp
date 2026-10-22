@@ -22,6 +22,8 @@
 #include "screenshot.h"
 #include "station_base.h"
 #include "town.h"
+#include "train.h"
+#include "pbs.h"
 #include "vehicle_base.h"
 #include "video/video_driver.hpp"
 #include "viewport_func.h"
@@ -496,8 +498,10 @@ static const char HELP_TEXT[] =
 	"docmd [test] [as <company>] <command> <tile> <field>...   issue a game command as the local company (like the GUI does); replies once\n"
 	"                                  executed; 'test' only runs the command's test (cost/error), nothing is built or sent\n"
 	"docmd_hex [test] <command> <tile> <hex>    same, payload given in its network serialisation\n"
-	"order [test] <vehicle> station|waypoint|depot <dest> [nonstop|stop_everywhere] [full_load|full_load_any|no_load] [unload|transfer|no_unload]\n"
+	"order [test] <vehicle> station|waypoint|depot|conditional <dest> [nonstop|stop_everywhere] [full_load|full_load_any|no_load] [unload|transfer|no_unload]\n"
+	"                                  (conditional: dest is the order to skip to; set the condition with ModifyOrder)\n"
 	"engines [rail|road|ship|aircraft] buildable engines for the local company\n"
+	"lookahead <vehicle>               realistic braking lookahead of a train: positions and items\n"
 	"show [<window> [id]]                open a game window by name (no arguments: list names); id picks the n-th station/town/vehicle/company\n"
 	"tiles [x y w h]                   per-tile type/height/slope/owner/subtype/road owner arrays (row-major) for route planning";
 
@@ -833,6 +837,21 @@ static json HandleCommand(Connection &conn, const std::vector<std::string> &args
 	}
 
 	if (cmd == "engines") return DebugBridgeEngineList(args.size() > 1 ? args[1] : std::string_view{});
+
+	if (cmd == "lookahead") {
+		const Train *t = Train::GetIfValid(static_cast<VehicleID>(ParseInt(Arg(args, 1, "vehicle"), "vehicle")));
+		if (t == nullptr || !t->IsFrontEngine()) throw BridgeError{ "no such train" };
+		if (t->lookahead == nullptr) return json(nullptr);
+		static const char *const item_types[] = { "station", "reverse", "track_speed", "speed_restriction", "signal", "curve_speed", "speed_adaptation" };
+		const TrainReservationLookAhead &l = *t->lookahead;
+		json items = json::array();
+		for (const TrainReservationLookAheadItem &item : l.items) {
+			items.push_back({ { "type", item.type < std::size(item_types) ? item_types[item.type] : "unknown" }, { "start", item.start },
+					{ "end", item.end }, { "z", item.z_pos }, { "data", item.data_id } });
+		}
+		return json{ { "current_position", l.current_position }, { "reservation_end_position", l.reservation_end_position },
+				{ "lookahead_end_position", l.lookahead_end_position }, { "z", l.cached_zpos }, { "items", items } };
+	}
 
 	if (cmd == "tiles") {
 		if (_game_mode == GameMode::Menu || Map::SizeX() == 0) throw BridgeError{ "no map loaded" };
