@@ -47,8 +47,8 @@ STAT_CLASS_WAYP, INVALID_STATION = 1, 0xFFFF
 CONFIG = {
     "game_creation": {"map_x": MAP_BITS, "map_y": MAP_BITS, "starting_year": 1990, "landscape": "temperate",
                       "water_borders": 0, "custom_town_number": 1,
-                      "amount_of_rivers": 0},
-    "difficulty": {"terrain_type": 0, "quantity_sea_lakes": 0, "number_towns": 4, "industry_density": 0,
+                      "amount_of_rivers": 0, "custom_sea_level": 1},
+    "difficulty": {"terrain_type": 0, "quantity_sea_lakes": 4, "number_towns": 4, "industry_density": 0,
                    "max_no_competitors": 0, "vehicle_breakdowns": 0},
     "pf": {"forbid_90_deg": "false"},
     "network": {"max_clients": 16, "pause_on_join": "false"},
@@ -175,6 +175,8 @@ def cmd_prepare(a) -> int:
                              docmd("StartStopVehicle", 0, first, False)], "train")
                 trains += 1
                 n += 1
+                if n % 20 == 0:
+                    b.docmd("MoneyCheat", 0, 2_000_000_000)   # land and track for the next lines
                 if n % 200 == 0:
                     print(f"{n}/{a.lines} lines ({skipped} sites skipped), {time.monotonic() - t_start:.0f}s", flush=True)
         b.step(74 * 20)      # twenty days: every train out of its depot and running
