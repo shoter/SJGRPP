@@ -180,7 +180,7 @@ jobs:
   report:
     name: Report
     needs: bench
-    if: always()
+    if: always() && needs.bench.result != 'skipped' 
     runs-on: ubuntu-latest
     permissions:
       contents: read

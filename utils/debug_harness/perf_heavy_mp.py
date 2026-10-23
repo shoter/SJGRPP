@@ -183,8 +183,11 @@ def cmd_prepare(a) -> int:
         vehicles = len(b.objs("vehicle"))
         if vehicles < trains:
             raise RuntimeError(f"only {vehicles} of {trains} trains left before saving")
-        sample = [b.lookahead(t) for t in b.objs("vehicle")[:200]]
-        lists = [len(la["items"]) for la in sample if la]
+        try:
+            sample = [b.lookahead(t) for t in b.objs("vehicle")[:200]]
+            lists = [len(la["items"]) for la in sample if la]
+        except Exception:   # noqa: BLE001 - builds without the debug bridge 'lookahead' call (main)
+            lists = []
         b.console(f"save {Path(a.save).resolve()}")
     save = Path(a.save)
     if not save.exists() and save.with_name(save.name + ".sav").exists():
