@@ -7,12 +7,13 @@ TEMPORARY heavy multiplayer benchmark for PR #24 (realistic braking lookahead cu
   perf_heavy_mp.py bench --exe <openttd> --save <file.sav> --out <file.json>   dedicated server + 4 clients on it
   perf_heavy_mp.py report --results <dir> [--comment <file.md>]              PR vs main over all bench jobs
 
-The save: a 4096x4096 map with LOOPS signalled double-track loops (two parallel one-way tracks joined by 90 degree
-curves, a station on each track, one-way path signals every few tiles), each with TRAINS_PER_LOOP realistic-braking trains
-sharing orders: about 8000 trains. It is made once (with the main build) and every bench job loads it.
+The save: a 2048x2048 map with LINES straight single-track lines of LINE_LENGTH tiles, without signals, between two
+terminus stations, with a waypoint every WAYPOINT_STEP tiles and one realistic-braking shuttle train each: every train
+reserves to its far station, so its lookahead holds the waypoints (station items) of the line ahead. It is made once
+(with the main build) and every bench job loads it.
 
 A bench job starts a dedicated server on the save and 4 headless clients (spectators: every instance simulates the
-whole game), waits for the game to warm up, then samples the console 'fps' of every instance at fixed intervals:
+whole game) and from the moment all clients joined samples the console 'fps' of every instance at fixed intervals:
 game loop, train ticks and the achieved game speed. The report averages each instance over the jobs of a variant and
 compares the PR with main.
 """
@@ -31,21 +32,22 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-MAP_BITS = 12
-LOOPS = 320
-TRAINS_PER_LOOP = 25
-LOOP_LENGTH = 150
-COL_STEP, ROW_STEP = LOOP_LENGTH + 12, 10
+MAP_BITS = 11
+LINES = 2000
+LINE_LENGTH = 360
+LINE_STEP, ROW_STEP = LINE_LENGTH + 40, 4
+WAYPOINT_STEP = 24
 MARKER = "<!-- perf-heavy-mp -->"
 
 TRACK_X, TRACK_Y, TRACK_UPPER, TRACK_LOWER, TRACK_LEFT, TRACK_RIGHT = range(6)
 DIAGDIR_SE, AXIS_X, SIGTYPE_PATH_ONEWAY = 1, 0, 5
 RAILTYPE_RAIL, NEW_STATION, INVALID_CARGO = 0, 0xFFFD, 0xFF
+STAT_CLASS_WAYP, INVALID_STATION = 1, 0xFFFF
 
 CONFIG = {
     "game_creation": {"map_x": MAP_BITS, "map_y": MAP_BITS, "starting_year": 1990, "landscape": "temperate",
-                      "water_borders": 0},
-    "difficulty": {"terrain_type": 0, "quantity_sea_lakes": 0, "number_towns": 0, "industry_density": 0,
+                      "water_borders": 0, "custom_town_number": 1},
+    "difficulty": {"terrain_type": 0, "quantity_sea_lakes": 0, "number_towns": 4, "industry_density": 0,
                    "max_no_competitors": 0, "vehicle_breakdowns": 0},
     "pf": {"forbid_90_deg": "false"},
     "network": {"max_clients": 16, "pause_on_join": "false"},
@@ -90,7 +92,7 @@ def cmd_prepare(a) -> int:
     root = Path(a.root).resolve()
     t_start = time.monotonic()
     with Instance("prepare", mode="headless", lockstep=True, root=root, exe=Path(a.exe).resolve(), config=config,
-                  resolution=(320, 240)) as inst:
+                  resolution=(640, 480)) as inst:
         inst.start("-g", "-G", "777", wait=600)
         b = inst.bridge
         b.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=600, what="game start")
@@ -105,84 +107,86 @@ def cmd_prepare(a) -> int:
         locos = sorted((e for e in engines if not e.get("wagon")), key=lambda e: e["max_speed"])
         wagon = next(e for e in engines if e.get("wagon") and e["cargo_label"] == "PASS")["id"]
         loco_choices = [locos[-1]["id"], locos[len(locos) // 2]["id"], locos[-2]["id"]]
-        cols = (size - 32) // COL_STEP
         towns = [(xy % size, xy // size) for xy in (b.obj("town", t, "xy")["xy"] for t in b.objs("town"))]
+        cols = (size - 16) // LINE_STEP
 
-        def clear_of_towns(ox: int, oy: int) -> bool:
+        def clear_of_towns(x0: int, y: int) -> bool:
             # Town authorities refuse stations once clearing the land has spoilt their rating.
-            return all(not (ox - 24 <= tx <= ox + LOOP_LENGTH + 24 and oy - 24 <= ty <= oy + 28) for tx, ty in towns)
+            return all(not (x0 - 10 <= tx <= x0 + LINE_LENGTH + 10 and y - 10 <= ty <= y + 10) for tx, ty in towns)
 
-        sites = (((16 + (i % cols) * COL_STEP, 16 + (i // cols) * ROW_STEP)) for i in range(cols * ((size - 32) // ROW_STEP)))
-        sites = [p for p in sites if clear_of_towns(*p)]
-        trains = 0
-        n = 0
-        skipped = 0
-        for ox, oy in sites:
-            if n >= a.loops:
-                break
-            ya, yb, xs, xe = oy, oy + 3, ox, ox + LOOP_LENGTH
-            sa, sb = xs + 10, xe - 15
-            depot = tile(xs + 2, ya - 1)
-            # Land: clear and level (with game ticks in between so the landscaping allowance refills).
+        trains = waypoints = 0
+        n = skipped = 0
+        row = 0
+        while n < a.lines:
+            y = 8 + row * ROW_STEP
+            if y + 4 >= size:
+                raise RuntimeError(f"room for only {n} lines ({skipped} sites skipped)")
+            row += 1
+            # Land for the whole row: clear, level, then one level up so nothing sits at sea level and floods.
             b.step(4)
-            run_batch(b, [docmd("ClearArea", tile(xe + 3, yb + 2), tile(xs - 3, ya - 2), False),
-                          docmd("LevelLand", tile(xe + 3, yb + 2), tile(xs - 3, ya - 2), False, 0)], f"loop {n} land", check=False)
+            run_batch(b, [docmd("ClearArea", tile(size - 8, y + 1), tile(8, y - 2), False),
+                          docmd("LevelLand", tile(size - 8, y + 1), tile(8, y - 2), False, 0)], "row land", check=False)
             b.step(4)
-            # One level up, so no loop sits at sea level where it could flood.
-            run_batch(b, [docmd("LevelLand", tile(xe + 3, yb + 2), tile(xs - 3, ya - 2), False, 2)], f"loop {n} raise", check=False)
-            lines = [docmd("BuildRailStation", tile(sa, ya), RAILTYPE_RAIL, AXIS_X, 1, 5, 0, 0, NEW_STATION, False),
-                     docmd("BuildRailStation", tile(sb, yb), RAILTYPE_RAIL, AXIS_X, 1, 5, 0, 0, NEW_STATION, False)]
-            for x0, x1, y in ((xs, sa - 1, ya), (sa + 5, xe, ya), (xs, sb - 1, yb), (sb + 5, xe, yb)):
-                lines.append(docmd("BuildRailroadTrack", tile(x1, y), tile(x0, y), RAILTYPE_RAIL, TRACK_X, 0, True))
-            for y, track in ((ya, TRACK_RIGHT), (ya + 1, TRACK_Y), (ya + 2, TRACK_Y), (yb, TRACK_UPPER)):
-                lines.append(docmd("BuildSingleRail", tile(xe + 1, y), RAILTYPE_RAIL, track, 0))
-            for y, track in ((yb, TRACK_LEFT), (ya + 1, TRACK_Y), (ya + 2, TRACK_Y), (ya, TRACK_LOWER)):
-                lines.append(docmd("BuildSingleRail", tile(xs - 1, y), RAILTYPE_RAIL, track, 0))
-            lines.append(docmd("BuildTrainDepot", depot, RAILTYPE_RAIL, DIAGDIR_SE))
-            lines.append(docmd("BuildSingleRail", tile(xs + 2, ya), RAILTYPE_RAIL, TRACK_LEFT, 0))
-            # Rivers, water or anything else left on the land: test-run the track and use the next site instead.
-            tests = run_batch(b, [line.replace("docmd ", "docmd test ", 1) for line in lines], "test", check=False)
-            if not all(isinstance(t, dict) and t.get("success") for t in tests):
-                skipped += 1
-                continue
-            # One-way path signals facing the direction of travel (dragged along it).
-            for x0, x1, y in ((xs + 4, sa - 1, ya), (sa + 5, xe, ya), (xe, sb + 5, yb), (sb - 1, xs, yb)):
-                lines.append(docmd("BuildSignalTrack", tile(x0, y), tile(x1, y), TRACK_X, SIGTYPE_PATH_ONEWAY, 0, 0, False, 0, 3))
-            res = run_batch(b, lines, f"loop {n} track", check=False)
-            failed = [(line, r) for line, r in zip(lines, res) if not (isinstance(r, dict) and r.get("success"))]
-            if failed or "station" not in res[0] or "station" not in res[1]:
-                # Something the test run could not see: leave the half-built loop without trains, use the next site.
-                print(f"site ({ox}, {oy}) skipped: {failed[:1]}", flush=True)
-                skipped += 1
-                continue
-            st_a, st_b = res[0]["station"], res[1]["station"]
-
-            # A template train, then clones sharing its orders.
-            loco = loco_choices[n % len(loco_choices)]
-            first = int(run_batch(b, [docmd("BuildVehicle", depot, loco, False, INVALID_CARGO, 0)], "loco")[0]["result_data"])
-            wagons = [int(r["result_data"]) for r in run_batch(
-                b, [docmd("BuildVehicle", depot, wagon, False, INVALID_CARGO, 0)] * 3, "wagons")]
-            run_batch(b, [docmd("MoveRailVehicle", 0, w, first, 0) for w in wagons]
-                      + [f"order {first} station {st_a}", f"order {first} station {st_b}"], "template")
-            clones = [int(r["result_data"]) for r in run_batch(
-                b, [docmd("CloneVehicle", depot, first, True)] * (a.per_loop - 1), "clones")]
-            run_batch(b, [docmd("StartStopVehicle", 0, v, False) for v in [first] + clones], "start")
-            trains += a.per_loop
-            n += 1
-            if n % 20 == 0:
-                b.step(74)   # let the trains leave their depots
-                print(f"{n}/{a.loops} loops ({skipped} sites skipped), {trains} trains, {time.monotonic() - t_start:.0f}s", flush=True)
-        if n < a.loops:
-            raise RuntimeError(f"room for only {n} loops ({skipped} sites skipped)")
-        b.step(74 * 60)      # two months: every train out of its depot and running
+            run_batch(b, [docmd("LevelLand", tile(size - 8, y + 1), tile(8, y - 2), False, 2)], "row raise", check=False)
+            for c in range(cols):
+                if n >= a.lines:
+                    break
+                x0 = 8 + c * LINE_STEP
+                x1 = x0 + LINE_LENGTH - 1
+                if not clear_of_towns(x0, y):
+                    skipped += 1
+                    continue
+                depot = tile(x0 + 6, y - 1)
+                # Terminus stations (4 tiles) at both ends, one straight track between, a depot off its west end.
+                track = [docmd("BuildRailStation", tile(x0, y), RAILTYPE_RAIL, AXIS_X, 1, 4, 0, 0, NEW_STATION, False),
+                         docmd("BuildRailStation", tile(x1 - 3, y), RAILTYPE_RAIL, AXIS_X, 1, 4, 0, 0, NEW_STATION, False),
+                         docmd("BuildRailroadTrack", tile(x1 - 4, y), tile(x0 + 4, y), RAILTYPE_RAIL, TRACK_X, 0, True),
+                         docmd("BuildTrainDepot", depot, RAILTYPE_RAIL, DIAGDIR_SE)]
+                tests = run_batch(b, [line.replace("docmd ", "docmd test ", 1) for line in track], "test", check=False)
+                if not all(isinstance(t, dict) and t.get("success") for t in tests):
+                    if skipped < 400:
+                        bad = next(t for t in tests if not (isinstance(t, dict) and t.get("success")))
+                        print(f"site ({x0}, {y}) test failed: {bad.get('command')}: {bad.get('error')}", flush=True)
+                    skipped += 1
+                    continue
+                # Waypoints along the line: station items in every train's lookahead, passed without stopping.
+                track += [docmd("BuildSingleRail", tile(x0 + 6, y), RAILTYPE_RAIL, TRACK_LEFT, 0)]
+                track += [docmd("BuildRailWaypoint", tile(x, y), AXIS_X, 1, 1, STAT_CLASS_WAYP, 0, INVALID_STATION, False)
+                          for x in range(x0 + 4 + WAYPOINT_STEP, x1 - 4 - 8, WAYPOINT_STEP)]
+                res = run_batch(b, track, "line", check=False)
+                failed = [(line, r) for line, r in zip(track, res) if not (isinstance(r, dict) and r.get("success"))]
+                if failed:
+                    print(f"line at ({x0}, {y}) skipped: {failed[:1]}", flush=True)
+                    skipped += 1
+                    continue
+                waypoints += len(track) - 5
+                st_a, st_b = res[0]["station"], res[1]["station"]
+                loco = loco_choices[n % len(loco_choices)]
+                first = int(run_batch(b, [docmd("BuildVehicle", depot, loco, False, INVALID_CARGO, 0)], "loco")[0]["result_data"])
+                wagons = [int(r["result_data"]) for r in run_batch(
+                    b, [docmd("BuildVehicle", depot, wagon, False, INVALID_CARGO, 0)] * 3, "wagons")]
+                run_batch(b, [docmd("MoveRailVehicle", 0, w, first, 0) for w in wagons]
+                          + [f"order {first} station {st_a}", f"order {first} station {st_b}",
+                             docmd("StartStopVehicle", 0, first, False)], "train")
+                trains += 1
+                n += 1
+                if n % 200 == 0:
+                    print(f"{n}/{a.lines} lines ({skipped} sites skipped), {time.monotonic() - t_start:.0f}s", flush=True)
+        b.step(74 * 20)      # twenty days: every train out of its depot and running
         vehicles = len(b.objs("vehicle"))
         if vehicles < trains:
             raise RuntimeError(f"only {vehicles} of {trains} trains left before saving")
+        sample = [b.lookahead(t) for t in b.objs("vehicle")[:200]]
+        lists = [len(la["items"]) for la in sample if la]
         b.console(f"save {Path(a.save).resolve()}")
     save = Path(a.save)
     if not save.exists() and save.with_name(save.name + ".sav").exists():
         save.with_name(save.name + ".sav").rename(save)
-    info = {"loops": n, "skipped_sites": skipped, "trains": trains, "primary_vehicles": vehicles, "map": f"{size}x{size}",
+    info = {"layout": f"{n} straight single-track lines of {LINE_LENGTH} tiles without signals between two terminus "
+                      f"stations, a waypoint every {WAYPOINT_STEP} tiles ({waypoints} waypoints), one shuttle train each",
+            "lines": n, "skipped_sites": skipped, "trains": trains, "primary_vehicles": vehicles, "map": f"{size}x{size}",
+            "lookahead_items_avg": round(statistics.mean(lists), 1) if lists else None,
+            "lookahead_items_max": max(lists) if lists else None,
             "prepare_seconds": round(time.monotonic() - t_start), "save_mb": round(save.stat().st_size / 1e6, 1)}
     print(json.dumps(info), flush=True)
     Path(a.info).write_text(json.dumps(info), encoding="utf-8")
@@ -256,11 +260,12 @@ def cmd_report(a) -> int:
         return f"{m:.3f} ({min(vals):.3f}…{max(vals):.3f})"
 
     lines = [MARKER, "## Heavy multiplayer benchmark: realistic braking lookahead cutoff (temporary)", "",
-             f"Save: {info.get('map', '4096x4096')} map, {info.get('loops', '?')} signalled double-track loops, "
-             f"{info.get('trains', '?')} realistic-braking trains ({info.get('primary_vehicles', '?')} vehicles incl. "
-             "wagons), made once with the main build. Each job: dedicated server + 4 spectator clients on one runner, "
-             f"{a.warmup}s warm-up, then `fps` sampled every {a.interval}s for {a.measure}s on every instance "
-             "(512-tick averages). "
+             f"Save (artifact `heavy-save` of the run): {info.get('map', '?')} map, {info.get('layout', '?')}: "
+             f"{info.get('trains', '?')} realistic-braking trains, made once with the main build. Lookahead items per "
+             f"train when saved: {info.get('lookahead_items_avg', '?')} on average, up to {info.get('lookahead_items_max', '?')}. "
+             "Each job loads the save on a dedicated server with 4 spectator clients on one runner and, "
+             + (f"after a {a.warmup}s warm-up, " if a.warmup else "as soon as every client has joined, ")
+             + f"samples `fps` every {a.interval}s for {a.measure}s on every instance (512-tick averages). "
              f"{len(jobs['main'])} jobs ran main, {len(jobs['pr'])} jobs ran the PR, each on its own runner; values are the "
              "mean over the jobs of a variant with the per-job range in brackets. Lower is better for ms, higher for fps.",
              "", "| Instance | Metric | main | PR | PR − main | % |", "|---|---|---:|---:|---:|---:|"]
@@ -280,7 +285,9 @@ def cmd_report(a) -> int:
             d = statistics.mean(p) - statistics.mean(m)
             lines.append(f"| **all instances** | {label} | {fmt(m)} | {fmt(p)} | {d:+.3f} | {d / statistics.mean(m) * 100:+.1f}% |")
     tps = {v: [j.get("server_ticks_per_second") for j in jobs[v] if j.get("server_ticks_per_second")] for v in jobs}
+    start = {v: [j.get("start_seconds") for j in jobs[v] if j.get("start_seconds") is not None] for v in jobs}
     lines += ["", f"Server ticks per second: main {fmt(tps['main'])}, PR {fmt(tps['pr'])}.",
+              f"Server load + 4 client joins before measuring (s): main {fmt(start['main'])}, PR {fmt(start['pr'])}.",
               f"Problems (desync/disconnect): main {sum(len(j.get('problems', [])) for j in jobs['main'])}, "
               f"PR {sum(len(j.get('problems', [])) for j in jobs['pr'])}."]
     text = "\n".join(lines) + "\n"
@@ -298,9 +305,8 @@ def main() -> int:
     p.add_argument("--save", required=True)
     p.add_argument("--info", default="save_info.json")
     p.add_argument("--root", default="perf_runs")
-    p.add_argument("--loops", type=int, default=LOOPS)
+    p.add_argument("--lines", type=int, default=LINES)
     p.add_argument("--map-bits", type=int, default=MAP_BITS)
-    p.add_argument("--per-loop", type=int, default=TRAINS_PER_LOOP)
     bn = sub.add_parser("bench")
     bn.add_argument("--exe", required=True)
     bn.add_argument("--save", required=True)

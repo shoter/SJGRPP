@@ -3,10 +3,11 @@ name: Perf heavy MP
 # TEMPORARY, on a draft PR that is never merged: heavy multiplayer benchmark of PR #24 (realistic braking lookahead
 # cutoff) against main. The commits compared are pinned below, so the result does not depend on this branch.
 # 1. Build main and the PR (two parallel jobs, same flags).
-# 2. Make one save with main's build: 4096x4096 map, ~8000 realistic-braking trains on signalled loops
-#    (utils/debug_harness/perf_heavy_mp.py prepare).
-# 3. Eight bench jobs, 4 per variant, each on its own runner: dedicated server + 4 clients on the save, tick times of
-#    every instance sampled from the console 'fps'.
+# 2. Make one save with main's build: 2048x2048 map, 2000 realistic-braking trains, each shuttling on its own long
+#    unsignalled line with waypoints (utils/debug_harness/perf_heavy_mp.py prepare). The save is kept as the artifact
+#    heavy-save for 14 days.
+# 3. Eight bench jobs, 4 per variant, each on its own runner: dedicated server + 4 clients load the save; from the
+#    moment every client joined, the first 10 minutes are measured: tick times of every instance from the console 'fps'.
 # 4. Report: per instance mean over the 4 jobs of each variant, PR vs main, in the run summary and one PR comment.
 
 on:
@@ -115,7 +116,7 @@ jobs:
       with:
         name: heavy-save
         path: save/
-        retention-days: 3
+        retention-days: 14
 
   bench:
     name: Bench ${{ matrix.variant }} ${{ matrix.run }}
@@ -162,7 +163,7 @@ jobs:
       run: |
         python utils/debug_harness/perf_heavy_mp.py bench --exe bin/build/openttd --save "$PWD/save/heavy.sav" \
           --out "results/bench_${{ matrix.variant }}_${{ matrix.run }}.json" --root runs --clients 4 \
-          --warmup 180 --measure 600 --interval 20
+          --warmup 0 --measure 600 --interval 20
         cp save/save_info.json results/
 
     - name: Upload results
@@ -199,7 +200,7 @@ jobs:
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         python3 utils/debug_harness/perf_heavy_mp.py report --results results --comment perf.md \
-          --warmup 180 --measure 600 --interval 20
+          --warmup 0 --measure 600 --interval 20
         echo "" >> perf.md
         echo "[Workflow run]($RUN_URL) · PR ${PR_SHA:0:10} vs main ${MAIN_SHA:0:10}" >> perf.md
         cat perf.md >> "$GITHUB_STEP_SUMMARY"
