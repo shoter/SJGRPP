@@ -46,7 +46,8 @@ STAT_CLASS_WAYP, INVALID_STATION = 1, 0xFFFF
 
 CONFIG = {
     "game_creation": {"map_x": MAP_BITS, "map_y": MAP_BITS, "starting_year": 1990, "landscape": "temperate",
-                      "water_borders": 0, "custom_town_number": 1},
+                      "water_borders": 0, "custom_town_number": 1,
+                      "amount_of_rivers": 0},
     "difficulty": {"terrain_type": 0, "quantity_sea_lakes": 0, "number_towns": 4, "industry_density": 0,
                    "max_no_competitors": 0, "vehicle_breakdowns": 0},
     "pf": {"forbid_90_deg": "false"},
@@ -115,28 +116,31 @@ def cmd_prepare(a) -> int:
             return all(not (x0 - 10 <= tx <= x0 + LINE_LENGTH + 10 and y - 10 <= ty <= y + 10) for tx, ty in towns)
 
         trains = waypoints = 0
+        skip_reasons: dict[str, int] = {}
         n = skipped = 0
         row = 0
         while n < a.lines:
             y = 8 + row * ROW_STEP
             if y + 4 >= size:
-                raise RuntimeError(f"room for only {n} lines ({skipped} sites skipped)")
+                raise RuntimeError(f"room for only {n} lines ({skipped} sites skipped: {skip_reasons})")
             row += 1
-            # Land for the whole row: clear, level, then one level up so nothing sits at sea level and floods.
-            b.step(4)
-            run_batch(b, [docmd("ClearArea", tile(size - 8, y + 1), tile(8, y - 2), False),
-                          docmd("LevelLand", tile(size - 8, y + 1), tile(8, y - 2), False, 0)], "row land", check=False)
-            b.step(4)
-            run_batch(b, [docmd("LevelLand", tile(size - 8, y + 1), tile(8, y - 2), False, 2)], "row raise", check=False)
             for c in range(cols):
                 if n >= a.lines:
                     break
                 x0 = 8 + c * LINE_STEP
                 x1 = x0 + LINE_LENGTH - 1
                 if not clear_of_towns(x0, y):
+                    skip_reasons["near the town"] = skip_reasons.get("near the town", 0) + 1
                     skipped += 1
                     continue
                 depot = tile(x0 + 6, y - 1)
+                # Land: clear, level, then one level up so nothing sits at sea level and floods (with game ticks in
+                # between so the landscaping allowance refills).
+                b.step(4)
+                run_batch(b, [docmd("ClearArea", tile(x1 + 2, y + 1), tile(x0 - 2, y - 2), False),
+                              docmd("LevelLand", tile(x1 + 2, y + 1), tile(x0 - 2, y - 2), False, 0)], "land", check=False)
+                b.step(4)
+                run_batch(b, [docmd("LevelLand", tile(x1 + 2, y + 1), tile(x0 - 2, y - 2), False, 2)], "raise", check=False)
                 # Terminus stations (4 tiles) at both ends, one straight track between, a depot off its west end.
                 track = [docmd("BuildRailStation", tile(x0, y), RAILTYPE_RAIL, AXIS_X, 1, 4, 0, 0, NEW_STATION, False),
                          docmd("BuildRailStation", tile(x1 - 3, y), RAILTYPE_RAIL, AXIS_X, 1, 4, 0, 0, NEW_STATION, False),
@@ -144,9 +148,9 @@ def cmd_prepare(a) -> int:
                          docmd("BuildTrainDepot", depot, RAILTYPE_RAIL, DIAGDIR_SE)]
                 tests = run_batch(b, [line.replace("docmd ", "docmd test ", 1) for line in track], "test", check=False)
                 if not all(isinstance(t, dict) and t.get("success") for t in tests):
-                    if skipped < 400:
-                        bad = next(t for t in tests if not (isinstance(t, dict) and t.get("success")))
-                        print(f"site ({x0}, {y}) test failed: {bad.get('command')}: {bad.get('error')}", flush=True)
+                    bad = next(t for t in tests if not (isinstance(t, dict) and t.get("success")))
+                    reason = f"{bad.get('command')}: {bad.get('error')}"
+                    skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
                     skipped += 1
                     continue
                 # Waypoints along the line: station items in every train's lookahead, passed without stopping.
@@ -156,7 +160,8 @@ def cmd_prepare(a) -> int:
                 res = run_batch(b, track, "line", check=False)
                 failed = [(line, r) for line, r in zip(track, res) if not (isinstance(r, dict) and r.get("success"))]
                 if failed:
-                    print(f"line at ({x0}, {y}) skipped: {failed[:1]}", flush=True)
+                    reason = f"{failed[0][1].get('command')}: {failed[0][1].get('error')}" if isinstance(failed[0][1], dict) else "?"
+                    skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
                     skipped += 1
                     continue
                 waypoints += len(track) - 5
@@ -184,7 +189,7 @@ def cmd_prepare(a) -> int:
         save.with_name(save.name + ".sav").rename(save)
     info = {"layout": f"{n} straight single-track lines of {LINE_LENGTH} tiles without signals between two terminus "
                       f"stations, a waypoint every {WAYPOINT_STEP} tiles ({waypoints} waypoints), one shuttle train each",
-            "lines": n, "skipped_sites": skipped, "trains": trains, "primary_vehicles": vehicles, "map": f"{size}x{size}",
+            "lines": n, "skipped_sites": skipped, "skip_reasons": skip_reasons, "trains": trains, "primary_vehicles": vehicles, "map": f"{size}x{size}",
             "lookahead_items_avg": round(statistics.mean(lists), 1) if lists else None,
             "lookahead_items_max": max(lists) if lists else None,
             "prepare_seconds": round(time.monotonic() - t_start), "save_mb": round(save.stat().st_size / 1e6, 1)}
