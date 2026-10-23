@@ -243,6 +243,13 @@ def cmd_bench(a) -> int:
                     agg[key] = round(statistics.mean(vals), 3)
             result["instances"][name] = agg
         result["vehicles"] = len(cluster.server.bridge.objs("vehicle"))
+        try:   # builds with the debug bridge 'lookahead' call (the PR)
+            sample = [cluster.server.bridge.lookahead(t) for t in cluster.server.bridge.objs("vehicle")[:300]]
+            lists = [len(la["items"]) for la in sample if la]
+            result["lookahead_items_avg"] = round(statistics.mean(lists), 1) if lists else None
+            result["lookahead_items_max"] = max(lists) if lists else None
+        except Exception:  # noqa: BLE001
+            pass
         result["problems"] = cluster.health()
     finally:
         cluster.stop()
@@ -258,6 +265,11 @@ def cmd_report(a) -> int:
         variant = f.stem.split("_")[1]
         jobs.setdefault(variant, []).append(json.loads(f.read_text(encoding="utf-8")))
     info = next((json.loads(f.read_text(encoding="utf-8")) for f in Path(a.results).rglob("save_info.json")), {})
+    if not info.get("lookahead_items_avg"):
+        avgs = [j["lookahead_items_avg"] for js in jobs.values() for j in js if j.get("lookahead_items_avg")]
+        if avgs:
+            info["lookahead_items_avg"] = round(statistics.mean(avgs), 1)
+            info["lookahead_items_max"] = max(j["lookahead_items_max"] for js in jobs.values() for j in js if j.get("lookahead_items_max"))
     names = sorted({n for js in jobs.values() for j in js for n in j["instances"]}, key=lambda n: (n != "server", n))
 
     def per_job(variant: str, name: str, key: str) -> list[float]:
