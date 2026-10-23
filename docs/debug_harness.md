@@ -131,12 +131,14 @@ ship routes with these (A* over the tile dump, every piece test-run before build
 
 ## Full test
 
-`python utils/debug_harness/full_test.py --profile quick|normal|max-28|sharing [--clients N]`: dedicated server + N headless
+`python utils/debug_harness/full_test.py --profile quick|normal|max-28|sharing|towns [--clients N]`: dedicated server + N headless
 clients, each building all transport types, then the game runs (quick: 3 game months, normal: 2 years, max-28: 28
 companies on 1024x1024 for 2 years, each adding a route every month; sharing: 1 year with infrastructure sharing for
 every transport type and inflation, every client runs a bus on the next client's road route and client1's train runs on
 client2's rail route, the server doubles the price inflation halfway; at each state comparison the fees must equal
-setting x inflation on every instance and fees paid must equal fees received). The server tops up company money monthly.
+setting x inflation on every instance and fees paid must equal fees received; towns: 6 months on 1024x1024 where every
+town is a city at 10x size and each client scatters 100 separate bus stations over the roads of the 3 largest towns, for
+the house tile loop and its nearby station cache). The server tops up company money monthly.
 Checks: crashes/desyncs/disconnects, paused server/client state comparison, game speed and tick times (`fps`),
 memory, command latency, join times, vehicles moving and earning, rejoin/spectator/save churn, save reload. Results in
 `build/harness_runs/full/<run>/` (summary.txt, report.json, perf.csv); `--save-baseline` / `--baseline` compare

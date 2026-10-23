@@ -508,6 +508,23 @@ uint32_t GetWorldPopulation()
 }
 
 /**
+ * Rebuild the nearby station cache from stations_near.
+ */
+void Town::RebuildStationsNearCache() const
+{
+	this->stations_near_cache.clear();
+	this->stations_near_cache.reserve(this->stations_near.size());
+	for (Station *st : this->stations_near) {
+		const TileArea &area = st->catchment_tiles;
+		uint32_t x = area.tile != INVALID_TILE ? TileX(area.tile) : 0;
+		uint32_t y = area.tile != INVALID_TILE ? TileY(area.tile) : 0;
+		this->stations_near_cache.push_back({ x, y, area.w, area.h, st });
+	}
+	this->stations_near_cache_valid = true;
+	this->stations_near_cache_epoch = _station_catchment_area_epoch;
+}
+
+/**
  * Remove stations from nearby station list if a town is no longer in the catchment area of each.
  * To improve performance only checks stations that cover the provided house area (doesn't need to contain an actual house).
  * @param t Town to work on.
@@ -526,6 +543,7 @@ static void RemoveNearbyStations(Town *t, TileIndex tile, BuildingFlags flags)
 
 		if (covers_area && !st->CatchmentCoversTown(t->index)) {
 			it = t->stations_near.erase(it);
+			t->InvalidateStationsNearCache();
 		} else {
 			++it;
 		}
@@ -2860,7 +2878,7 @@ static void MakeTownHouse(TileIndex tile, Town *t, uint8_t counter, uint8_t stag
 
 	if (!_generating_world) {
 		ForAllStationsAroundTiles(TileArea(tile, size.Any(BUILDING_2_TILES_X) ? 2 : 1, size.Any(BUILDING_2_TILES_Y) ? 2 : 1), [t](Station *st, TileIndex tile) {
-			t->stations_near.insert(st);
+			if (t->stations_near.insert(st).second) t->InvalidateStationsNearCache();
 			return true;
 		});
 	}

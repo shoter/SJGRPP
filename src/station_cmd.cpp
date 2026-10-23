@@ -5111,27 +5111,24 @@ CommandCost CmdSetStationCargoAllowedSupply(DoCommandFlags flags, StationID stat
 	return CommandCost();
 }
 
-static void AddNearbyStationsByCatchment(TileIndex tile, StationList &stations, StationList &nearby)
-{
-	for (Station *st : nearby) {
-		if (st->TileIsInCatchment(tile)) stations.insert(st);
-	}
-}
-
 /**
  * Run a tile loop to find stations around a tile, on demand. Cache the result for further requests
- * @return pointer to a StationList containing all stations found
+ * @return list of all stations found, sorted by station index
  */
-const StationList &StationFinder::GetStations()
+const StationFinderList &StationFinder::GetStations()
 {
 	if (this->tile != INVALID_TILE) {
 		if (IsTileType(this->tile, TileType::House)) {
-			/* Town nearby stations need to be filtered per tile. */
+			/* Town nearby stations need to be filtered per tile.
+			 * The cache is sorted by station index, so the result is too. */
 			assert(this->w == 1 && this->h == 1);
-			AddNearbyStationsByCatchment(this->tile, this->stations, Town::GetByTile(this->tile)->stations_near);
+			const TileIndex tile = this->tile;
+			FilterStationNearCache(Town::GetByTile(tile)->GetStationsNearCache(), TileX(tile), TileY(tile),
+					[tile](const Station *st) { return st->TileIsInCatchment(tile); }, this->stations);
 		} else {
 			ForAllStationsAroundTiles(*this, [this](Station *st, TileIndex) {
-				this->stations.insert(st);
+				auto it = std::lower_bound(this->stations.begin(), this->stations.end(), st, StationCompare{});
+				if (it == this->stations.end() || *it != st) this->stations.insert(it, st);
 				return true;
 			});
 		}
@@ -5164,7 +5161,8 @@ static bool CanMoveGoodsToStation(const Station *st, CargoType cargo)
 	return true;
 }
 
-uint MoveGoodsToStation(CargoType cargo, uint amount, Source source, const StationList &all_stations, Owner exclusivity)
+template <typename T>
+static uint MoveGoodsToStationImpl(CargoType cargo, uint amount, Source source, const T &all_stations, Owner exclusivity)
 {
 	/* Return if nothing to do. Also the rounding below fails for 0. */
 	if (all_stations.empty()) return 0;
@@ -5250,6 +5248,16 @@ uint MoveGoodsToStation(CargoType cargo, uint amount, Source source, const Stati
 	}
 
 	return moved;
+}
+
+uint MoveGoodsToStation(CargoType cargo, uint amount, Source source, const StationList &all_stations, Owner exclusivity)
+{
+	return MoveGoodsToStationImpl(cargo, amount, source, all_stations, exclusivity);
+}
+
+uint MoveGoodsToStation(CargoType cargo, uint amount, Source source, const StationFinderList &all_stations, Owner exclusivity)
+{
+	return MoveGoodsToStationImpl(cargo, amount, source, all_stations, exclusivity);
 }
 
 void UpdateStationDockingTiles(Station *st)
