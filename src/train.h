@@ -564,7 +564,17 @@ struct TrainDecelerationStats {
 	const Train *t;
 
 	TrainDecelerationStats(const Train *t, int z_pos);
+
+	/** Stats without a train, for the parts of the braking calculations which only use the deceleration. */
+	TrainDecelerationStats(int deceleration_x2, int uncapped_deceleration_x2, int z_pos)
+			: deceleration_x2(deceleration_x2), uncapped_deceleration_x2(uncapped_deceleration_x2), z_pos(z_pos), t(nullptr) {}
 };
+
+/** Most a speed limit position of a lookahead item can be before the item's start, with a safety margin. */
+static constexpr int LOOKAHEAD_ITEM_POSITION_SLACK = 16;
+
+int64_t GetRealisticBrakingDistanceForSpeed(const TrainDecelerationStats &stats, int start_speed, int end_speed, int z_delta);
+int64_t GetLookAheadItemCutoffPosition(const TrainDecelerationStats &stats, int current_position, int max_speed, int min_item_z, int start_dip);
 
 Train *BuildVirtualRailVehicle(EngineID, StringID &error, ClientID user, bool no_consist_change);
 

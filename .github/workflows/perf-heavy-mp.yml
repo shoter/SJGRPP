@@ -1,0 +1,223 @@
+name: Perf heavy MP
+
+# TEMPORARY, on a draft PR that is never merged: heavy multiplayer benchmark of PR #24 (realistic braking lookahead
+# cutoff) against main. The commits compared are pinned below, so the result does not depend on this branch.
+# 1. Build main and the PR (two parallel jobs, same flags).
+# 2. Make one save with main's build: 2048x2048 map, 2000 realistic-braking trains, each shuttling on its own long
+#    unsignalled line with waypoints (utils/debug_harness/perf_heavy_mp.py prepare). The save is kept as the artifact
+#    heavy-save for 14 days.
+# 3. Eight bench jobs, 4 per variant, each on its own runner: dedicated server + 4 clients load the save; from the
+#    moment every client joined, the first 10 minutes are measured: tick times of every instance from the console 'fps'.
+# 4. Report: per instance mean over the 4 jobs of each variant, PR vs main, in the run summary and one PR comment.
+
+on:
+  pull_request:
+    branches:
+    - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  MAIN_SHA: f24ebf9a410488c73747834fc9c05659fba8f4cf
+  PR_SHA: 9317f9981f1b4b8c9636812ae04ef1161341f0f6
+  PYTHONUNBUFFERED: 1
+
+jobs:
+  build:
+    name: Build ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        variant: [main, pr]
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v7
+      with:
+        ref: ${{ matrix.variant == 'main' && env.MAIN_SHA || env.PR_SHA }}
+
+    - name: Install dependencies
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          ccache cmake ninja-build \
+          libcurl4-openssl-dev libfontconfig-dev libfreetype-dev libharfbuzz-dev libicu-dev \
+          liblzma-dev liblzo2-dev libpng-dev libsdl2-dev libzstd-dev zlib1g-dev
+
+    - name: Restore compiler cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ccache
+        key: perf-heavy-mp-ccache-${{ matrix.variant }}-${{ github.sha }}
+        restore-keys: |
+          perf-heavy-mp-ccache-${{ matrix.variant }}-
+          game-tests-ccache-
+
+    - name: Build
+      run: |
+        git log --oneline -1
+        mv vcpkg.json vcpkg-disabled.json
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DOPTION_USE_ASSERTS=ON \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake --build build --target openttd -j $(nproc)
+        ccache -s
+        tar czf openttd-${{ matrix.variant }}.tgz build/openttd $(cd build && for d in lang ai game baseset scripts; do [ -d "$d" ] && echo "build/$d"; done)
+
+    - name: Upload build
+      uses: actions/upload-artifact@v7
+      with:
+        name: bin-${{ matrix.variant }}
+        path: openttd-${{ matrix.variant }}.tgz
+        retention-days: 3
+
+  prepare:
+    name: Make the heavy save (main build)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      OTTD_CONTENT_DIR: ${{ github.workspace }}/content
+    steps:
+    - name: Checkout (harness scripts)
+      uses: actions/checkout@v7
+
+    - name: Download main build
+      uses: actions/download-artifact@v8
+      with:
+        name: bin-main
+
+    - name: Unpack build and get OpenGFX
+      run: |
+        mkdir -p bin && tar xzf openttd-main.tgz -C bin
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+          libcurl4 libfontconfig1 libfreetype6 libharfbuzz0b liblzo2-2 libsdl2-2.0-0
+        mkdir -p content/baseset
+        curl -sSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d content/baseset
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    - name: Make the save
+      run: |
+        mkdir -p save
+        python utils/debug_harness/perf_heavy_mp.py prepare --exe bin/build/openttd --save "$PWD/save/heavy.sav" \
+          --info save/save_info.json --root runs
+
+    - name: Upload the save
+      uses: actions/upload-artifact@v7
+      with:
+        name: heavy-save
+        path: save/
+        retention-days: 14
+
+  bench:
+    name: Bench ${{ matrix.variant }} ${{ matrix.run }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [main, pr]
+        run: [1, 2, 3, 4]
+    env:
+      OTTD_CONTENT_DIR: ${{ github.workspace }}/content
+    steps:
+    - name: Checkout (harness scripts)
+      uses: actions/checkout@v7
+
+    - name: Download build
+      uses: actions/download-artifact@v8
+      with:
+        name: bin-${{ matrix.variant }}
+
+    - name: Download the save
+      uses: actions/download-artifact@v8
+      with:
+        name: heavy-save
+        path: save
+
+    - name: Unpack build and get OpenGFX
+      run: |
+        mkdir -p bin && tar xzf openttd-${{ matrix.variant }}.tgz -C bin
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+          libcurl4 libfontconfig1 libfreetype6 libharfbuzz0b liblzo2-2 libsdl2-2.0-0
+        mkdir -p content/baseset
+        curl -sSL https://cdn.openttd.org/opengfx-releases/7.1/opengfx-7.1-all.zip -o opengfx.zip
+        unzip -q opengfx.zip -d content/baseset
+        nproc; free -g
+
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+
+    - name: Server + 4 clients
+      run: |
+        python utils/debug_harness/perf_heavy_mp.py bench --exe bin/build/openttd --save "$PWD/save/heavy.sav" \
+          --out "results/bench_${{ matrix.variant }}_${{ matrix.run }}.json" --root runs --clients 4 \
+          --warmup 0 --measure 600 --interval 20
+        cp save/save_info.json results/
+
+    - name: Upload results
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: bench-${{ matrix.variant }}-${{ matrix.run }}
+        path: |
+          results/*.json
+          runs/**/stderr.log
+        if-no-files-found: warn
+        retention-days: 14
+
+  report:
+    name: Report
+    needs: bench
+    if: always() && needs.bench.result != 'skipped' 
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Download results
+      uses: actions/download-artifact@v8
+      with:
+        pattern: bench-*
+        path: results
+
+    - name: Compare
+      env:
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        python3 utils/debug_harness/perf_heavy_mp.py report --results results --comment perf.md \
+          --warmup 0 --measure 600 --interval 20
+        echo "" >> perf.md
+        echo "[Workflow run]($RUN_URL) · PR ${PR_SHA:0:10} vs main ${MAIN_SHA:0:10}" >> perf.md
+        cat perf.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment on PR
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const { owner, repo } = context.repo;
+          const issue_number = context.issue.number;
+          const marker = '<!-- perf-heavy-mp -->';
+          const body = fs.readFileSync('perf.md', 'utf8');
+          const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+          const existing = comments.find(c => c.body && c.body.startsWith(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ owner, repo, issue_number, body });
+          }

@@ -904,7 +904,7 @@ TrainDecelerationStats::TrainDecelerationStats(const Train *t, int z_pos)
 	this->t = t;
 }
 
-static int64_t GetRealisticBrakingDistanceForSpeed(const TrainDecelerationStats &stats, int start_speed, int end_speed, int z_delta)
+int64_t GetRealisticBrakingDistanceForSpeed(const TrainDecelerationStats &stats, int start_speed, int end_speed, int z_delta)
 {
 	/* v^2 = u^2 + 2as */
 
@@ -1065,6 +1065,62 @@ static void ApplyLookAheadItem(const Train *v, const TrainReservationLookAheadIt
 	}
 }
 
+/**
+ * Get the position beyond which the lookahead items can no longer lower the speed limits.
+ *
+ * Every speed limit which ApplyLookAheadItem applies for an item is at a position no more than
+ * LOOKAHEAD_ITEM_POSITION_SLACK before the item's start (the lowest is a station stop location, which can be
+ * 1 before the start), has an end speed of at least 0 and a z of at least the lowest item z.
+ * The speed it lowers (max_speed or advisory_max_speed) is never above max_speed, and both only go down.
+ * The braking distance only grows with a higher start speed, a lower end speed and a lower z, so no such limit
+ * can lower the speed when its position is further away than the braking distance from max_speed to 0 at the lowest z.
+ * Items can start before earlier items by up to start_dip, so once an item starts beyond the returned position,
+ * neither it nor any later item can change either speed.
+ * @param stats Deceleration stats of the train.
+ * @param current_position Current position of the train on the reservation.
+ * @param max_speed Current max speed, at least the current advisory max speed.
+ * @param min_item_z Lowest z of any remaining item.
+ * @param start_dip Largest amount by which an item starts before an earlier item.
+ * @return Items starting after this position, and all items after them, can be skipped.
+ */
+int64_t GetLookAheadItemCutoffPosition(const TrainDecelerationStats &stats, int current_position, int max_speed, int min_item_z, int start_dip)
+{
+	int64_t distance = GetRealisticBrakingDistanceForSpeed(stats, max_speed, 0, min_item_z - stats.z_pos);
+	return (int64_t)current_position + distance + start_dip + LOOKAHEAD_ITEM_POSITION_SLACK;
+}
+
+/**
+ * Apply the speed limits of all lookahead items to max_speed and advisory_max_speed.
+ * @param use_cutoff Stop at the first item from which on no item can lower either speed, see GetLookAheadItemCutoffPosition.
+ */
+static void ApplyLookAheadItems(const Train *v, int &max_speed, int &advisory_max_speed, const TrainDecelerationStats &stats, bool use_cutoff)
+{
+	TrainReservationLookAhead &lookahead = *v->lookahead;
+	VehicleOrderID current_order_index = v->cur_real_order_index;
+	const Order *order = &(v->current_order);
+	StationID last_station_visited = v->last_station_visited;
+	const int current_position = lookahead.current_position;
+
+	if (!use_cutoff) {
+		for (const TrainReservationLookAheadItem &item : lookahead.items) {
+			ApplyLookAheadItem(v, item, max_speed, advisory_max_speed, current_order_index, order, last_station_visited, stats, current_position);
+		}
+		return;
+	}
+
+	lookahead.UpdateItemsBounds();
+	int cutoff_speed = -1;
+	int64_t cutoff_position = 0;
+	for (const TrainReservationLookAheadItem &item : lookahead.items) {
+		if (max_speed != cutoff_speed) {
+			cutoff_speed = max_speed;
+			cutoff_position = GetLookAheadItemCutoffPosition(stats, current_position, max_speed, lookahead.items_min_z, lookahead.items_start_dip);
+		}
+		if (item.start > cutoff_position) break;
+		ApplyLookAheadItem(v, item, max_speed, advisory_max_speed, current_order_index, order, last_station_visited, stats, current_position);
+	}
+}
+
 static void AdvanceLookAheadPosition(Train *v)
 {
 	v->lookahead->current_position++;
@@ -1090,6 +1146,7 @@ static void AdvanceLookAheadPosition(Train *v)
 		for (TrainReservationLookAheadCurve &curve : v->lookahead->curves) {
 			curve.position -= old_position;
 		}
+		v->lookahead->InvalidateItemsBounds();
 	}
 
 	while (!v->lookahead->items.empty() && v->lookahead->items.front().end < v->lookahead->current_position) {
@@ -1105,6 +1162,7 @@ static void AdvanceLookAheadPosition(Train *v)
 			if (v->lookahead->items.front().end >= trim_position) break;
 		}
 		v->lookahead->items.pop_front();
+		v->lookahead->InvalidateItemsBounds();
 	}
 
 	if (v->lookahead->current_position == v->lookahead->next_extend_position) {
@@ -1219,11 +1277,19 @@ Train::MaxSpeedInfo Train::GetCurrentMaxSpeedInfoInternal(bool update_state) con
 						0, this->lookahead->reservation_end_z - stats.z_pos);
 			}
 			advisory_max_speed = std::min(advisory_max_speed, max_speed);
-			VehicleOrderID current_order_index = this->cur_real_order_index;
-			const Order *order = &(this->current_order);
-			StationID last_station_visited = this->last_station_visited;
-			for (const TrainReservationLookAheadItem &item : this->lookahead->items) {
-				ApplyLookAheadItem(this, item, max_speed, advisory_max_speed, current_order_index, order, last_station_visited, stats, this->lookahead->current_position);
+			const int full_max_speed_in = max_speed;
+			const int full_advisory_max_speed_in = advisory_max_speed;
+			ApplyLookAheadItems(this, max_speed, advisory_max_speed, stats, true);
+			if (HasChickenBit(DCBF_CHECK_RL_LOOKAHEAD_CUTOFF)) {
+				/* Check that stopping at the cutoff gives the same result as applying all items */
+				int full_max_speed = full_max_speed_in;
+				int full_advisory_max_speed = full_advisory_max_speed_in;
+				ApplyLookAheadItems(this, full_max_speed, full_advisory_max_speed, stats, false);
+				if (full_max_speed != max_speed || full_advisory_max_speed != advisory_max_speed) {
+					Debug(misc, 0, "Realistic braking lookahead cutoff mismatch: train {} (unit {}), max speed {} (all items: {}), advisory max speed {} (all items: {}), items: {}",
+							this->index, this->unitnumber, max_speed, full_max_speed, advisory_max_speed, full_advisory_max_speed, this->lookahead->items.size());
+					assert_msg(false, "Realistic braking lookahead cutoff mismatch: train {}", this->index);
+				}
 			}
 			if (this->lookahead->flags.Test(TrainReservationLookAheadFlag::ApplyAdvisory)) {
 				max_speed = std::min(max_speed, advisory_max_speed);

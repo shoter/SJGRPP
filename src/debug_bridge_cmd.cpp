@@ -319,6 +319,8 @@ bool DebugBridgeBuildOrder(const std::vector<std::string> &args, size_t first, D
 		if (v->IsGroundVehicle()) non_stop = ONSF_NO_STOP_AT_ANY_STATION;
 	} else if (kind == "depot") {
 		order.MakeGoToDepot(static_cast<DepotID>(dest_value), OrderDepotTypeFlags{OrderDepotTypeFlag::PartOfOrders}, non_stop);
+	} else if (kind == "conditional") {
+		order.MakeConditional(static_cast<VehicleOrderID>(dest_value));
 	} else {
 		error = fmt::format("unknown order kind '{}'", kind);
 		return false;
@@ -347,7 +349,7 @@ bool DebugBridgeBuildOrder(const std::vector<std::string> &args, size_t first, D
 			return false;
 		}
 	}
-	order.SetNonStopType(non_stop);
+	if (!order.IsType(OT_CONDITIONAL)) order.SetNonStopType(non_stop);
 
 	InsertOrderCmdData payload(v->index, INVALID_VEH_ORDER_ID, order);
 	out = DynBaseCommandContainer(Commands::InsertOrder, STR_NULL, v->tile, payload.Clone());
