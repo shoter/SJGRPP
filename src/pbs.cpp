@@ -887,6 +887,26 @@ void TrainReservationLookAhead::SetNextExtendPosition()
 	this->next_extend_position = this->current_position;
 }
 
+/**
+ * Recalculate items_min_z and items_start_dip from the current items, if they are not up to date.
+ */
+void TrainReservationLookAhead::UpdateItemsBounds()
+{
+	if (this->items_bounds_valid) return;
+
+	int16_t min_z = INT16_MAX;
+	int32_t max_start = INT32_MIN;
+	int32_t dip = 0;
+	for (const TrainReservationLookAheadItem &item : this->items) {
+		min_z = std::min(min_z, item.z_pos);
+		if (item.start < max_start) dip = std::max(dip, max_start - item.start);
+		max_start = std::max(max_start, item.start);
+	}
+	this->items_min_z = min_z;
+	this->items_start_dip = dip;
+	this->items_bounds_valid = true;
+}
+
 bool ValidateLookAhead(const Train *v)
 {
 	TileIndex tile = v->lookahead->reservation_end_tile;
@@ -1055,6 +1075,7 @@ static int ScanTrainPositionForLookAheadStation(Train *moving_front, TileIndex s
 				lookahead.AddStation(forward_length - 1, current, z);
 				lookahead.items.back().start -= offset + (reverse_length * TILE_SIZE);
 				lookahead.items.back().end -= offset;
+				lookahead.InvalidateItemsBounds();
 
 				prev = current;
 			}

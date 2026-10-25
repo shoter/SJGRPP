@@ -303,9 +303,13 @@ class Bridge:
         return self.call("docmd_hex", *args, timeout=timeout)
 
     def order(self, vehicle: int, kind: str, dest: int, *options: str, test: bool = False, timeout: float = 70.0) -> dict:
-        """Append an order: kind is station|waypoint|depot; options: nonstop, stop_everywhere, full_load, full_load_any, no_load, unload, transfer, no_unload."""
+        """Append an order: kind is station|waypoint|depot|conditional (dest: the order to skip to); options: nonstop, stop_everywhere, full_load, full_load_any, no_load, unload, transfer, no_unload."""
         args = (["test"] if test else []) + [vehicle, kind, dest, *options]
         return self.call("order", *args, timeout=timeout)
+
+    def lookahead(self, train: int) -> dict | None:
+        """Realistic braking lookahead of a train (None if it has none): positions and items (type, start, end, z, data)."""
+        return self.call("lookahead", train)
 
     def engines(self, type_: str = "") -> list[dict]:
         """Engines the local company can build; type_ is rail|road|ship|aircraft or empty for all."""

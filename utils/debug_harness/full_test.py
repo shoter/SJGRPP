@@ -21,6 +21,7 @@ game runs for a period of game time while the test checks:
   python utils/debug_harness/full_test.py --clients 6 --scale 2        # more companies, twice the vehicles
   python utils/debug_harness/full_test.py --save-baseline perf_baseline.json
   python utils/debug_harness/full_test.py --baseline perf_baseline.json
+  python utils/debug_harness/full_test.py --setting debug.chicken_bits=512   # check the realistic braking lookahead cutoff
 
 Output: build/harness_runs/full/<run>/ (summary.txt, report.json, perf.csv, events.log, instances/, collected/ on
 failure). Exit code 0 when no check failed.
@@ -90,7 +91,7 @@ OVERSEAS_TRIP_DAYS = (10, 30)
 INVALID_STATION = 0xFFFF
 
 # Lines in any log that mean something went wrong. Checked case-insensitively.
-PROBLEM_RE = re.compile(r"desync|lost connection|connection lost|kicked|server closed|assert|crash|corrupt|"
+PROBLEM_RE = re.compile(r"desync|lost connection|connection lost|kicked|server closed|assert|crash|corrupt|cutoff mismatch|"
                         r"\berror\b|failed to|out of sync|timeout", re.I)
 # Known harmless lines that match the pattern above.
 IGNORE_RE = re.compile(r"\[debug-bridge\]|Failed to execute callback|error: no such|sound driver|music driver|"
@@ -687,6 +688,11 @@ class FullTest:
         c.server.start("-G", str(a.seed), wait=300)
         c.server.bridge.wait_until(lambda b: b.info()["game_mode"] == "normal", timeout=300, what="server game")
         self.log(f"server up in {time.monotonic() - t0:.1f}s, map {c.server.bridge.info()['map']}")
+        for setting in a.setting:
+            name, _, value = setting.partition("=")
+            c.server.bridge.console(f"setting {name} {value}")
+            now = c.server.bridge.console(f"setting {name}")
+            self.log(f"setting {name} {value}: {' '.join(now)}")
         for client in c.clients:
             t0 = time.monotonic()
             c.start_client(client, timeout=300)
@@ -1340,6 +1346,9 @@ def main() -> int:
                     help="performance limits only warn (for noisy CI machines); correctness checks still fail")
     ap.add_argument("--save-baseline", help="write this run's perf summary as a baseline")
     ap.add_argument("--debug", default="", help="-d debug levels for all instances, e.g. desync=2")
+    ap.add_argument("--setting", action="append", default=[], metavar="NAME=VALUE",
+                    help="change a game setting on the server before the clients join (repeatable), e.g. "
+                         "debug.chicken_bits=512 (check the realistic braking lookahead cutoff against all items)")
     ap.add_argument("--out", default=str(DEFAULT_RUN_ROOT / "full"))
     ap.add_argument("--name", help="run directory name (default: timestamp)")
     ap.add_argument("--keep", action="store_true", help="leave the instances running at the end")

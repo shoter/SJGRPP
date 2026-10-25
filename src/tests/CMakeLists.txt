@@ -14,6 +14,7 @@ add_test_files(
     mock_spritecache.cpp
     mock_spritecache.h
     overseas.cpp
+    rl_braking_lookahead.cpp
     serialisation.cpp
     sharing_fee.cpp
     variable_inflation.cpp
