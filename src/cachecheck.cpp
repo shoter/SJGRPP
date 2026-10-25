@@ -393,6 +393,9 @@ void CheckCaches(bool force_check, std::function<void(std::string_view)> log, Ch
 		std::vector<GroundVehicleCache> gro_cache;
 		std::vector<AircraftCache> air_cache;
 
+		extern bool ValidateVehicleTileOccupancy(std::function<void(std::string_view)> log);
+		ValidateVehicleTileOccupancy(cclog_output);
+
 		for (Vehicle *v : Vehicle::Iterate()) {
 			extern bool ValidateVehicleTileHash(const Vehicle *v);
 			if (!ValidateVehicleTileHash(v)) {
