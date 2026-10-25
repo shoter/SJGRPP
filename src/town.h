@@ -217,7 +217,40 @@ struct Town : TownPool::PoolItem<&_town_pool> {
 		return it->history[LAST_MONTH].PctTransported();
 	}
 
-	StationList stations_near{};          ///< NOSAVE: List of nearby stations.
+	/**
+	 * Mark the nearby station cache as out of date.
+	 * Must be called whenever stations_near changes. Changes of station catchment areas are handled by _station_catchment_area_epoch.
+	 */
+	inline void InvalidateStationsNearCache() { this->stations_near_cache_valid = false; }
+
+	/**
+	 * Whether the nearby station cache is up to date, without rebuilding it.
+	 * @return true if valid.
+	 */
+	inline bool IsStationsNearCacheValid() const
+	{
+		return this->stations_near_cache_valid && this->stations_near_cache_epoch == _station_catchment_area_epoch;
+	}
+
+	/**
+	 * Get the nearby stations with their catchment areas, sorted by station index.
+	 * The cache is rebuilt from stations_near if it is out of date.
+	 * @return The cache entries.
+	 */
+	inline std::span<const StationNearCacheEntry> GetStationsNearCache() const
+	{
+		if (!this->IsStationsNearCacheValid()) this->RebuildStationsNearCache();
+		return this->stations_near_cache;
+	}
+
+	void RebuildStationsNearCache() const;
+
+	StationList stations_near{};          ///< NOSAVE: List of nearby stations. Call InvalidateStationsNearCache() after changing it.
+private:
+	mutable std::vector<StationNearCacheEntry> stations_near_cache{}; ///< NOSAVE: stations_near with catchment areas, sorted by station index.
+	mutable bool stations_near_cache_valid = false;                   ///< NOSAVE: Whether stations_near_cache is up to date.
+	mutable uint32_t stations_near_cache_epoch = 0;                   ///< NOSAVE: _station_catchment_area_epoch when stations_near_cache was built.
+public:
 
 	uint16_t time_until_rebuild = 0;;     ///< time until we rebuild a house
 

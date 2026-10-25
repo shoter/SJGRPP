@@ -459,6 +459,8 @@ void Station::RemoveIndustryToDeliver(Industry *ind)
 }
 
 
+uint32_t _station_catchment_area_epoch = 0;
+
 /**
  * Remove this station from the nearby stations lists of nearby towns and industries.
  */
@@ -476,7 +478,11 @@ void Station::RemoveFromAllNearbyLists()
 		}
 	}
 
-	for (const TownID &townid : towns) { Town::Get(townid)->stations_near.erase(this); }
+	for (const TownID &townid : towns) {
+		Town *t = Town::Get(townid);
+		t->stations_near.erase(this);
+		t->InvalidateStationsNearCache();
+	}
 	for (const IndustryID &industryid : industries) { Industry::Get(industryid)->stations_near.erase(this); }
 }
 
@@ -503,6 +509,12 @@ bool Station::CatchmentCoversTown(TownID t) const
  */
 void Station::RecomputeCatchment(bool no_clear_nearby_lists)
 {
+	/* Town nearby station caches store the catchment area, they are out of date if it changes. */
+	const TileArea old_catchment_area = this->catchment_tiles;
+	auto check_catchment_area = [&]() {
+		if (!(static_cast<const TileArea &>(this->catchment_tiles) == old_catchment_area)) _station_catchment_area_epoch++;
+	};
+
 	this->industries_near.clear();
 	if (!no_clear_nearby_lists) this->RemoveFromAllNearbyLists();
 
@@ -510,11 +522,13 @@ void Station::RecomputeCatchment(bool no_clear_nearby_lists)
 	if (this->IsOverseas()) {
 		this->catchment_tiles.Reset();
 		this->station_tiles = 1;
+		check_catchment_area();
 		return;
 	}
 
 	if (this->rect.IsEmpty()) {
 		this->catchment_tiles.Reset();
+		check_catchment_area();
 		return;
 	}
 
@@ -541,6 +555,7 @@ void Station::RecomputeCatchment(bool no_clear_nearby_lists)
 			if (!IsTileType(tile, TileType::Station) || GetStationIndex(tile) != this->index) continue;
 			this->station_tiles++;
 		}
+		check_catchment_area();
 		return;
 	}
 
@@ -567,7 +582,7 @@ void Station::RecomputeCatchment(bool no_clear_nearby_lists)
 	for (TileIndex tile = it; tile != INVALID_TILE; tile = ++it) {
 		if (IsTileType(tile, TileType::House)) {
 			Town *t = Town::GetByTile(tile);
-			t->stations_near.insert(this);
+			if (t->stations_near.insert(this).second) t->InvalidateStationsNearCache();
 		}
 		if (IsTileType(tile, TileType::Industry)) {
 			Industry *i = Industry::GetByTile(tile);
@@ -581,6 +596,8 @@ void Station::RecomputeCatchment(bool no_clear_nearby_lists)
 			this->AddIndustryToDeliver(i, tile);
 		}
 	}
+
+	check_catchment_area();
 }
 
 /**
@@ -589,7 +606,10 @@ void Station::RecomputeCatchment(bool no_clear_nearby_lists)
  */
 /* static */ void Station::RecomputeCatchmentForAll()
 {
-	for (Town *t : Town::Iterate()) { t->stations_near.clear(); }
+	for (Town *t : Town::Iterate()) {
+		t->stations_near.clear();
+		t->InvalidateStationsNearCache();
+	}
 	for (Industry *i : Industry::Iterate()) { i->stations_near.clear(); }
 	for (Station *st : Station::Iterate()) { st->RecomputeCatchment(true); }
 }
