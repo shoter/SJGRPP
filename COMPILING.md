@@ -112,6 +112,11 @@ builds.
    disabled by default.
 - `-DOPTION_TOOLS_ONLY=ON`: only build tools like `strgen`. Does not build
    the game itself. Useful for cross-compiling.
+- `-DOPTION_PGO=GENERATE` / `-DOPTION_PGO=USE` (with `-DOPTION_PGO_DIR=<dir>`,
+   default `<build dir>/pgo`): profile-guided optimisation, used for the
+   release binaries. Build with `GENERATE`, run
+   `python utils/debug_harness/pgo_train.py --exe <game binary> --pgo-dir <dir>`,
+   then configure with `USE` and build again. See `cmake/PGO.cmake`.
 
 ## Supported compilers
 
