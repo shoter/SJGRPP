@@ -38,25 +38,28 @@ TEST_CASE("Overseas countries - 60 countries without the home country")
 	CHECK(farthest.distance_km >= 15000);
 }
 
-TEST_CASE("Overseas trip time - linear between the nearest and the farthest country")
+TEST_CASE("Overseas trip time - ships take as long as sailing the paid distance there and back")
 {
-	CHECK(GetOverseasTripDaysForDistance(500, 500, 16000, 5, 60) == 5);
-	CHECK(GetOverseasTripDaysForDistance(16000, 500, 16000, 5, 60) == 60);
-	CHECK(GetOverseasTripDaysForDistance(8250, 500, 16000, 5, 60) == 33); // halfway: 5 + 27.5 rounded
-	/* Out of range distances are clamped, swapped limits are sorted, equal distances take the shortest time. */
-	CHECK(GetOverseasTripDaysForDistance(100, 500, 16000, 5, 60) == 5);
-	CHECK(GetOverseasTripDaysForDistance(20000, 500, 16000, 5, 60) == 60);
-	CHECK(GetOverseasTripDaysForDistance(16000, 500, 16000, 60, 5) == 60);
-	CHECK(GetOverseasTripDaysForDistance(700, 700, 700, 5, 60) == 5);
+	/* A ship moves speed * 3/4 progress per tick and needs 16 * 192 per tile: 4096 / speed ticks per tile. */
+	CHECK(GetOverseasShipTripTicks(8, 64) == 1024);      // 2 * 8 * 4096 / 64
+	CHECK(GetOverseasShipTripTicks(104, 224) == 3804);   // 112 km/h hydrofoil to India: 3803.4 rounded up, 51 days
+	CHECK(GetOverseasShipTripTicks(316, 48) == 53931);   // 24 km/h oil tanker to Australia: 729 days
+	/* Twice the speed, half the time; twice the distance, twice the time. */
+	CHECK(GetOverseasShipTripTicks(100, 200) * 2 == GetOverseasShipTripTicks(100, 100));
+	CHECK(GetOverseasShipTripTicks(200, 128) == 2 * GetOverseasShipTripTicks(100, 128));
+	/* A ship that cannot move counts as the slowest one instead of dividing by zero. */
+	CHECK(GetOverseasShipTripTicks(10, 0) == GetOverseasShipTripTicks(10, 1));
+	CHECK(GetOverseasShipTripTicks(0, 100) == 0);
 }
 
-TEST_CASE("Overseas trip time - aircraft take a percentage of the ship time")
+TEST_CASE("Overseas trip time - aircraft take as long as flying the paid distance there and back")
 {
-	CHECK(GetOverseasAircraftTripDays(60, 25) == 15);
-	CHECK(GetOverseasAircraftTripDays(22, 50) == 11);
-	CHECK(GetOverseasAircraftTripDays(10, 25) == 3); // 2.5 rounded
-	CHECK(GetOverseasAircraftTripDays(5, 1) == 1);   // at least one day
-	CHECK(GetOverseasAircraftTripDays(40, 100) == 40);
+	/* An aircraft moves twice per tick, speed / plane_speed progress each time, and needs 16 * 256 per tile. */
+	CHECK(GetOverseasAircraftTripTicks(316, 900, 4) == 5753); // 900 km/h at plane speed 1/4 to Australia: 78 days
+	CHECK(GetOverseasAircraftTripTicks(316, 900, 1) == 1439); // at plane speed 1/1 four times faster
+	CHECK(GetOverseasAircraftTripTicks(8, 1024, 1) == 32);    // 2 * 8 * 4096 / (2 * 1024)
+	CHECK(GetOverseasAircraftTripTicks(8, 1024, 0) == 32);    // plane speed 0 counts as 1
+	CHECK(GetOverseasAircraftTripTicks(10, 0, 4) == GetOverseasAircraftTripTicks(10, 1, 4));
 }
 
 TEST_CASE("Overseas virtual distance - one tile per 50 km, at least 8")

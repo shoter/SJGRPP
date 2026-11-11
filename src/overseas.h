@@ -27,7 +27,7 @@
 struct OverseasCountry {
 	StringID name;           ///< Name of the country.
 	uint16_t population;     ///< Population in millions, scales the production.
-	uint16_t distance_km;    ///< Distance from the home country (Poland), sets the trip time.
+	uint16_t distance_km;    ///< Distance from the home country (Poland), sets the paid distance and so the trip time.
 	std::string_view flag;   ///< Drawing instructions of the flag, see overseas_flag.cpp.
 };
 
@@ -61,8 +61,8 @@ std::span<const OverseasCountry> GetOverseasCountries();
 const OverseasCountry &GetOverseasCountry(uint8_t country);
 
 /* Pure calculations, also used by the unit tests. */
-uint GetOverseasTripDaysForDistance(uint distance_km, uint min_km, uint max_km, uint min_days, uint max_days);
-uint GetOverseasAircraftTripDays(uint ship_days, uint percent);
+uint GetOverseasShipTripTicks(uint tiles, uint speed);
+uint GetOverseasAircraftTripTicks(uint tiles, uint speed, uint plane_speed);
 uint GetOverseasVirtualDistance(uint distance_km);
 Money GetOverseasControlBasePrice(Money fee, uint owned);
 uint GetOverseasPopulationScale(uint population);
@@ -75,8 +75,7 @@ struct Station;
 struct Vehicle;
 struct CargoPacket;
 
-uint GetOverseasTripDays(const Station *st, VehicleType type);
-uint GetOverseasTripTicks(const Station *st, VehicleType type);
+uint GetOverseasTripTicks(const Station *st, const Vehicle *v);
 uint GetOverseasStationVirtualDistance(const Station *st);
 CargoType GetOverseasProductCargo(const Station *st, OverseasProduct product);
 uint GetOverseasStationMonthlyProduction(const Station *st, OverseasProduct product);

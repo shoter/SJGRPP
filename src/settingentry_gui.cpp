@@ -1240,8 +1240,6 @@ SettingsContainer &GetSettingsTree()
 				overseas->Add(new SettingEntry("economy.overseas_max_per_company"));
 				overseas->Add(new SettingEntry("economy.overseas_fee"));
 				overseas->Add(new SettingEntry("economy.overseas_trip_min_days"));
-				overseas->Add(new SettingEntry("economy.overseas_trip_max_days"));
-				overseas->Add(new SettingEntry("economy.overseas_aircraft_trip_percent"));
 				overseas->Add(new SettingEntry("economy.overseas_passengers"));
 				overseas->Add(new SettingEntry("economy.overseas_mail"));
 				overseas->Add(new SettingEntry("economy.overseas_cargo"));

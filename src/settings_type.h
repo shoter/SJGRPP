@@ -896,9 +896,7 @@ struct EconomySettings {
 	uint8_t  overseas_stations;              ///< number of overseas stations created on a new map
 	uint8_t  overseas_max_per_company;       ///< most overseas stations a company can control
 	uint32_t overseas_fee;                   ///< price of the first overseas station, the next ones cost (n + 1)! times this
-	uint16_t overseas_trip_min_days;         ///< trip time of a ship to the nearest overseas country and back
-	uint16_t overseas_trip_max_days;         ///< trip time of a ship to the farthest overseas country and back
-	uint8_t  overseas_aircraft_trip_percent; ///< trip time of aircraft in percent of the trip time of ships
+	uint16_t overseas_trip_min_days;         ///< shortest trip to an overseas country and back; longer trips take as long as covering the distance
 	uint16_t overseas_passengers;            ///< passengers produced per month by an overseas station of a country of 100 million people
 	uint16_t overseas_mail;                  ///< mail produced per month by an overseas station of a country of 100 million people
 	uint16_t overseas_cargo;                 ///< freight produced per month by an overseas station of a country of 100 million people
