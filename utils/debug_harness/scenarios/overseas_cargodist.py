@@ -57,22 +57,29 @@ def run(ctx):
 
     trips = 0
     loaded_from_dock = 0
+    paid = 0
     for _ in range(3):
-        seen = {"cargo": 0}
+        seen = {"cargo": 0, "profit": 0}
         def gone():
             if veh(b, ship, "overseas_station")["overseas_station"] == target:
                 return True
             seen["cargo"] = vehicle_cargo(b, ship)[0]
+            seen["profit"] = int(veh(b, ship, "profit_this_year")["profit_this_year"])
             return False
         if step_until(b, gone, 200 * TICKS_PER_DAY, chunk=10) < 0:
             break
         trips += 1
         loaded_from_dock = max(loaded_from_dock, seen["cargo"])
-        if step_until(b, lambda: veh(b, ship, "overseas_station")["overseas_station"] == INVALID_STATION, 40 * TICKS_PER_DAY) < 0:
+        if seen["cargo"] > 0:
+            paid += int(veh(b, ship, "profit_this_year")["profit_this_year"]) - seen["profit"]
+        # The trip takes as long as sailing the paid distance there and back.
+        trip = veh(b, ship, "overseas_trip_ticks")["overseas_trip_ticks"]
+        if step_until(b, lambda: veh(b, ship, "overseas_station")["overseas_station"] == INVALID_STATION, trip + 5 * TICKS_PER_DAY) < 0:
             break
 
     ctx.check(trips >= 2, f"the overseas ship made {trips} trips")
     ctx.check(loaded_from_dock > 0, f"with cargo distribution on, the ship took {loaded_from_dock} passengers of dock A overseas")
     ctx.check_eq(overseas_info(b)[target]["link_graphs"], 0, "the overseas station is in no link graph")
-    profit = int(veh(b, ship, "profit_this_year")["profit_this_year"])
-    ctx.check(profit > 0, f"the overseas ship earns money ({profit >> 8})")
+    # A slow ship to a far country may run at a loss now that the trip takes as long as sailing there;
+    # what matters here is that the passengers it takes overseas are paid for when it leaves.
+    ctx.check(paid > 0, f"the overseas ship is paid for the passengers it takes overseas ({paid >> 8})")

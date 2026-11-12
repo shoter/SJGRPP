@@ -87,7 +87,7 @@ INVALID_VEHICLE = 0xFFFFF
 
 # Overseas routes: vehicle fields compared between instances, and the trip times (calendar days, there and back).
 OVERSEAS_VEHICLE_FIELDS = "overseas_station overseas_return overseas_trip_ticks vehstatus cur_real_order_index"
-OVERSEAS_TRIP_DAYS = (10, 30)
+OVERSEAS_TRIP_MIN_DAYS = 10
 INVALID_STATION = 0xFFFF
 
 # Lines in any log that mean something went wrong. Checked case-insensitively.
@@ -229,8 +229,7 @@ class FullTest:
             "pf": {"forbid_90_deg": "false"},
             "vehicle": {"plane_crashes": 0, "train_braking_model": 1},  # realistic braking
             "economy": {"inflation": "true" if self.profile.get("sharing") else "false",
-                        "overseas_stations": 60, "overseas_trip_min_days": OVERSEAS_TRIP_DAYS[0],
-                        "overseas_trip_max_days": OVERSEAS_TRIP_DAYS[1]},
+                        "overseas_stations": 60, "overseas_trip_min_days": OVERSEAS_TRIP_MIN_DAYS},
             "network": {"pause_on_join": "false", "max_clients": a.clients + 8,
                         "max_companies": min(28, max(15, a.clients + 1)), "autoclean_companies": "false"},
         }
@@ -1189,7 +1188,7 @@ class FullTest:
         vehicles = [v for r in routes for v in r.vehicles]
         away = [v for v in vehicles if "away" in self.overseas_seen.get(v, ())]
         back = [v for v in vehicles if "back" in self.overseas_seen.get(v, ())]
-        # A trip there and back takes up to OVERSEAS_TRIP_DAYS[1] days plus the sailing: short runs only report.
+        # A trip there and back takes as long as covering the paid distance (months for far countries): short runs only report.
         severity = "fail" if self.profile["months"] >= 6 else "warn"
         self.check(len(away) > 0, "vehicles travel overseas", f"{len(away)}/{len(vehicles)} seen away, {len(routes)} overseas routes",
                    severity=severity)

@@ -2787,12 +2787,8 @@ STR_CONFIG_SETTING_OVERSEAS_MAX_PER_COMPANY                     :Most overseas s
 STR_CONFIG_SETTING_OVERSEAS_MAX_PER_COMPANY_HELPTEXT            :How many overseas stations a company can control at the same time. An overseas station is controlled by at most one company
 STR_CONFIG_SETTING_OVERSEAS_FEE                                 :Price of the first overseas station: {STRING2}
 STR_CONFIG_SETTING_OVERSEAS_FEE_HELPTEXT                        :Price a company pays to take control of its first overseas station. A company that controls X overseas stations pays (X+1)! times this price for the next one: 2 times for the second, 6 times for the third, 24 times for the fourth. Prices rise with inflation
-STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS                       :Trip time of ships to the nearest country: {STRING2}
-STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS_HELPTEXT              :How long a ship is away from the map when it visits an overseas station of the nearest country, there and back. Countries farther away take longer, up to the trip time to the farthest country
-STR_CONFIG_SETTING_OVERSEAS_TRIP_MAX_DAYS                       :Trip time of ships to the farthest country: {STRING2}
-STR_CONFIG_SETTING_OVERSEAS_TRIP_MAX_DAYS_HELPTEXT              :How long a ship is away from the map when it visits an overseas station of the farthest country (Australia), there and back
-STR_CONFIG_SETTING_OVERSEAS_AIRCRAFT_TRIP_PERCENT               :Trip time of aircraft: {STRING2} of the trip time of ships
-STR_CONFIG_SETTING_OVERSEAS_AIRCRAFT_TRIP_PERCENT_HELPTEXT      :Aircraft fly to overseas countries faster than ships sail there. This is their trip time in percent of the trip time of ships
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS                       :Shortest overseas trip: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS_HELPTEXT              :A ship or aircraft visiting an overseas station is away from the map as long as it needs to sail or fly the paid distance to the country and back at its top speed, but at least this long
 STR_CONFIG_SETTING_OVERSEAS_PASSENGERS                          :Passengers produced by overseas stations: {STRING2} per month
 STR_CONFIG_SETTING_OVERSEAS_PASSENGERS_HELPTEXT                 :Passengers an overseas station of a country of 100 million people produces per month. Countries with more people produce more (by the square root of the population, from half to four times as much). Production grows every year and halves during a recession
 STR_CONFIG_SETTING_OVERSEAS_MAIL                                :Mail produced by overseas stations: {STRING2} per month
@@ -2872,7 +2868,7 @@ STR_OVERSEAS_COUNTRY_SRI_LANKA                                  :Sri Lanka
 STR_OVERSEAS_COUNTRY                                            :{BLACK}Country: {WHITE}{STRING} {BLACK}({COMMA} km from Poland)
 STR_OVERSEAS_CONTROLLED_BY                                      :{BLACK}Controlled by: {WHITE}{COMPANY}
 STR_OVERSEAS_NOT_CONTROLLED                                     :{BLACK}Controlled by: {WHITE}nobody
-STR_OVERSEAS_TRIP                                               :{BLACK}Trip there and back: {WHITE}{COMMA} day{P "" s} {BLACK}by ship, {WHITE}{COMMA} day{P "" s} {BLACK}by aircraft
+STR_OVERSEAS_TRIP                                               :{BLACK}Paid distance: {WHITE}{COMMA} tile{P "" s} {BLACK}each way, trip time by vehicle speed
 STR_OVERSEAS_PRODUCTION                                         :{BLACK}Production per month (most waiting):
 STR_OVERSEAS_PRODUCTION_LINE                                    :{WHITE}  {CARGO_LONG} {BLACK}({CARGO_SHORT})
 STR_OVERSEAS_PRODUCTION_RECESSION                               :{ORANGE}  Halved by the recession

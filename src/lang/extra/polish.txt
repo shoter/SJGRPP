@@ -211,12 +211,8 @@ STR_CONFIG_SETTING_OVERSEAS_MAX_PER_COMPANY                     :Najwięcej stac
 STR_CONFIG_SETTING_OVERSEAS_MAX_PER_COMPANY_HELPTEXT            :Ile stacji zamorskich firma może kontrolować jednocześnie. Stację zamorską kontroluje najwyżej jedna firma
 STR_CONFIG_SETTING_OVERSEAS_FEE                                 :Cena pierwszej stacji zamorskiej: {STRING2}
 STR_CONFIG_SETTING_OVERSEAS_FEE_HELPTEXT                        :Cena, jaką firma płaci za przejęcie kontroli nad swoją pierwszą stacją zamorską. Firma, która kontroluje X stacji zamorskich, płaci za następną (X+1)! razy tę cenę: 2 razy za drugą, 6 razy za trzecią, 24 razy za czwartą. Ceny rosną wraz z inflacją
-STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS                       :Czas podróży statków do najbliższego kraju: {STRING2}
-STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS_HELPTEXT              :Jak długo statek jest poza mapą, gdy odwiedza stację zamorską najbliższego kraju, w obie strony. Dalsze kraje zajmują więcej czasu, aż do czasu podróży do najdalszego kraju
-STR_CONFIG_SETTING_OVERSEAS_TRIP_MAX_DAYS                       :Czas podróży statków do najdalszego kraju: {STRING2}
-STR_CONFIG_SETTING_OVERSEAS_TRIP_MAX_DAYS_HELPTEXT              :Jak długo statek jest poza mapą, gdy odwiedza stację zamorską najdalszego kraju (Australii), w obie strony
-STR_CONFIG_SETTING_OVERSEAS_AIRCRAFT_TRIP_PERCENT               :Czas podróży samolotów: {STRING2} czasu podróży statków
-STR_CONFIG_SETTING_OVERSEAS_AIRCRAFT_TRIP_PERCENT_HELPTEXT      :Samoloty docierają do krajów zamorskich szybciej niż statki. To jest ich czas podróży w procentach czasu podróży statków
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS                       :Najkrótsza podróż zamorska: {STRING2}
+STR_CONFIG_SETTING_OVERSEAS_TRIP_MIN_DAYS_HELPTEXT              :Statek lub samolot odwiedzający stację zamorską jest poza mapą tak długo, jak potrzebuje, by przepłynąć lub przelecieć opłacaną odległość do kraju i z powrotem z maksymalną prędkością, ale co najmniej tyle
 STR_CONFIG_SETTING_OVERSEAS_PASSENGERS                          :Pasażerowie ze stacji zamorskich: {STRING2} na miesiąc
 STR_CONFIG_SETTING_OVERSEAS_PASSENGERS_HELPTEXT                 :Liczba pasażerów, jaką stacja zamorska kraju o 100 milionach mieszkańców wytwarza w miesiącu. Kraje z większą liczbą ludności wytwarzają więcej (według pierwiastka z liczby ludności, od połowy do czterech razy więcej). Produkcja rośnie co roku i spada o połowę podczas recesji
 STR_CONFIG_SETTING_OVERSEAS_MAIL                                :Poczta ze stacji zamorskich: {STRING2} na miesiąc
@@ -296,7 +292,7 @@ STR_OVERSEAS_COUNTRY_SRI_LANKA                                  :Sri Lanka
 STR_OVERSEAS_COUNTRY                                            :{BLACK}Kraj: {WHITE}{STRING} {BLACK}({COMMA} km od Polski)
 STR_OVERSEAS_CONTROLLED_BY                                      :{BLACK}Kontrola: {WHITE}{COMPANY}
 STR_OVERSEAS_NOT_CONTROLLED                                     :{BLACK}Kontrola: {WHITE}nikt
-STR_OVERSEAS_TRIP                                               :{BLACK}Podróż w obie strony: {WHITE}{COMMA} {P "dzień" "dni" "dni"} {BLACK}statkiem, {WHITE}{COMMA} {P "dzień" "dni" "dni"} {BLACK}samolotem
+STR_OVERSEAS_TRIP                                               :{BLACK}Opłacana odległość: {WHITE}{COMMA} {P "pole" "pola" "pól"} {BLACK}w każdą stronę, czas zależy od prędkości
 STR_OVERSEAS_PRODUCTION                                         :{BLACK}Produkcja na miesiąc (najwięcej czekających):
 STR_OVERSEAS_PRODUCTION_LINE                                    :{WHITE}  {CARGO_LONG} {BLACK}({CARGO_SHORT})
 STR_OVERSEAS_PRODUCTION_RECESSION                               :{ORANGE}  O połowę mniej z powodu recesji

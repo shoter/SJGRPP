@@ -1,8 +1,9 @@
 """
 Overseas stations: a new map gets overseas stations on sea tiles at the map border; they cannot be removed.
 A company pays fee * (X+1)! to take control of one. Its passenger ship sails there, disappears for the trip to the
-country, comes back with passengers of the country and is paid for the trip both ways. An aircraft does the same in
-a fraction of the time. Vehicles of other companies cannot get orders to it.
+country, comes back with passengers of the country and is paid for the trip both ways. The trip takes as long as the
+ship needs to sail the paid distance there and back at its top speed, measured on the map; an aircraft does the same at
+its flying speed. Vehicles of other companies cannot get orders to it.
 """
 
 import sys
@@ -18,14 +19,14 @@ INVALID_STATION = 0xFFFF
 OWNER_NONE = 29
 TICKS_PER_DAY = 74
 FEE = 100_000
-MIN_DAYS, MAX_DAYS = 20, 30
+MIN_DAYS = 1
 CARGO_AGE_PERIOD = 185        # default cargo aging period of a vehicle, in ticks
-AIR_PERCENT = 50
+PLANE_SPEED = 4               # default plane speed factor: aircraft move at 1/4 of their speed
 WID_GO_TAB_ADVANCED = 4       # GameOptionsWidgets
 
 CONFIG = {
-    "economy": {"overseas_stations": 12, "overseas_fee": FEE, "overseas_trip_min_days": MIN_DAYS, "overseas_trip_max_days": MAX_DAYS,
-                "overseas_aircraft_trip_percent": AIR_PERCENT, "overseas_max_per_company": 3, "inflation": "false"},
+    "economy": {"overseas_stations": 12, "overseas_fee": FEE, "overseas_trip_min_days": MIN_DAYS,
+                "overseas_max_per_company": 3, "inflation": "false"},
     "difficulty": {"max_no_competitors": 0, "vehicle_breakdowns": 0, "quantity_sea_lakes": 3, "number_towns": 2},
 }
 
@@ -67,7 +68,7 @@ def overseas_info(b) -> dict[int, dict]:
     for item in filter(None, raw.split(";")):
         f = [int(x) for x in item.split(":")]
         out[f[0]] = {"country": f[1], "owner": f[2], "cargo": f[3], "accepted": f[4], "growth": f[5],
-                     "waiting": [f[6], f[8], f[10]], "monthly": [f[7], f[9], f[11]], "link_graphs": f[12]}
+                     "waiting": [f[6], f[8], f[10]], "monthly": [f[7], f[9], f[11]], "link_graphs": f[12], "tiles": f[13]}
     return out
 
 
@@ -79,6 +80,40 @@ def vehicle_cargo(b, vid: int) -> tuple[int, int]:
         if v == vid:
             return count, periods
     return 0, 0
+
+
+def ceil_div(a: int, b: int) -> int:
+    return -(-a // b)
+
+
+def ship_trip_ticks(tiles: int, speed: int) -> int:
+    """Ticks to sail tiles there and back; speed in internal ship units (0.5 km-ish/h): 4096 / speed ticks per tile."""
+    return max(MIN_DAYS * TICKS_PER_DAY, ceil_div(2 * tiles * 16 * 192 * 4, 3 * speed))
+
+
+def aircraft_trip_ticks(tiles: int, speed: int) -> int:
+    """Ticks to fly tiles there and back; speed in km-ish/h, two moves of speed / plane speed per tick, 16 * 256 per tile."""
+    return max(MIN_DAYS * TICKS_PER_DAY, ceil_div(2 * tiles * 16 * 256 * PLANE_SPEED, 2 * speed))
+
+
+def measure_axis_speed(b, vid: int, top_speed: int, stop, max_ticks: int, chunk: int = 4) -> tuple[float, int]:
+    """
+    Step until stop() holds and measure how fast the vehicle really moves along a map axis at its top speed.
+    Returns (pixels per tick, ticks measured) over the stretches it went straight along an axis (odd direction) at top speed.
+    """
+    pixels = ticks = 0
+    prev = None
+    done = 0
+    while done < max_ticks and not stop():
+        cur = veh(b, vid, "x_pos", "y_pos", "direction", "cur_speed", "overseas_station")
+        if (prev is not None and cur["overseas_station"] == INVALID_STATION and prev["direction"] == cur["direction"]
+                and cur["direction"] % 2 == 1 and prev["cur_speed"] == cur["cur_speed"] == top_speed):
+            pixels += abs(cur["x_pos"] - prev["x_pos"]) + abs(cur["y_pos"] - prev["y_pos"])
+            ticks += chunk
+        prev = cur
+        b.step(chunk)
+        done += chunk
+    return (pixels / ticks if ticks else 0.0), ticks
 
 
 def take_control(b, station: int, company: int | None = None) -> dict:
@@ -183,14 +218,24 @@ def run(ctx):
         ticks = step_until(b, gone, max_ticks, chunk=10)
         return ticks, seen["cargo"], seen["profit"]
 
+    ship_speed = 2 * builder.pick_engine("ship")["max_speed"]   # internal units, the display speed is half
+    px, measured = measure_axis_speed(b, ship, ship_speed, lambda: veh(b, ship, "overseas_station")["overseas_station"] == target,
+                                      200 * TICKS_PER_DAY)
+    expected_px = ship_speed * 3 / 4 / 192
+    ctx.note(f"ship top speed {ship_speed} (internal), {px:.3f} px/tick measured over {measured} ticks, {expected_px:.3f} expected")
+    ctx.check(measured >= 40 and abs(px - expected_px) <= expected_px * 0.1,
+              f"on the map the ship moves {px:.3f} px/tick at top speed, as the trip time assumes ({expected_px:.3f})")
+
     left, aboard, p_before = sail_overseas(200 * TICKS_PER_DAY)
+    t_left = int(b.info()["tick_counter"])
     ctx.check(left >= 0, f"the ship sailed to the overseas station and left the map ({left} ticks, {aboard} passengers aboard)")
     info = veh(b, ship, "vehstatus", "overseas_return", "overseas_trip_ticks", "profit_this_year", "last_station_visited")
     ctx.check(info["vehstatus"] & VEH_HIDDEN, "the ship is hidden while overseas")
     ctx.check_eq(vehicle_cargo(b, ship)[0], 0, "cargo of the dock was delivered to the country")
     trip = info["overseas_trip_ticks"]
-    days = trip // TICKS_PER_DAY
-    ctx.check(MIN_DAYS <= days <= MAX_DAYS, f"the trip takes {days} days, between {MIN_DAYS} and {MAX_DAYS}")
+    tiles = overseas_info(b)[target]["tiles"]
+    ctx.check_eq(trip, ship_trip_ticks(tiles, ship_speed),
+                 f"the trip takes as long as sailing {tiles} tiles there and back at top speed ({trip / TICKS_PER_DAY:.1f} days)")
     res = b.docmd("StartStopVehicle", 0, ship, False)
     ctx.check(not res["success"], f"a vehicle overseas cannot be stopped ({res.get('error')})")
     res = b.docmd("SendVehicleToDepot", 0, ship, 0, 0, test=True)
@@ -217,14 +262,16 @@ def run(ctx):
     cache_errors = [line for line in lines if "desync" in line.lower() or "mismatch" in line.lower()]
     ctx.check(not cache_errors, f"no cache mismatches ({cache_errors[:3]})")
 
-    b.step(max(0, int(info["overseas_return"]) - int(b.info()["state_ticks"]) - 3) if "state_ticks" in b.info() else 0)
+    elapsed = int(b.info()["tick_counter"]) - t_left
+    if elapsed >= 0:
+        b.step(max(0, trip - elapsed - 30))   # fast forward to just before the ship is back
     last = {"waiting": overseas_info(b)[target]["waiting"][0]}
     def returned():
         if veh(b, ship, "overseas_station")["overseas_station"] == INVALID_STATION:
             return True
         last["waiting"] = overseas_info(b)[target]["waiting"][0]
         return False
-    back = step_until(b, returned, (MAX_DAYS + 2) * TICKS_PER_DAY, chunk=1)
+    back = step_until(b, returned, trip + 5 * TICKS_PER_DAY, chunk=1)
     ctx.check(back >= 0, f"the ship came back ({back} ticks later)")
     ret = veh(b, ship, "vehstatus", "cargo_cap")
     ctx.check(not ret["vehstatus"] & VEH_HIDDEN, "the ship is visible again")
@@ -247,19 +294,30 @@ def run(ctx):
     p_gone = int(veh(b, ship, "profit_this_year")["profit_this_year"])
     ctx.check(p_gone > p_before, f"passengers to the country are paid for on departure (profit {p_before} -> {p_gone})")
 
-    # An aircraft flies to the same overseas station and is away for half the ship trip.
+    # An aircraft flies to the same overseas station and is away as long as flying there and back takes.
     mx = b.info()["map"]["x"]
     towns_xy = [(xy % mx, xy // mx) for xy in (b.obj("town", t, "xy")["xy"] for t in sorted(b.objs("town"))[:2])]
     air = builder.build_air_route(towns_xy[0], towns_xy[1], vehicles=1)
     plane = air.vehicles[0]
     builder.order(plane, "station", target)
+    plane_speed = builder.pick_engine("aircraft")["max_speed"]
+    for e in builder.engines():
+        if e["id"] == veh(b, plane, "engine_type")["engine_type"]:
+            plane_speed = e["max_speed"]
+    px, measured = measure_axis_speed(b, plane, plane_speed, lambda: veh(b, plane, "overseas_station")["overseas_station"] == target,
+                                      300 * TICKS_PER_DAY, chunk=2)
+    expected_px = 2 * plane_speed / PLANE_SPEED / 256
+    ctx.note(f"aircraft top speed {plane_speed}, {px:.3f} px/tick measured over {measured} ticks, {expected_px:.3f} expected")
+    ctx.check(measured >= 20 and abs(px - expected_px) <= expected_px * 0.1,
+              f"on the map the aircraft moves {px:.3f} px/tick at top speed, as the trip time assumes ({expected_px:.3f})")
     flown = step_until(b, lambda: veh(b, plane, "overseas_station")["overseas_station"] == target, 300 * TICKS_PER_DAY, chunk=10)
     ctx.check(flown >= 0, f"the aircraft flew to the overseas station and left the map ({flown} ticks)")
     pinfo = veh(b, plane, "vehstatus", "overseas_trip_ticks")
     ctx.check(pinfo["vehstatus"] & VEH_HIDDEN, "the aircraft is hidden while overseas")
-    ship_days = trip // TICKS_PER_DAY
-    plane_days = pinfo["overseas_trip_ticks"] // TICKS_PER_DAY
-    ctx.check_eq(plane_days, max(1, (ship_days * AIR_PERCENT + 50) // 100), f"the aircraft trip takes {AIR_PERCENT}% of the ship trip")
+    plane_trip = pinfo["overseas_trip_ticks"]
+    plane_days = ceil_div(plane_trip, TICKS_PER_DAY)
+    ctx.check_eq(plane_trip, aircraft_trip_ticks(tiles, plane_speed),
+                 f"the aircraft trip takes as long as flying {tiles} tiles there and back at top speed ({plane_trip / TICKS_PER_DAY:.1f} days)")
     b.call("show", "vehicle", 1)   # second primary vehicle: the aircraft
     ctx.screenshot(b, "aircraft_overseas")
     back = step_until(b, lambda: veh(b, plane, "overseas_station")["overseas_station"] == INVALID_STATION, (plane_days + 2) * TICKS_PER_DAY, chunk=5)

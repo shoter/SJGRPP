@@ -2118,7 +2118,7 @@ struct StationViewWindow : public Window {
 		}
 		tr.top += flag_h + WidgetDimensions::scaled.vsep_wide;
 
-		DrawString(tr, GetString(STR_OVERSEAS_TRIP, GetOverseasTripDays(st, VehicleType::Ship), GetOverseasTripDays(st, VehicleType::Aircraft)));
+		DrawString(tr, GetString(STR_OVERSEAS_TRIP, GetOverseasStationVirtualDistance(st)));
 		tr.top += line;
 
 		DrawString(tr, STR_OVERSEAS_PRODUCTION);

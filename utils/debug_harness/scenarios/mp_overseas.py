@@ -72,7 +72,9 @@ def run(ctx):
     ctx.check(infos[1] == infos[0] and infos[2] == infos[0], f"clients agree on the overseas station ({infos[0]})")
     server.console("unpause")
 
-    ctx.check(wait(lambda: server.obj("vehicle", ship, "overseas_station")["overseas_station"] == INVALID_STATION, 40 * TICKS_PER_DAY),
+    # The trip takes as long as sailing the paid distance there and back.
+    trip = states[0]["overseas_trip_ticks"]
+    ctx.check(wait(lambda: server.obj("vehicle", ship, "overseas_station")["overseas_station"] == INVALID_STATION, trip + 5 * TICKS_PER_DAY),
               "server: the ship came back")
     server.console("pause")
     for b in (server, c1, c2):

@@ -115,7 +115,7 @@ static const std::array<OverseasCountry, NUM_OVERSEAS_COUNTRIES> _overseas_count
 
 /**
  * Overseas stations for the debug bridge: id:country:owner:cargo:accepted_cargo:growth, then waiting:monthly per product,
- * then the number of cargoes for which the station is in a link graph.
+ * then the number of cargoes for which the station is in a link graph, then the paid distance to the country in tiles.
  */
 static std::string DumpOverseasStations()
 {
@@ -132,7 +132,7 @@ static std::string DumpOverseasStations()
 		for (const GoodsEntry &ge : st->goods) {
 			if (ge.link_graph != LinkGraphID::Invalid()) link_graphs++;
 		}
-		buf.format(":{};", link_graphs);
+		buf.format(":{}:{};", link_graphs, GetOverseasStationVirtualDistance(st));
 	}
 	return buf.to_string();
 }
@@ -169,32 +169,49 @@ const OverseasCountry &GetOverseasCountry(uint8_t country)
 }
 
 /**
- * Get the time a ship needs for a trip to a country and back.
- * The nearest country takes the shortest time, the farthest one the longest time, the others in between by distance.
- * @param distance_km Distance of the country.
- * @param min_km Distance of the nearest country.
- * @param max_km Distance of the farthest country.
- * @param min_days Shortest trip.
- * @param max_days Longest trip.
- * @return The trip time in days.
+ * Movement progress a vehicle needs for one tile along a map axis: 16 steps of 192.
+ * Cargo is paid for the Manhattan distance; moving along an axis, every tile moved is one tile of it.
  */
-uint GetOverseasTripDaysForDistance(uint distance_km, uint min_km, uint max_km, uint min_days, uint max_days)
+static constexpr uint64_t OVERSEAS_PROGRESS_PER_TILE = 16 * 192;
+
+/**
+ * Get the ticks a vehicle needs to cover a distance there and back.
+ * @param tiles Distance one way.
+ * @param progress_per_tile Movement progress needed for one tile.
+ * @param progress_per_tick Movement progress per tick, in 1/\p progress_divisor units.
+ * @param progress_divisor Divisor of \p progress_per_tick.
+ * @return The trip time in ticks, rounded up.
+ */
+static uint GetOverseasRoundTripTicks(uint tiles, uint64_t progress_per_tile, uint64_t progress_per_tick, uint64_t progress_divisor)
 {
-	if (max_days < min_days) std::swap(min_days, max_days);
-	if (max_km <= min_km) return min_days;
-	distance_km = std::clamp(distance_km, min_km, max_km);
-	return min_days + ((distance_km - min_km) * (max_days - min_days) + (max_km - min_km) / 2) / (max_km - min_km);
+	const uint64_t needed = 2 * static_cast<uint64_t>(tiles) * progress_per_tile * progress_divisor;
+	return static_cast<uint>(std::min<uint64_t>(CeilDiv(needed, progress_per_tick), UINT32_MAX));
 }
 
 /**
- * Get the time an aircraft needs for a trip to a country and back.
- * @param ship_days Trip time of a ship.
- * @param percent Aircraft trip time in percent of the ship trip time.
- * @return The trip time in days, at least one day.
+ * Get the time a ship needs for a trip to a country and back at its top speed.
+ * A ship moves speed * 3/4 progress per tick (#Vehicle::GetAdvanceSpeed), 192 per step along an axis.
+ * @param tiles Distance to the country, one way.
+ * @param speed Top speed of the ship, in internal units (1 unit = 0.5 km-ish/h); 0 counts as 1.
+ * @return The trip time in ticks.
  */
-uint GetOverseasAircraftTripDays(uint ship_days, uint percent)
+uint GetOverseasShipTripTicks(uint tiles, uint speed)
 {
-	return std::max<uint>(1, (ship_days * percent + 50) / 100);
+	return GetOverseasRoundTripTicks(tiles, OVERSEAS_PROGRESS_PER_TILE, static_cast<uint64_t>(std::max<uint>(1, speed)) * 3, 4);
+}
+
+/**
+ * Get the time an aircraft needs for a trip to a country and back at its top speed.
+ * An aircraft moves twice per tick, each time speed / plane_speed progress, 256 per step along an axis
+ * (#Vehicle::GetOldAdvanceSpeed in UpdateAircraftSpeed).
+ * @param tiles Distance to the country, one way.
+ * @param speed Top speed of the aircraft, in km-ish/h; 0 counts as 1.
+ * @param plane_speed Plane speed factor setting, aircraft move at 1/plane_speed of their speed.
+ * @return The trip time in ticks.
+ */
+uint GetOverseasAircraftTripTicks(uint tiles, uint speed, uint plane_speed)
+{
+	return GetOverseasRoundTripTicks(tiles, 16 * 256, static_cast<uint64_t>(std::max<uint>(1, speed)) * 2, std::max<uint>(1, plane_speed));
 }
 
 /**
@@ -270,41 +287,25 @@ uint GetOverseasStockpileLimit(uint monthly, uint months)
 	return monthly * months;
 }
 
-/** Trip time of a ship to the country of an overseas station and back, in days. */
-static uint GetOverseasShipTripDays(const Station *st)
-{
-	uint min_km = UINT_MAX, max_km = 0;
-	for (const OverseasCountry &c : _overseas_countries) {
-		min_km = std::min<uint>(min_km, c.distance_km);
-		max_km = std::max<uint>(max_km, c.distance_km);
-	}
-	const EconomySettings &eco = _settings_game.economy;
-	return GetOverseasTripDaysForDistance(GetOverseasCountry(st->overseas->country).distance_km, min_km, max_km,
-			eco.overseas_trip_min_days, eco.overseas_trip_max_days);
-}
-
 /**
- * Get the time a vehicle is away when it visits an overseas station.
+ * Get the time a vehicle is away when it visits an overseas station: as long as it needs to cover the paid
+ * distance to the country and back at its top speed, but at least the shortest trip setting.
  * @param st The overseas station.
- * @param type Vehicle type, aircraft are faster than ships.
- * @return The trip time in days.
- */
-uint GetOverseasTripDays(const Station *st, VehicleType type)
-{
-	uint days = GetOverseasShipTripDays(st);
-	if (type == VehicleType::Aircraft) days = GetOverseasAircraftTripDays(days, _settings_game.economy.overseas_aircraft_trip_percent);
-	return days;
-}
-
-/**
- * Get the time a vehicle is away when it visits an overseas station.
- * @param st The overseas station.
- * @param type Vehicle type.
+ * @param v The ship or aircraft.
  * @return The trip time in ticks.
  */
-uint GetOverseasTripTicks(const Station *st, VehicleType type)
+uint GetOverseasTripTicks(const Station *st, const Vehicle *v)
 {
-	return GetOverseasTripDays(st, type) * TicksPerCalendarDay();
+	const uint tiles = GetOverseasStationVirtualDistance(st);
+	uint ticks;
+	if (v->type == VehicleType::Aircraft) {
+		ticks = GetOverseasAircraftTripTicks(tiles, v->vcache.cached_max_speed, _settings_game.vehicle.plane_speed);
+	} else {
+		/* The overseas station is on the sea, so this is the ocean speed of the ship; damage makes it slower. */
+		ticks = GetOverseasShipTripTicks(tiles, Ship::From(v)->GetEffectiveMaxSpeed());
+	}
+	const uint64_t min_ticks = static_cast<uint64_t>(_settings_game.economy.overseas_trip_min_days) * TicksPerCalendarDay();
+	return static_cast<uint>(std::min<uint64_t>(std::max<uint64_t>(ticks, min_ticks), UINT32_MAX));
 }
 
 /**
@@ -805,7 +806,7 @@ bool OverseasVehicleDepart(Vehicle *v, Station *st)
 		return false;
 	}
 
-	const uint trip_ticks = GetOverseasTripTicks(st, v->type);
+	const uint trip_ticks = GetOverseasTripTicks(st, v);
 	const uint period = std::max<uint>(1, v->vcache.cached_cargo_age_period);
 
 	v->last_station_visited = st->index;
